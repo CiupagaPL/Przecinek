@@ -1,3 +1,6 @@
+/* Przecinek made by Ciupaga; Simple program-maker engine created using SDL2.
+* GPL 3.0 (C) 2024 Ciupaga */
+
 /* Include all libraries */
 #include "main.h"
 #include "func.h"
@@ -13,7 +16,7 @@ int main(void) {
 
     /* Create general-project objects */
     sfFont *Font = createFont(Window, Font, "../fonts/arial.ttf");
-    sfText *Version_Text = createText(Version_Text, Font, "Build 2", 24, 0, 690);
+    sfText *Version_Text = createText(Version_Text, Font, "Build 2.5", 24, 0, 690);
 
     /* Create rest objects */
     sfText *Cube_Text = createText(Cube_Text, Font, "      ^- Cube <3", 84, 120, 324);
