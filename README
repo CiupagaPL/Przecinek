@@ -8,6 +8,6 @@ Build 2 is very early version of the engine. For now it should be only used for 
 ## Usage
 For now you use it by editing main.c where you can manage window and create objects. When I'll end making all basic features I will try to make it graphical. For now those plans are very far from being completed :- )
 ## License
-You can find full License in next tab. Remember than I'm using CSFML! License is based on GPL 3.0.
+You can find full License in the next tab. Remember than I'm using CSFML! License is based on GPL 3.0. Some builds might also have some third-party assets. For every asset I'll forget to mention I really apologize.
 ## Have a good one!
 - Ciupaga <3
