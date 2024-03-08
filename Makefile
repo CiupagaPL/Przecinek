@@ -1,7 +1,4 @@
-## "Group Project"
-## Compiler for Linux
-
-NAME = out/GroupProject
+NAME = out/Przecinek
 INC = include/*
 LIB = lib/linux/*
 SRC = src/*

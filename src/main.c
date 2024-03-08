@@ -12,7 +12,7 @@
 /* Program control function */
 int main(void) {
     /* Create window */
-    sfRenderWindow *Window = createWindow(Window, 1280, 720, "Group Project", 60, false);
+    sfRenderWindow *Window = createWindow(Window, 1280, 720, "Przecinek", 60, false);
 
     /* Create general-project objects */
     sfFont *Font = createFont(Window, Font, "../fonts/arial.ttf");

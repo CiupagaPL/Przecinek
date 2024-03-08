@@ -4,7 +4,7 @@ This project is engine that I'm working on. It will be used in future projects. 
 ## About Project
 This engine was suppossed to be a game. I decided to create it using many easy functions. The idea of making it an engine appeard a few days ago.
 ## Newest Version Info
-Build 2 is very early version of the engine. For now it should be only used for private reasons.
+Build 2.5 is an small update which deletes old project name and fix compiler issues.
 ## Usage
 For now you use it by editing main.c where you can manage window and create objects. When I'll end making all basic features I will try to make it graphical. For now those plans are very far from being completed :- )
 ## License
