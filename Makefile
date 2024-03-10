@@ -1,8 +1,8 @@
-NAME = out/Przecinek
-INC = include/*
-LIB = lib/linux/*
-SRC = src/*
-OUT = out/*
+NAME = Out/Przecinek
+INC = Include/*
+LIB = Lib/*
+SRC = Src/*
+OUT = Out/*
 CSFML = -lcsfml-audio -lcsfml-graphics -lcsfml-system -lcsfml-window
 
 all:

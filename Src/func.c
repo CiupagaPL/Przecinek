@@ -31,6 +31,27 @@ void createEvent(sfRenderWindow *Window) {
     }
 }
 
+/* Fix window resolution */
+void limitWindow(sfRenderWindow *Window) {
+    sfVector2u Window_Size = sfRenderWindow_getSize(Window);
+
+    if(Window_Size.y > Window_Size.x) {
+        while(Window_Size.y > Window_Size.x) {
+            Window_Size.y = Window_Size.y + 1;
+        }
+    }
+     if(Window_Size.x < 640) {
+        while(Window_Size.x < 640) {
+            Window_Size.x = Window_Size.x + 1;
+        }
+    }
+    if(Window_Size.y < 360) {
+        while(Window_Size.y < 360) {
+            Window_Size.y = Window_Size.y + 1;
+        }
+    }
+}
+
 /* Create font */
 sfFont *createFont(sfRenderWindow *Window, sfFont *Font, const char *tempFontDir) {
     Font = sfFont_createFromFile(tempFontDir);
@@ -43,9 +64,9 @@ sfFont *createFont(sfRenderWindow *Window, sfFont *Font, const char *tempFontDir
 }
 
 /* Create text */
-sfText *createText(sfText *Text, sfFont *Font, const char *tempTextDir, unsigned int Text_Size, float Text_PositionX, float Text_PositionY) {
+sfText *createText(sfText *Text, sfFont *Font, const char *tempText_Value, unsigned int Text_Size, float Text_PositionX, float Text_PositionY) {
     Text = sfText_create();
-    sfText_setString(Text, tempTextDir);
+    sfText_setString(Text, tempText_Value);
     sfText_setCharacterSize(Text, Text_Size);
 
     sfText_setFont(Text, Font);
@@ -71,6 +92,7 @@ sfSoundBuffer *createSoundBuffer(sfRenderWindow *Window, sfSoundBuffer *SoundBuf
 
 /* Create sound */
 sfSound *createSound(sfSound *Sound, sfSoundBuffer *SoundBuffer) {
+    sfSound_create();
     sfSound_setBuffer(Sound, SoundBuffer);
 
     return Sound;
@@ -112,3 +134,21 @@ sfRectangleShape *createObject(sfRectangleShape *Object, sfTexture *Texture, flo
     
     return Object;
 }
+
+/* Create animated object */
+/*sfRectangleShape *createAnimatedObject(sfRectangleShape *Object, int Object_TextureCount, sfTexture *Texture[Object_TextureCount], int Object_Fps) {
+    Object = sfRectangleShape_create();
+    int Object_TextureCurrentCount = 0, Object_FpsTimer = 0;
+    sfRectangleShape_setTexture(Object, Texture[0], sfTrue);
+
+    while(Object_FpsTimer != Object_Fps) {
+        Object_TextureCurrentCount = Object_TextureCurrentCount + 1;
+        if(Object_TextureCount < Object_TextureCurrentCount) {
+            Object_TextureCurrentCount = 0;
+        }
+        sfRectangleShape_setTexture(Object, Texture[Object_TextureCurrentCount], sfTrue);
+        Object_FpsTimer = 0;
+    }
+
+    return Object;
+}*/

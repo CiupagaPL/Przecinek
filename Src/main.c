@@ -1,5 +1,5 @@
 /* Przecinek made by Ciupaga; Simple program-maker engine created using SDL2.
-* GPL 3.0 (C) 2024 Ciupaga */
+ * GPL 3.0 (C) 2024 Ciupaga */
 
 /* Include all libraries */
 #include "main.h"
@@ -7,32 +7,38 @@
 #include "obj.h"
 
 /* Create general-project variables */
-//int Scene = 1;
+unsigned int Scene = 1, WindowX = 1280, WindowY = 720;
 
 /* Program control function */
 int main(void) {
     /* Create window */
-    sfRenderWindow *Window = createWindow(Window, 1280, 720, "Przecinek", 60, false);
+    sfRenderWindow *Window = createWindow(Window, WindowX, WindowY, "Przecinek", 60, false);
 
     /* Create general-project objects */
-    sfFont *Font = createFont(Window, Font, "../fonts/arial.ttf");
-    sfText *Version_Text = createText(Version_Text, Font, "Build 2.5", 24, 0, 690);
+    sfFont *Font = createFont(Window, Font, "../Fonts/FiraMono.ttf");
+    sfText *Version_Text = createText(Version_Text, Font, "Build 3 [Unfinished]", 24, 0, 690);
 
     /* Create rest objects */
     sfText *Cube_Text = createText(Cube_Text, Font, "      ^- Cube <3", 84, 120, 324);
-    sfTexture *Cube_Texture = createTexture(Window, Cube_Texture, "../sprites/Static/Cube.png");
+    sfTexture *Cube_Texture = createTexture(Window, Cube_Texture, "../Sprites/Static/Cube.png");
     sfRectangleShape *Cube_Object = createObject(Cube_Object, Cube_Texture, 128, 128, 200, 200);
-    sfTexture *TestAnimated_Texture = createTexture(Window, TestAnimated_Texture, "../sprites/Animated/LoadingIcon/1.png");
+    sfTexture *TestAnimated_Texture = createTexture(Window, TestAnimated_Texture, "../Sprites/Animated/LoadingIcon/1.png");
     sfRectangleShape *TestAnimated_Object = createObject(TestAnimated_Object, TestAnimated_Texture, 64, 64, 25, 25);
-    sfTexture *Player_Texture = createTexture(Window, Player_Texture, "../sprites/Animated/LoadingIcon/2.png");
+    sfTexture *Player_Texture = createTexture(Window, Player_Texture, "../Sprites/Animated/LoadingIcon/2.png");
     sfRectangleShape *Player_Object = createObject(Player_Object, Player_Texture, 64, 64, 900, 400);
+    //sfSoundBuffer *Test_SoundBuffer = createSoundBuffer(Window, Test_SoundBuffer, "../sounds/Oof.ogg");
+    //sfSound *Test_Sound = createSound(Test_Sound, Test_SoundBuffer);
+    
+    bool a; //= detectCollision(Player_Object, TestAnimated_Object); 
 
     /* Update function */
     while(sfRenderWindow_isOpen(Window)) {
         /* Create and manage events */
         createEvent(Window);
-        //createTestAnimated(Window, TestAnimated_Texture, TestAnimated_Sprite, 30);
-        
+
+        /* Fix window resolution */
+        limitWindow(Window);
+
         /* Clear window with color background */
         sfRenderWindow_clear(Window, sfBlue);
 
@@ -45,7 +51,11 @@ int main(void) {
         sfRenderWindow_drawRectangleShape(Window, TestAnimated_Object, NULL);
         sfRenderWindow_drawRectangleShape(Window, Player_Object, NULL);
 
-        moveObject_withKeyboard(Player_Object, 5);
+        if(a) {
+            sfRenderWindow_close(Window);
+        }
+
+        moveObject_Keyboard(Player_Object, 5);
 
         /* Display objects on window */
         sfRenderWindow_display(Window);
@@ -58,6 +68,8 @@ int main(void) {
     sfTexture_destroy(TestAnimated_Texture);
     sfRectangleShape_destroy(Player_Object);
     sfTexture_destroy(Player_Texture);
+    //sfSoundBuffer_destroy(Test_SoundBuffer);
+    //sfSound_destroy(Test_Sound);
 
     sfFont_destroy(Font);
     sfText_destroy(Version_Text);
