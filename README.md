@@ -17,7 +17,7 @@ The project so far relies on modifying main.c to create and manage the window. I
 - CSFML - Game engine is based on these libraries. You can find them [here](https://github.com/SFML/csfml).
 - Fira Mono - It's used as main font in this project. You can find it [here](https://github.com/mozilla/Fira).
 
-> There will also be transitional assets that I will try to get rid of after each new build.
+> There will also be transitional assets that I'll try to get rid of after each new build.
 
 ## Special Mention
 Shout out to the people who have helped me with my previous projects!

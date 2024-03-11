@@ -1,3 +1,6 @@
+/* Przecinek made by Ciupaga; Simple program-maker engine created using CSFML.
+ * GPL 3.0 (C) 2024 Ciupaga */
+
 /* Include all libraries */
 #include "main.h"
 
@@ -13,3 +16,5 @@ sfMusic *createMusic(sfRenderWindow *Window, sfMusic *Music, const char *tempMus
 sfTexture *createTexture(sfRenderWindow *Window, sfTexture *Texture, const char *tempTextureDir);
 sfRectangleShape *createObject(sfRectangleShape *Object, sfTexture *Texture, float Object_Width, float Object_Height, float Object_PositionX, float Object_PositionY);
 //sfRectangleShape *createAnimatedObject(sfRectangleShape *Object, int Object_TextureCount, sfTexture *Texture[Object_TextureCount], int Object_Fps);
+void moveObject_Keyboard(sfRectangleShape *Object, unsigned int moveBy);
+bool detectCollision(sfRectangleShape *First_Object, sfRectangleShape *Second_Object);
