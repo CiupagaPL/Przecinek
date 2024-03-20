@@ -56,8 +56,8 @@ void limitWindow(sfRenderWindow *Window) {
 }
 
 /* Create font */
-sfFont *createFont(sfRenderWindow *Window, sfFont *Font, const char *tempFontDir) {
-    Font = sfFont_createFromFile(tempFontDir);
+sfFont *createFont(sfRenderWindow *Window, sfFont *Font, const char *tempFont_Dir) {
+    Font = sfFont_createFromFile(tempFont_Dir);
     if(!Font) {
         sfRenderWindow_close(Window);
         printf("Error 02; Couldn't load font!\n");
@@ -67,11 +67,12 @@ sfFont *createFont(sfRenderWindow *Window, sfFont *Font, const char *tempFontDir
 }
 
 /* Create text */
-sfText *createText(sfText *Text, sfFont *Font, const char *tempText_Value, unsigned int Text_Size, float Text_PositionX, float Text_PositionY) {
+sfText *createText(sfText *Text, sfFont *Font, const char *tempText_Value, unsigned int Text_Size, float Text_PositionX, float Text_PositionY, sfColor Color) {
     Text = sfText_create();
     sfText_setString(Text, tempText_Value);
     sfText_setCharacterSize(Text, Text_Size);
 
+    sfText_setColor(Text, Color);
     sfText_setFont(Text, Font);
 
     sfVector2f Text_Position;
@@ -83,8 +84,8 @@ sfText *createText(sfText *Text, sfFont *Font, const char *tempText_Value, unsig
 }
 
 /* Create sound buffer */
-sfSoundBuffer *createSoundBuffer(sfRenderWindow *Window, sfSoundBuffer *SoundBuffer, const char *tempSoundDir) {
-    SoundBuffer = sfSoundBuffer_createFromFile(tempSoundDir);
+sfSoundBuffer *createSoundBuffer(sfRenderWindow *Window, sfSoundBuffer *SoundBuffer, const char *tempSound_Dir) {
+    SoundBuffer = sfSoundBuffer_createFromFile(tempSound_Dir);
     if(!SoundBuffer) {
         sfRenderWindow_close(Window);
         printf("Error 03; Couldn't load sound!\n");
@@ -102,8 +103,8 @@ sfSound *createSound(sfSound *Sound, sfSoundBuffer *SoundBuffer) {
 }
 
 /* Create music */
-sfMusic *createMusic(sfRenderWindow *Window, sfMusic *Music, const char *tempMusicDir) {
-    sfMusic_createFromFile(tempMusicDir);
+sfMusic *createMusic(sfRenderWindow *Window, sfMusic *Music, const char *tempMusic_Dir) {
+    sfMusic_createFromFile(tempMusic_Dir);
     if(!Music) {
         sfRenderWindow_close(Window);
         printf("Error 04; Couldn't load music!\n");
@@ -113,8 +114,8 @@ sfMusic *createMusic(sfRenderWindow *Window, sfMusic *Music, const char *tempMus
 }
 
 /* Create texture */
-sfTexture *createTexture(sfRenderWindow *Window, sfTexture *Texture, const char *tempTextureDir) {
-    Texture = sfTexture_createFromFile(tempTextureDir, NULL);
+sfTexture *createTexture(sfRenderWindow *Window, sfTexture *Texture, const char *tempTexture_Dir) {
+    Texture = sfTexture_createFromFile(tempTexture_Dir, NULL);
     if(!Texture) {
         sfRenderWindow_close(Window);
         printf("Error 05; Couldn't load texture!\n");
@@ -124,7 +125,22 @@ sfTexture *createTexture(sfRenderWindow *Window, sfTexture *Texture, const char 
 }
 
 /* Create object */
-sfRectangleShape *createObject(sfRectangleShape *Object, sfTexture *Texture, float Object_Width, float Object_Height, float Object_PositionX, float Object_PositionY) {
+sfRectangleShape *createEmptyObject(sfRectangleShape *Object, float Object_Width, float Object_Height, float Object_PositionX, float Object_PositionY, sfColor Color) {
+    Object = sfRectangleShape_create();
+    
+    sfRectangleShape_setFillColor(Object, Color);
+
+    sfVector2f Object_Size = {Object_Width, Object_Height};
+    sfRectangleShape_setSize(Object, Object_Size);
+
+    sfVector2f Object_Position = {Object_PositionX, Object_PositionY};
+    sfRectangleShape_setPosition(Object, Object_Position);
+    
+    return Object;
+}
+
+/* Create object with animated texture */
+sfRectangleShape *createTextureObject(sfRectangleShape *Object, sfTexture *Texture, float Object_Width, float Object_Height, float Object_PositionX, float Object_PositionY) {
     Object = sfRectangleShape_create();
     
     sfRectangleShape_setTexture(Object, Texture, sfTrue);

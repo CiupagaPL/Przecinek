@@ -1,4 +1,4 @@
-![Przecinek's logo](https://cdn.discordapp.com/attachments/822928311487299687/1216337824240894032/Logo.png?ex=660005df&is=65ed90df&hm=991568a32a3b8edecd484bb6b3af13d26b8afe04f475f50c1d61d62f46faff00&)
+![Przecinek's logo](https://cdn.discordapp.com/attachments/822928311487299687/1220043321783750656/Logo.png?ex=660d80e3&is=65fb0be3&hm=53b499f22a56913fee5a2724fd3dce49e040db528ebfee696ed63aa5a61f22ff&)
 
 # License
 ## GNU 3.0

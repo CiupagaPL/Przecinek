@@ -1,4 +1,4 @@
-NAME = Przecinek.out
+NAME = Przecinek.o
 INC = Include/*
 LIB = Lib/*
 SRC = *.c
@@ -11,4 +11,4 @@ run:
 	./$(NAME)
 
 clean:
-	rm -r *.out
+	rm -r *.o

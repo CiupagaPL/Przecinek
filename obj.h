@@ -5,5 +5,5 @@
 #include "main.h"
 
 /* Load functions from c file */
-void mainMenu(sfRenderWindow *Window, sfFont *Font);
+int startScene(sfRenderWindow *Window, sfFont *Font, int Scene);
 void testScene(sfRenderWindow *Window, sfFont *Font);

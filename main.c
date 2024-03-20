@@ -16,7 +16,7 @@ int main(void) {
 
     /* Create general-project objects */
     sfFont *Font = createFont(Window, Font, "Fonts/FiraMono.ttf");
-    sfText *Version_Text = createText(Version_Text, Font, "Build 3 [Unfinished]", 24, 0, 690);
+    sfText *Version_Text = createText(Version_Text, Font, "Build 3 [Unfinished]", 24, 0, 690, sfBlack);
 
     /* Update function */
     while(sfRenderWindow_isOpen(Window)) {
@@ -27,14 +27,18 @@ int main(void) {
         limitWindow(Window);
 
         /* Clear window with color background */
-        sfRenderWindow_clear(Window, sfBlue);
+        sfRenderWindow_clear(Window, sfWhite);
 
         /* Draw general project objects */
         sfRenderWindow_drawText(Window, Version_Text, NULL);
 
-        // Main menu
+        /* Main menu */
         if(Scene == 1) {
-            mainMenu(Window, Font);
+            startScene(Window, Font, Scene);
+        }
+        /* Something */
+        if(Scene == 2) {
+            testScene(Window, Font);
         }
 
         /* Display objects on window */
