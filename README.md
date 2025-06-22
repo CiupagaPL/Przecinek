@@ -18,10 +18,10 @@ It's well-documented and is being actively improved and extended.
 > **Przecinek Audio** and **Przecinek Graphics** are unavailable for now c.c
 
 ### Installation and Configuration
-**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Documentation) Wiki page**.
+**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Installation-and-Configuration) Wiki page**.
 
 ### Documentation
-**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Installation-and-Configuration) Wiki page**.
+**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Documentation) Wiki page**.
 
 ## Assets
 Przecinek uses two libraries:
