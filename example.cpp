@@ -1,12 +1,12 @@
 /*Orginal {,} Made By Ciupaga*/
 /*https://github.com/CiupagaPL/Przecinek*/
-/*NOTE: You of course can remove top comment from this file :-PP*/
+/*NOTE: You can remove top comment from this file :-PP*/
 
 #include<iostream>
 #include<cstdlib>
 using namespace std;
 
-#include"src/base.h"
+#include"src/window.h"
 
 int r=0,g=0,b=0,rPrev=0,gPrev=0,bPrev=0;
 string temp,rString,gString,bString;

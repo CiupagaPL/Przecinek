@@ -1,6 +1,6 @@
 #Orginal {,} Made By Ciupaga
 #https://github.com/CiupagaPL/Przecinek
-#NOTE: You of course can remove top comment from this file :-PP
+#NOTE: You can remove top comment from this file :-PP
 
 .PHONY: default win x11 clean
 

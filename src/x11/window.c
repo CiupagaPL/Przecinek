@@ -391,7 +391,3 @@ bool pEventCapsOn(){
   if(keyboardState.led_mask&(1<<1)!=0){ return true; }
   else{ return false; }
 }
-
-void pClean(){
-
-}
