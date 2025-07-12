@@ -8,51 +8,52 @@ using namespace std;
 
 #include"src/window.h"
 
-int r=0,g=0,b=0,rPrev=0,gPrev=0,bPrev=0;
-string temp,rString,gString,bString;
+int redPrev=0,greenPrev=0,bluePrev=0;
+string temp,redString,greenString,blueString;
 
 int main(void){
-  pWindowCreate(1280,720,1,false);
-  pWindowSetBackground(255,255,255);
+  pDebug(false);
 
-  while(pWindowOn()){
-    pEventHandle();
-    if(!pWindowOn()){ break; }
+  pWindow window=pWindowCreate(1280,720,1);
+  pWindowSetBackground(&window,255,255,255);
 
-    if(pEventKeyPress("r")){ pWindowSetBackground(255,0,0); }
-    if(pEventKeyPress("g")){ pWindowSetBackground(0,255,0); }
-    if(pEventKeyPress("b")){ pWindowSetBackground(0,0,255); }
+  while(window.on){
+    pWindowHandle(&window);
+    if(!window.on){ break; }
 
-    r=pWindowBackgroundRed();
-    g=pWindowBackgroundGreen();
-    b=pWindowBackgroundBlue();
+    if(pKeyPress("r")){ pWindowSetBackground(&window,255,0,0); }
+    if(pKeyPress("g")){ pWindowSetBackground(&window,0,255,0); }
+    if(pKeyPress("b")){ pWindowSetBackground(&window,0,0,255); }
 
-    if(pEventKeyHold(",")){
-      r=rand()%256;
-      g=rand()%256;
-      b=rand()%256;
-      pWindowSetBackground(r,g,b);
+    if(pKeyHold(",")){
+      printf("rgb(%i,%i,%i)\n",rand()%256,rand()%256,rand()%256);
+    } if(pKeyPress(",")){
+      window.red=rand()%256;
+      window.green=rand()%256;
+      window.blue=rand()%256;
+      pWindowSetBackground(&window,window.red,window.green,window.blue);
     }
 
-    if(rPrev!=r||gPrev!=g||bPrev!=b){
-      rString=to_string(r),gString=to_string(g),bString=to_string(b);
-      temp="{,} rgb("+rString+","+gString+","+bString+")";
+    if(redPrev!=window.red||greenPrev!=window.green||bluePrev!=window.blue){
+      redString=to_string(window.red),greenString=to_string(window.green),blueString=to_string(window.blue);
+      temp="{,} rgb("+redString+","+greenString+","+blueString+")";
       const char *title=temp.c_str();
 
-      if(title!=pWindowTitle()){ pWindowSetTitle(title); }
+      if(title!=window.title){ pWindowSetTitle(&window,title); }
 
-      rPrev=r;
-      gPrev=g;
-      bPrev=b;
+      redPrev=window.red;
+      greenPrev=window.green;
+      bluePrev=window.blue;
     }
-  }
+  } if(!window.on){
+    pWindow boo=pWindowCreate(300,200,2);
+    pWindowSetTitle(&boo,"Boo!");
+    pWindowSetPosition(&boo,300,200);
 
-  pWindowCreate(300,200,2,false);
-  pWindowSetTitle("Boo!");
-
-  while(pWindowOn()){
-    pEventHandle();
-    if(!pWindowOn()){ break; }
+    while(boo.on){
+      pWindowHandle(&boo);
+      if(!boo.on){ break; }
+    }
   }
 
   return 0;

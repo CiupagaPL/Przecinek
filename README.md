@@ -1,7 +1,13 @@
 ![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek_general.png)
-# {,} Przecinek [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) [[unstable]](https://github.com/CiupagaPL/Przecinek/tree/unstable)
+# {,} Przecinek [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) >[unstable]<
 
-### About
+### About Current Branch
+You are currently on **Unstable** branch.
+Remember that all Przecinek versions from here are prepared for testing purposes only and are **very unsafe to use for your projects**!
+> [!WARNING]
+> Przecinek for WinAPI is currently broken! >.<
+
+### About Project
 **Przecinek is a minimal graphics and audio library** being developed in C.
 Its purpose is to make it easier for beginner programmers to create window applications while keeping their projects small in size.
 Przecinek uses only system-built-in libraries.
@@ -29,8 +35,8 @@ Przecinek uses two libraries:
 - for Linux(X11) version [X11Lib](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
 ## Version
-> Newest Version (Alpha): **a1,0**;<br>
-> Last Updated: **22-06-2025**;
+> Newest Version (Unstable): **u,0**;<br>
+> Last Updated: **12-07-2025**;
 
 ## LICENSE
 ```

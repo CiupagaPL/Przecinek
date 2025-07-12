@@ -3,38 +3,35 @@
 
 #include<stdbool.h>
 
-#ifndef BASE_H
-#define BASE_H
+#ifndef WINDOW_H
+#define WINDOW_H
 
 #ifdef __cplusplus
 extern "C"{
   #endif
 
-  bool pDebugOn();
+  typedef struct{
+    unsigned int ID;
+    bool on,active;
+    unsigned int x,y,width,height,mode;
+    char title[256];
+    unsigned int red,green,blue;
+  } pWindow;
 
-  void pWindowCreate(unsigned int pWidth,unsigned int pHeight,unsigned int pMode,bool pDebugOn);
-  bool pWindowOn();
-  unsigned int pWindowWidth();
-  unsigned int pWindowHeight();
-  unsigned int pWindowMode();
-  char* pWindowTitle();
+  void pDebug(bool on);
 
-  void pWindowSetTitle(const char* pTitle);
+  pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode);
+  void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y);
+  void pWindowSetTitle(pWindow* window,const char* title);
+  void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,unsigned int blue);
+  void pWindowHandle(pWindow* window);
+  void pWindowClose(pWindow* window);
 
-  void pWindowSetBackground(unsigned int pRed,unsigned int pGreen,unsigned int pBlue);
-  unsigned int pWindowBackgroundRed();
-  unsigned int pWindowBackgroundGreen();
-  unsigned int pWindowBackgroundBlue();
-
-  void pEventHandle();
-  bool pEventKeyPress(const char* pKey);
-  bool pEventKeyHold(const char* pKey);
-
-  bool pEventKeyLast(const char* pKey);
-  bool pEventCapsOn();
+  bool pKeyPress(const char* key);
+  bool pKeyHold(const char* key);
+  bool pKeyCaps();
 
   #ifdef __cplusplus
 }
 #endif
-
 #endif
