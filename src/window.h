@@ -13,6 +13,7 @@ extern "C"{
   typedef struct{
     unsigned int ID;
     bool on,active;
+
     unsigned int x,y,width,height,mode;
     char title[256];
     unsigned int red,green,blue;

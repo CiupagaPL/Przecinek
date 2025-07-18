@@ -16,12 +16,15 @@ void pDebug(bool on){ debug=on; }
 typedef struct{
   unsigned int ID;
   bool on,active;
+
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
 } pWindow;
 
 typedef struct{
+  bool on;
+
   Display *display;
   int screen;
   Window base;
@@ -32,20 +35,24 @@ typedef struct{
   bool keyHold[256];
 } pWindowX11;
 
-unsigned int nextWinID=1,activeWinID=0;
-pWindowX11 windowX11[128];
+unsigned int activeWinID=0;
+pWindowX11 windowX11[64];
 
 pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   pWindow window;
-  window.ID=nextWinID;
-
-  if(nextWinID==129){
-    if(debug){
-      printf("[Error] Too many Windows active,\n");
-      fflush(stdout);
+  for(int c=1;c<=64;c++){
+    if(!windowX11[c-1].on){
+      window.ID=c;
+      break;
+    } else if(c==64){
+      if(debug){
+        printf("[Error] Too many Windows active,\n");
+        fflush(stdout);
+      }
+      window.on=false;
+      windowX11[window.ID-1].on=false;
+      return window;
     }
-    window.on=false;
-    return window;
   }
 
   windowX11[window.ID-1].display=XOpenDisplay(NULL);
@@ -55,6 +62,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
       fflush(stdout);
     }
     window.on=false;
+    windowX11[window.ID-1].on=false;
     return window;
   }
 
@@ -74,10 +82,11 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
     }
     XCloseDisplay(windowX11[window.ID-1].display);
     window.on=false;
+    windowX11[window.ID-1].on=false;
     return window;
   } else{
-    nextWinID++;
     window.on=true;
+    windowX11[window.ID-1].on=true;
     window.width=width;
     window.height=height;
     window.mode=mode;
@@ -163,6 +172,7 @@ void pWindowHandle(pWindow* window){
       else if(windowX11[window->ID-1].event.type==ClientMessage){
         if((Atom)windowX11[window->ID-1].event.xclient.data.l[0]==windowX11[window->ID-1].wmDelete){
           window->on=false;
+          windowX11[window->ID-1].on=false;
           XDestroyWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
           XCloseDisplay(windowX11[window->ID-1].display);
           return;
@@ -194,7 +204,7 @@ void pWindowHandle(pWindow* window){
     }
   } else{
     if(debug){
-      printf("[Error] Could not handle Event,\n");
+      printf("[Error] Could not handle Window,\n");
       fflush(stdout);
     }
     return;
@@ -204,6 +214,7 @@ void pWindowHandle(pWindow* window){
 void pWindowClose(pWindow* window){
   if(window->on){
     window->on=false;
+    windowX11[window->ID-1].on=false;
     XDestroyWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
     XCloseDisplay(windowX11[window->ID-1].display);
   } else{

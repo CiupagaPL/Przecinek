@@ -12,7 +12,7 @@ int redPrev=0,greenPrev=0,bluePrev=0;
 string temp,redString,greenString,blueString;
 
 int main(void){
-  pDebug(false);
+  pDebug(true);
 
   pWindow window=pWindowCreate(1280,720,1);
   pWindowSetBackground(&window,255,255,255);
@@ -48,7 +48,7 @@ int main(void){
   } if(!window.on){
     pWindow boo=pWindowCreate(300,200,2);
     pWindowSetTitle(&boo,"Boo!");
-    pWindowSetPosition(&boo,300,200);
+    //pWindowSetPosition(&boo,300,200);
 
     while(boo.on){
       pWindowHandle(&boo);

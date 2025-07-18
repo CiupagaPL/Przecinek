@@ -7,6 +7,312 @@
 
 #include<windows.h>
 
+bool debug=false;
+void pDebug(bool on){
+  debug=on;
+  if(debug){
+    AllocConsole();
+    freopen("CONOUT$","w",stdout);
+  } else{ FreeConsole(); }
+}
+
+typedef struct{
+  unsigned int ID;
+  bool on,active;
+
+  unsigned int x,y,width,height,mode;
+  char title[256];
+  unsigned int red,green,blue;
+} pWindow;
+
+typedef struct{
+  bool on;
+
+  WPARAM wParameter;
+} pWindowProcW;
+
+typedef struct{
+  bool on;
+
+  LPARAM lParameter;
+} pWindowProcL;
+
+typedef struct{
+  bool on;
+
+  char CLASS[16];
+  HWND hwnd;
+  bool W_DESTROY;
+  pWindowProcW W_ACTIVATE,W_KEYDOWN;
+  pWindowProcL W_SIZE;
+
+  unsigned int red,green,blue;
+
+  unsigned int keyPress,keyHold[256];
+} pWindowWin;
+
+typedef struct{
+  unsigned int ID;
+
+  unsigned int x,y,width,height;
+
+  HWND hwnd;
+} pWindowPointer;
+
+unsigned int activeWinID=0,currentWinID=0;
+pWindowWin windowWin[64];
+pWindow currentWindow;
+MSG message;
+
+void pWindowReset(pWindow* window);
+
+LRESULT CALLBACK pWindowProc(HWND hwnd,UINT uMessage,WPARAM wParameter,LPARAM lParameter){
+  pWindowPointer* windowPointer=(pWindowPointer*)GetWindowLongPtr(hwnd,GWLP_USERDATA);
+
+  if(uMessage==WM_CREATE){
+    pWindowPointer* newWindowPointer=(pWindowPointer*)malloc(sizeof(pWindowPointer));
+    newWindowPointer->ID=currentWindow.ID;
+    newWindowPointer->width=currentWindow.width;
+    newWindowPointer->height=currentWindow.height;
+    newWindowPointer->hwnd=hwnd;
+    SetWindowLongPtr(hwnd,GWLP_USERDATA,(LONG_PTR)newWindowPointer);
+  } else if(uMessage==WM_DESTROY){
+    windowWin[currentWinID-1].W_DESTROY=true;
+    hwnd=NULL;
+    return 0;
+  } else if(uMessage==WM_PAINT){
+    PAINTSTRUCT paintStruct;
+    HDC hdc=BeginPaint(hwnd,&paintStruct);
+    HBRUSH blackBrush=CreateSolidBrush(RGB(windowWin[windowPointer->ID-1].red,windowWin[windowPointer->ID-1].green,windowWin[windowPointer->ID-1].blue));
+    FillRect(hdc,&paintStruct.rcPaint,blackBrush);
+    DeleteObject(blackBrush);
+    EndPaint(hwnd,&paintStruct);
+  } else if(uMessage==WM_ACTIVATE){
+    for(int c=0;c<256;c++){ windowWin[windowPointer->ID-1].keyHold[c]=0; }
+    windowWin[windowPointer->ID-1].keyPress=0;
+    windowWin[windowPointer->ID-1].W_ACTIVATE.on=true;
+    windowWin[windowPointer->ID-1].W_ACTIVATE.wParameter=wParameter;
+  } else if(uMessage==WM_SIZE){
+    windowWin[windowPointer->ID-1].W_SIZE.on=true;
+    windowWin[windowPointer->ID-1].W_SIZE.lParameter=lParameter;
+  } else if(uMessage==WM_KEYDOWN){
+    if(windowWin[windowPointer->ID-1].keyHold[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]==0){
+      windowWin[windowPointer->ID-1].W_KEYDOWN.on=true;
+      windowWin[windowPointer->ID-1].W_KEYDOWN.wParameter=wParameter;
+    }
+  } else if(uMessage==WM_KEYUP){ windowWin[windowPointer->ID-1].keyHold[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]=0; }
+
+  return DefWindowProc(hwnd,uMessage,wParameter,lParameter);
+}
+
+pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
+  pWindow window;
+  for(int c=1;c<=64;c++){
+    if(!windowWin[c-1].on){
+      window.ID=c;
+      break;
+    } else if(c==64){
+      if(debug){
+        printf("[Error] Too many Windows active,\n");
+        fflush(stdout);
+      }
+      window.on=false;
+      windowWin[window.ID-1].on=false;
+      return window;
+    }
+  }
+
+  pWindowReset(&window);
+  window.width=width;
+  window.height=height;
+  window.mode=mode;
+  currentWindow=window;
+
+  HINSTANCE hInstance=GetModuleHandle(NULL);
+  WNDCLASS wClass={0};
+  wClass.lpfnWndProc=pWindowProc;
+  wClass.hInstance=hInstance;
+  sprintf(windowWin[window.ID-1].CLASS,"PrzecinekClass%i",window.ID);
+  wClass.lpszClassName=windowWin[window.ID-1].CLASS;
+  wClass.hCursor=LoadCursor(NULL,IDC_ARROW);
+  if(!RegisterClass(&wClass)){
+    if(debug){
+      printf("[Error] Could not register Window Class,\n");
+      fflush(stdout);
+    }
+    pWindowReset(&window);
+    return window;
+  }
+
+  DWORD style=WS_OVERLAPPEDWINDOW;
+  if(window.mode==1){ style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX; }
+  else if(window.mode==2){ style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU; }
+
+  windowWin[window.ID-1].hwnd=CreateWindowEx(
+    0,windowWin[window.ID-1].CLASS,"{,}",
+    style,
+    CW_USEDEFAULT,CW_USEDEFAULT,
+    width,height,
+    NULL,NULL,hInstance,NULL
+  );
+
+  if(windowWin[window.ID-1].hwnd==NULL){
+    if(debug){
+      printf("[Error] Could not create Window,\n");
+      fflush(stdout);
+    }
+    pWindowReset(&window);
+  } else{
+    window.on=true;
+    windowWin[window.ID-1].on=true;
+
+    InvalidateRect(windowWin[window.ID-1].hwnd,NULL,TRUE);
+    ShowWindow(windowWin[window.ID-1].hwnd,SW_SHOW);
+    SetForegroundWindow(windowWin[window.ID-1].hwnd);
+  }
+  return window;
+}
+
+void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){ return; }
+
+void pWindowSetTitle(pWindow* window,const char* title){
+  if(window->on){
+    strncpy(window->title,title,sizeof(window->title)-1);
+    window->title[sizeof(window->title)-1]='\0';
+    SetWindowText(windowWin[window->ID-1].hwnd,window->title);
+  } else if(debug){
+    printf("[Error] Could not set Window Title,\n");
+    fflush(stdout);
+  }
+  return;
+}
+
+void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,unsigned int blue){
+  if(window->on){
+    if(red>255){ red=255; }
+    if(green>255){ green=255; }
+    if(blue>255){ blue=255; }
+    window->red=red;
+    window->green=green;
+    window->blue=blue;
+    windowWin[window->ID-1].red=red;
+    windowWin[window->ID-1].green=green;
+    windowWin[window->ID-1].blue=blue;
+    InvalidateRect(windowWin[window->ID-1].hwnd,NULL,TRUE);
+  } else if(debug){
+    printf("[Error] Could not set Window Background,\n");
+    fflush(stdout);
+  }
+  return;
+}
+
+void pWindowHandle(pWindow* window){
+  if(window->on){
+    currentWinID=window->ID;
+    if(GetMessage(&message,NULL,0,0)){
+      TranslateMessage(&message);
+      DispatchMessage(&message);
+    }
+
+    if(windowWin[currentWinID-1].W_DESTROY){ pWindowReset(window); }
+    if(windowWin[currentWinID-1].W_ACTIVATE.on){
+      if(windowWin[currentWinID-1].W_ACTIVATE.wParameter==WA_ACTIVE||windowWin[currentWinID-1].W_ACTIVATE.wParameter==WA_CLICKACTIVE){
+        window->active=true;
+        activeWinID=window->ID;
+      } else{
+        window->active=false;
+        if(activeWinID==window->ID){ activeWinID=0; }
+      }
+      windowWin[currentWinID-1].W_ACTIVATE.on=false;
+    } if(windowWin[currentWinID-1].W_SIZE.on){
+      window->width=LOWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
+      window->height=HIWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
+      windowWin[currentWinID-1].W_SIZE.on=false;
+    } if(windowWin[currentWinID-1].W_KEYDOWN.on){
+      if(activeWinID==currentWinID){
+        if(windowWin[window->ID-1].keyHold[MapVirtualKey(windowWin[currentWinID-1].W_KEYDOWN.wParameter,MAPVK_VK_TO_VSC)]==0){
+          windowWin[window->ID-1].keyPress=MapVirtualKey(windowWin[currentWinID-1].W_KEYDOWN.wParameter,MAPVK_VK_TO_VSC);
+          windowWin[window->ID-1].keyHold[windowWin[window->ID-1].keyPress]=1;
+        }
+      }
+      windowWin[currentWinID-1].W_KEYDOWN.on=false;
+    }
+  } else if(debug){
+    printf("[Error] Could not handle Window,\n");
+    fflush(stdout);
+  }
+  return;
+}
+
+void pWindowReset(pWindow* window){
+  window->on=false;
+  window->active=false;
+
+  window->x=0;
+  window->y=0;
+  window->width=0;
+  window->height=0;
+  window->mode=0;
+  strncpy(window->title,"{,}",sizeof(window->title)-1);
+  window->title[sizeof(window->title)-1]='\0';
+  window->red=0;
+  window->green=0;
+  window->blue=0;
+
+  windowWin[window->ID-1].hwnd=NULL;
+  windowWin[window->ID-1].W_DESTROY=false;
+  windowWin[window->ID-1].W_ACTIVATE.on=false;
+  windowWin[window->ID-1].W_KEYDOWN.on=false;
+  windowWin[window->ID-1].W_SIZE.on=false;
+
+  windowWin[window->ID-1].red=0;
+  windowWin[window->ID-1].green=0;
+  windowWin[window->ID-1].blue=0;
+
+  windowWin[window->ID-1].keyPress=0;
+  for(int c=0;c<256;c++){ windowWin[window->ID-1].keyHold[c]=0; }
+}
+
+void pWindowClose(pWindow* window){
+  if(window->on){ PostMessage(windowWin[window->ID-1].hwnd,WM_CLOSE,0,0); }
+  else if(debug){
+    printf("[Warning] Window is already closed,\n");
+    fflush(stdout);
+  }
+  return;
+}
+
+unsigned int pModifyKey(const char* key);
+
+bool pKeyPress(const char *key){
+  if(activeWinID!=0){
+    if(pModifyKey(key)>0&&pModifyKey(key)<256){
+      if(windowWin[activeWinID-1].keyHold[pModifyKey(key)]==1){
+        windowWin[activeWinID-1].keyHold[pModifyKey(key)]=2;
+        windowWin[activeWinID-1].keyPress=0;
+        return true;
+      }
+    } else if(debug){
+      printf("[Warning] Invalid Key,\n");
+      fflush(stdout);
+    }
+  }
+  return false;
+}
+
+bool pKeyHold(const char *key){
+  if(activeWinID!=0){
+    if(pModifyKey(key)>0&&pModifyKey(key)<256){ return windowWin[activeWinID-1].keyHold[pModifyKey(key)]!=0; }
+    else if(debug){
+      printf("[Warning] Invalid Key,\n");
+      fflush(stdout);
+    }
+  }
+  return false;
+}
+
+bool pKeyCaps(){ return GetKeyState(VK_CAPITAL)&0x0001; }
+
 #define VK_1 0x31
 #define VK_2 0x32
 #define VK_3 0x33
@@ -48,401 +354,100 @@
 #define VK_OEM_SEMICOLON 0xBA
 #define VK_OEM_QUOTE 0xDE
 
-static COLORREF backgroundColor=RGB(0,0,0);
-char CLASS_NAME[256];
-HWND hwnd;
-MSG message;
-unsigned int current=0;
-unsigned int keyPress[256]={ 0 };
-bool keyHold[256]={ false };
-unsigned int keyFirst=0,keySecond=0;
+unsigned int pModifyKey(const char *key){
+  if(strcmp(key,"ESC")==0||strcmp(key,"esc")==0||strcmp(key,"Esc")==0){ return MapVirtualKey(VK_ESCAPE,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"TAB")==0||strcmp(key,"tab")==0||strcmp(key,"Tab")==0){ return MapVirtualKey(VK_TAB,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"CAPS")==0||strcmp(key,"caps")==0||strcmp(key,"Caps")==0){ return MapVirtualKey(VK_CAPITAL,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"LSHIFT")==0||strcmp(key,"lshift")==0||strcmp(key,"LShift")==0){ return MapVirtualKey(VK_LSHIFT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"LCTRL")==0||strcmp(key,"lctrl")==0||strcmp(key,"LCtrl")==0){ return MapVirtualKey(VK_LCONTROL,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"LMOD")==0||strcmp(key,"lmod")==0||strcmp(key,"LMod")==0){ return MapVirtualKey(VK_LWIN,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"LALT")==0||strcmp(key,"lalt")==0||strcmp(key,"LAlt")==0){ return MapVirtualKey(VK_LMENU,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"SPACE")==0||strcmp(key,"space")==0||strcmp(key,"Space")==0){ return MapVirtualKey(VK_SPACE,MAPVK_VK_TO_VSC); }
 
-bool debugOn=false;
-bool pDebugOn(){ return debugOn; }
+  else if(strcmp(key,"F1")==0||strcmp(key,"f1")==0){ return MapVirtualKey(VK_F1,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F2")==0||strcmp(key,"f2")==0){ return MapVirtualKey(VK_F2,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F3")==0||strcmp(key,"f3")==0){ return MapVirtualKey(VK_F3,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F4")==0||strcmp(key,"f4")==0){ return MapVirtualKey(VK_F4,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F5")==0||strcmp(key,"f5")==0){ return MapVirtualKey(VK_F5,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F6")==0||strcmp(key,"f6")==0){ return MapVirtualKey(VK_F6,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F7")==0||strcmp(key,"f7")==0){ return MapVirtualKey(VK_F7,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F8")==0||strcmp(key,"f8")==0){ return MapVirtualKey(VK_F8,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F9")==0||strcmp(key,"f9")==0){ return MapVirtualKey(VK_F9,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F10")==0||strcmp(key,"f10")==0){ return MapVirtualKey(VK_F10,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F11")==0||strcmp(key,"f11")==0){ return MapVirtualKey(VK_F11,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F12")==0||strcmp(key,"f12")==0){ return MapVirtualKey(VK_F12,MAPVK_VK_TO_VSC); }
 
-bool windowOn=false;
-bool pWindowOn(){ return windowOn; }
-unsigned int windowWidth=0,windowHeight=0,windowMode=0;
-unsigned int pWindowWidth(){
-  if(windowOn){ return windowWidth; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-} unsigned int pWindowHeight(){
-  if(windowOn){ return windowHeight; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-} unsigned int pWindowMode(){
-  if(windowOn){ return windowMode; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-}
-char windowTitle[256]="{,}";
-char* pWindowTitle(){
-  if(windowOn){ return windowTitle; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return "";
-  }
-}
+  else if(strcmp(key,"RALT")==0||strcmp(key,"ralt")==0||strcmp(key,"RAlt")==0){ return MapVirtualKey(VK_RMENU,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"RWIN")==0||strcmp(key,"rwin")==0||strcmp(key,"RWin")==0){ return MapVirtualKey(VK_RWIN,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"MENU")==0||strcmp(key,"menu")==0||strcmp(key,"Menu")==0){ return MapVirtualKey(VK_APPS,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"RCTRL")==0||strcmp(key,"rctrl")==0||strcmp(key,"RCtrl")==0){ return MapVirtualKey(VK_RCONTROL,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"RSHIFT")==0||strcmp(key,"rshift")==0||strcmp(key,"RShift")==0){ return MapVirtualKey(VK_RSHIFT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"ENTER")==0||strcmp(key,"enter")==0||strcmp(key,"Enter")==0){ return MapVirtualKey(VK_RETURN,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"BACKSPACE")==0||strcmp(key,"backspace")==0||strcmp(key,"Backspace")==0){ return MapVirtualKey(VK_BACK,MAPVK_VK_TO_VSC); }
 
-unsigned int windowBackgroundRed=0,windowBackgroundGreen=0,windowBackgroundBlue=0;
-unsigned int pWindowBackgroundRed(){
-  if(windowOn){ return windowBackgroundRed; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-} unsigned int pWindowBackgroundGreen(){
-  if(windowOn){ return windowBackgroundGreen; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-} unsigned int pWindowBackgroundBlue(){
-  if(windowOn){ return windowBackgroundBlue; }
-  else{
-    if(debugOn){
-      printf("[Warning] Could not find any Window,\n");
-      fflush(stdout);
-    }
-    return 0;
-  }
-}
+  else if(strcmp(key,"LARROW")==0||strcmp(key,"larrow")==0||strcmp(key,"LArrow")==0){ return MapVirtualKey(VK_LEFT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"DARROW")==0||strcmp(key,"darrow")==0||strcmp(key,"DArrow")==0){ return MapVirtualKey(VK_DOWN,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"RARROW")==0||strcmp(key,"rarrow")==0||strcmp(key,"RArrow")==0){ return MapVirtualKey(VK_RIGHT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"UARROW")==0||strcmp(key,"uarrow")==0||strcmp(key,"UArrow")==0){ return MapVirtualKey(VK_UP,MAPVK_VK_TO_VSC); }
 
-LRESULT CALLBACK WindowProc(HWND hwnd,UINT uMessage,WPARAM wParameter,LPARAM lParameter){
-if(uMessage==WM_DESTROY){
-    windowBackgroundRed=0;
-    windowBackgroundGreen=0;
-    windowBackgroundBlue=0;
-    strncpy(windowTitle,"{,}",sizeof(windowTitle)-1);
-    windowTitle[sizeof(windowTitle)-1]='\0';
-    keyFirst=0;
-    keySecond=0;
+  else if(strcmp(key,"PRINTSCRN")==0||strcmp(key,"printscrn")==0||strcmp(key,"PrintScrn")==0){ return MapVirtualKey(VK_SNAPSHOT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"SCROLLLOCK")==0||strcmp(key,"scrolllock")==0||strcmp(key,"ScrollLock")==0){ return MapVirtualKey(VK_SCROLL,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"PAUSEBREAK")==0||strcmp(key,"pausebreak")==0||strcmp(key,"PauseBreak")==0){ return MapVirtualKey(VK_PAUSE,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"INS")==0||strcmp(key,"ins")==0||strcmp(key,"Ins")==0){ return MapVirtualKey(VK_INSERT,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"HOME")==0||strcmp(key,"home")==0||strcmp(key,"Home")==0){ return MapVirtualKey(VK_HOME,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"PAGEU")==0||strcmp(key,"pageu")==0||strcmp(key,"PageU")==0){ return MapVirtualKey(VK_PRIOR,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"DEL")==0||strcmp(key,"del")==0||strcmp(key,"Del")==0){ return MapVirtualKey(VK_DELETE,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"END")==0||strcmp(key,"end")==0||strcmp(key,"End")==0){ return MapVirtualKey(VK_END,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"PAGED")==0||strcmp(key,"paged")==0||strcmp(key,"PageD")==0){ return MapVirtualKey(VK_NEXT,MAPVK_VK_TO_VSC); }
 
-    windowOn=false;
-    FreeConsole();
-    if(hwnd){
-      DestroyWindow(hwnd);
-      hwnd=NULL;
-    }
-    PostQuitMessage(0);
-    return 0;
-  } else if(uMessage==WM_PAINT){
-    PAINTSTRUCT ps;
-    HDC hdc=BeginPaint(hwnd,&ps);
-    HBRUSH blackBrush=CreateSolidBrush(backgroundColor);
-    FillRect(hdc,&ps.rcPaint,blackBrush);
-    DeleteObject(blackBrush);
-    EndPaint(hwnd,&ps);
-  } else if(uMessage==WM_SIZE){
-    windowWidth=LOWORD(lParameter);
-    windowHeight=HIWORD(lParameter);
-  } else if(uMessage==WM_KEYDOWN){
-    if(keyPress[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]!=2){
-      keyPress[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]=1;
-      keyHold[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]=true;
-      keySecond=keyFirst;
-      keyFirst=MapVirtualKey(wParameter,MAPVK_VK_TO_VSC);
-    }
-  } else if(uMessage==WM_KEYUP){
-    keyPress[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]=0;
-    keyHold[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]=false;
-  }
+  else if(strcmp(key,"Q")==0||strcmp(key,"q")==0){ return MapVirtualKey(VK_Q,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"W")==0||strcmp(key,"w")==0){ return MapVirtualKey(VK_W,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"E")==0||strcmp(key,"e")==0){ return MapVirtualKey(VK_E,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"R")==0||strcmp(key,"r")==0){ return MapVirtualKey(VK_R,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"T")==0||strcmp(key,"t")==0){ return MapVirtualKey(VK_T,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"Y")==0||strcmp(key,"y")==0){ return MapVirtualKey(VK_Y,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"U")==0||strcmp(key,"u")==0){ return MapVirtualKey(VK_U,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"I")==0||strcmp(key,"i")==0){ return MapVirtualKey(VK_I,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"O")==0||strcmp(key,"o")==0){ return MapVirtualKey(VK_O,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"P")==0||strcmp(key,"p")==0){ return MapVirtualKey(VK_P,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"A")==0||strcmp(key,"a")==0){ return MapVirtualKey(VK_A,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"S")==0||strcmp(key,"s")==0){ return MapVirtualKey(VK_S,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"D")==0||strcmp(key,"d")==0){ return MapVirtualKey(VK_D,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"F")==0||strcmp(key,"f")==0){ return MapVirtualKey(VK_F,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"G")==0||strcmp(key,"g")==0){ return MapVirtualKey(VK_G,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"H")==0||strcmp(key,"h")==0){ return MapVirtualKey(VK_H,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"J")==0||strcmp(key,"j")==0){ return MapVirtualKey(VK_J,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"K")==0||strcmp(key,"k")==0){ return MapVirtualKey(VK_K,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"L")==0||strcmp(key,"l")==0){ return MapVirtualKey(VK_L,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"Z")==0||strcmp(key,"z")==0){ return MapVirtualKey(VK_Z,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"X")==0||strcmp(key,"x")==0){ return MapVirtualKey(VK_X,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"C")==0||strcmp(key,"c")==0){ return MapVirtualKey(VK_C,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"V")==0||strcmp(key,"v")==0){ return MapVirtualKey(VK_V,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"B")==0||strcmp(key,"b")==0){ return MapVirtualKey(VK_B,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"N")==0||strcmp(key,"n")==0){ return MapVirtualKey(VK_N,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"M")==0||strcmp(key,"m")==0){ return MapVirtualKey(VK_M,MAPVK_VK_TO_VSC); }
 
-  return DefWindowProc(hwnd,uMessage,wParameter,lParameter);
-}
+  else if(strcmp(key,"1")==0){ return MapVirtualKey(VK_1,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"2")==0){ return MapVirtualKey(VK_2,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"3")==0){ return MapVirtualKey(VK_3,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"4")==0){ return MapVirtualKey(VK_4,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"5")==0){ return MapVirtualKey(VK_5,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"6")==0){ return MapVirtualKey(VK_6,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"7")==0){ return MapVirtualKey(VK_7,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"8")==0){ return MapVirtualKey(VK_8,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"9")==0){ return MapVirtualKey(VK_9,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"0")==0){ return MapVirtualKey(VK_0,MAPVK_VK_TO_VSC); }
 
-void pWindowCreate(unsigned int pWidth,unsigned int pHeight,unsigned int pMode,bool pDebugOn){
-  debugOn=pDebugOn;
-  current++;
-
-  if(pDebugOn){
-    AllocConsole();
-    freopen("CONOUT$","w",stdout);
-  } else{ FreeConsole(); }
-
-  HINSTANCE hInstance=GetModuleHandle(NULL);
-  WNDCLASS wc={0};
-  wc.lpfnWndProc=WindowProc;
-  wc.hInstance=hInstance;
-  sprintf(CLASS_NAME,"PrzecinekClass%i",current);
-  wc.lpszClassName=CLASS_NAME;
-  wc.hCursor=LoadCursor(NULL,IDC_ARROW);
-  if(!RegisterClass(&wc)){
-    windowOn=false;
-    if(debugOn){
-      printf("[Error] Could not register Class,\n");
-      fflush(stdout);
-    }
-    return;
-  }
-
-  if(pMode==0){
-    hwnd=CreateWindowEx(
-      0,CLASS_NAME,"{,}",
-      WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT,CW_USEDEFAULT,
-      pWidth,pHeight,
-      NULL,NULL,hInstance,NULL
-    );
-  } else if(pMode==1){
-    hwnd=CreateWindowEx(
-      0,CLASS_NAME,"{,}",
-      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-      CW_USEDEFAULT,CW_USEDEFAULT,
-      pWidth,pHeight,
-      NULL,NULL,hInstance,NULL
-    );
-  } else{
-    hwnd=CreateWindowEx(
-      0,CLASS_NAME,"{,}",
-      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-      CW_USEDEFAULT,CW_USEDEFAULT,
-      pWidth,pHeight,
-      NULL,NULL,hInstance,NULL
-    );
-  }
-
-  if(hwnd==NULL){
-    windowOn=false;
-    if(debugOn){
-      printf("[Error] Could not create Window,\n");
-      fflush(stdout);
-    }
-    return;
-  } else{
-    backgroundColor=RGB(windowBackgroundRed,windowBackgroundGreen,windowBackgroundBlue);
-    InvalidateRect(hwnd,NULL,TRUE);
-
-    windowOn=true;
-    windowWidth=pWidth;
-    windowHeight=pHeight;
-    windowMode=pMode;
-    ShowWindow(hwnd,SW_SHOW);
-  }
-}
-
-void pWindowSetTitle(const char* pTitle){
-  if(windowOn){
-    strncpy(windowTitle,pTitle,sizeof(windowTitle)-1);
-    windowTitle[sizeof(windowTitle)-1]='\0';
-    SetWindowText(hwnd,pTitle);
-  } else{
-    if(debugOn){
-      printf("[Error] Could not set Title,\n");
-      fflush(stdout);
-    }
-    return;
-  }
-}
-
-void pWindowSetBackground(unsigned int pRed,unsigned int pGreen,unsigned int pBlue){
-  if(windowOn){
-    if(pRed>255){ pRed=255; }
-    if(pGreen>255){ pGreen=255; }
-    if(pBlue>255){ pBlue=255; }
-    backgroundColor=RGB(pRed,pGreen,pBlue);
-    windowBackgroundRed=pRed;
-    windowBackgroundGreen=pGreen;
-    windowBackgroundBlue=pBlue;
-    InvalidateRect(hwnd,NULL,TRUE);
-  } else{
-    if(debugOn){
-      printf("[Error] Could not set Background Color,\n");
-      fflush(stdout);
-    }
-    return;
-  }
-}
-
-void pEventHandle(){
-  if(windowOn){
-    if(GetMessage(&message,NULL,0,0)){
-      TranslateMessage(&message);
-      DispatchMessage(&message);
-    }
-  } else{
-    if(debugOn){
-      printf("[Error] Could not handle Base Event,\n");
-      fflush(stdout);
-    }
-    return;
-  }
-}
-
-int modifyKey(const char *pKey){
-  if(strcmp(pKey,"ESC")==0||strcmp(pKey,"esc")==0||strcmp(pKey,"Esc")==0){ return MapVirtualKey(VK_ESCAPE,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"TAB")==0||strcmp(pKey,"tab")==0||strcmp(pKey,"Tab")==0){ return MapVirtualKey(VK_TAB,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"CAPS")==0||strcmp(pKey,"caps")==0||strcmp(pKey,"Caps")==0){ return MapVirtualKey(VK_CAPITAL,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"LSHIFT")==0||strcmp(pKey,"lshift")==0||strcmp(pKey,"LShift")==0){ return MapVirtualKey(VK_LSHIFT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"LCTRL")==0||strcmp(pKey,"lctrl")==0||strcmp(pKey,"LCtrl")==0){ return MapVirtualKey(VK_LCONTROL,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"LMOD")==0||strcmp(pKey,"lmod")==0||strcmp(pKey,"LMod")==0){ return MapVirtualKey(VK_LWIN,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"LALT")==0||strcmp(pKey,"lalt")==0||strcmp(pKey,"LAlt")==0){ return MapVirtualKey(VK_LMENU,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"SPACE")==0||strcmp(pKey,"space")==0||strcmp(pKey,"Space")==0){ return MapVirtualKey(VK_SPACE,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"F1")==0||strcmp(pKey,"f1")==0){ return MapVirtualKey(VK_F1,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F2")==0||strcmp(pKey,"f2")==0){ return MapVirtualKey(VK_F2,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F3")==0||strcmp(pKey,"f3")==0){ return MapVirtualKey(VK_F3,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F4")==0||strcmp(pKey,"f4")==0){ return MapVirtualKey(VK_F4,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F5")==0||strcmp(pKey,"f5")==0){ return MapVirtualKey(VK_F5,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F6")==0||strcmp(pKey,"f6")==0){ return MapVirtualKey(VK_F6,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F7")==0||strcmp(pKey,"f7")==0){ return MapVirtualKey(VK_F7,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F8")==0||strcmp(pKey,"f8")==0){ return MapVirtualKey(VK_F8,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F9")==0||strcmp(pKey,"f9")==0){ return MapVirtualKey(VK_F9,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F10")==0||strcmp(pKey,"f10")==0){ return MapVirtualKey(VK_F10,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F11")==0||strcmp(pKey,"f11")==0){ return MapVirtualKey(VK_F11,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F12")==0||strcmp(pKey,"f12")==0){ return MapVirtualKey(VK_F12,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"RALT")==0||strcmp(pKey,"ralt")==0||strcmp(pKey,"RAlt")==0){ return MapVirtualKey(VK_RMENU,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"RWIN")==0||strcmp(pKey,"rwin")==0||strcmp(pKey,"RWin")==0){ return MapVirtualKey(VK_RWIN,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"MENU")==0||strcmp(pKey,"menu")==0||strcmp(pKey,"Menu")==0){ return MapVirtualKey(VK_APPS,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"RCTRL")==0||strcmp(pKey,"rctrl")==0||strcmp(pKey,"RCtrl")==0){ return MapVirtualKey(VK_RCONTROL,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"RSHIFT")==0||strcmp(pKey,"rshift")==0||strcmp(pKey,"RShift")==0){ return MapVirtualKey(VK_RSHIFT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"ENTER")==0||strcmp(pKey,"enter")==0||strcmp(pKey,"Enter")==0){ return MapVirtualKey(VK_RETURN,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"BACKSPACE")==0||strcmp(pKey,"backspace")==0||strcmp(pKey,"Backspace")==0){ return MapVirtualKey(VK_BACK,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"LARROW")==0||strcmp(pKey,"larrow")==0||strcmp(pKey,"LArrow")==0){ return MapVirtualKey(VK_LEFT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"DARROW")==0||strcmp(pKey,"darrow")==0||strcmp(pKey,"DArrow")==0){ return MapVirtualKey(VK_DOWN,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"RARROW")==0||strcmp(pKey,"rarrow")==0||strcmp(pKey,"RArrow")==0){ return MapVirtualKey(VK_RIGHT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"UARROW")==0||strcmp(pKey,"uarrow")==0||strcmp(pKey,"UArrow")==0){ return MapVirtualKey(VK_UP,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"PRINTSCRN")==0||strcmp(pKey,"printscrn")==0||strcmp(pKey,"PrintScrn")==0){ return MapVirtualKey(VK_SNAPSHOT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"SCROLLLOCK")==0||strcmp(pKey,"scrolllock")==0||strcmp(pKey,"ScrollLock")==0){ return MapVirtualKey(VK_SCROLL,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"PAUSEBREAK")==0||strcmp(pKey,"pausebreak")==0||strcmp(pKey,"PauseBreak")==0){ return MapVirtualKey(VK_PAUSE,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"INS")==0||strcmp(pKey,"ins")==0||strcmp(pKey,"Ins")==0){ return MapVirtualKey(VK_INSERT,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"HOME")==0||strcmp(pKey,"home")==0||strcmp(pKey,"Home")==0){ return MapVirtualKey(VK_HOME,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"PAGEU")==0||strcmp(pKey,"pageu")==0||strcmp(pKey,"PageU")==0){ return MapVirtualKey(VK_PRIOR,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"DEL")==0||strcmp(pKey,"del")==0||strcmp(pKey,"Del")==0){ return MapVirtualKey(VK_DELETE,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"END")==0||strcmp(pKey,"end")==0||strcmp(pKey,"End")==0){ return MapVirtualKey(VK_END,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"PAGED")==0||strcmp(pKey,"paged")==0||strcmp(pKey,"PageD")==0){ return MapVirtualKey(VK_NEXT,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"Q")==0||strcmp(pKey,"q")==0){ return MapVirtualKey(VK_Q,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"W")==0||strcmp(pKey,"w")==0){ return MapVirtualKey(VK_W,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"E")==0||strcmp(pKey,"e")==0){ return MapVirtualKey(VK_E,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"R")==0||strcmp(pKey,"r")==0){ return MapVirtualKey(VK_R,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"T")==0||strcmp(pKey,"t")==0){ return MapVirtualKey(VK_T,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"Y")==0||strcmp(pKey,"y")==0){ return MapVirtualKey(VK_Y,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"U")==0||strcmp(pKey,"u")==0){ return MapVirtualKey(VK_U,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"I")==0||strcmp(pKey,"i")==0){ return MapVirtualKey(VK_I,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"O")==0||strcmp(pKey,"o")==0){ return MapVirtualKey(VK_O,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"P")==0||strcmp(pKey,"p")==0){ return MapVirtualKey(VK_P,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"A")==0||strcmp(pKey,"a")==0){ return MapVirtualKey(VK_A,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"S")==0||strcmp(pKey,"s")==0){ return MapVirtualKey(VK_S,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"D")==0||strcmp(pKey,"d")==0){ return MapVirtualKey(VK_D,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"F")==0||strcmp(pKey,"f")==0){ return MapVirtualKey(VK_F,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"G")==0||strcmp(pKey,"g")==0){ return MapVirtualKey(VK_G,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"H")==0||strcmp(pKey,"h")==0){ return MapVirtualKey(VK_H,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"J")==0||strcmp(pKey,"j")==0){ return MapVirtualKey(VK_J,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"K")==0||strcmp(pKey,"k")==0){ return MapVirtualKey(VK_K,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"L")==0||strcmp(pKey,"l")==0){ return MapVirtualKey(VK_L,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"Z")==0||strcmp(pKey,"z")==0){ return MapVirtualKey(VK_Z,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"X")==0||strcmp(pKey,"x")==0){ return MapVirtualKey(VK_X,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"C")==0||strcmp(pKey,"c")==0){ return MapVirtualKey(VK_C,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"V")==0||strcmp(pKey,"v")==0){ return MapVirtualKey(VK_V,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"B")==0||strcmp(pKey,"b")==0){ return MapVirtualKey(VK_B,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"N")==0||strcmp(pKey,"n")==0){ return MapVirtualKey(VK_N,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"M")==0||strcmp(pKey,"m")==0){ return MapVirtualKey(VK_M,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"1")==0){ return MapVirtualKey(VK_1,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"2")==0){ return MapVirtualKey(VK_2,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"3")==0){ return MapVirtualKey(VK_3,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"4")==0){ return MapVirtualKey(VK_4,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"5")==0){ return MapVirtualKey(VK_5,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"6")==0){ return MapVirtualKey(VK_6,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"7")==0){ return MapVirtualKey(VK_7,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"8")==0){ return MapVirtualKey(VK_8,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"9")==0){ return MapVirtualKey(VK_9,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"0")==0){ return MapVirtualKey(VK_0,MAPVK_VK_TO_VSC); }
-
-  else if(strcmp(pKey,"`")==0){ return MapVirtualKey(VK_OEM_3,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,",")==0){ return MapVirtualKey(VK_OEM_COMMA,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,".")==0){ return MapVirtualKey(VK_OEM_PERIOD,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"/")==0){ return MapVirtualKey(VK_OEM_2,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,";")==0){ return MapVirtualKey(VK_OEM_SEMICOLON,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"'")==0){ return MapVirtualKey(VK_OEM_QUOTE,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"\\")==0){ return MapVirtualKey(VK_OEM_5,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"[")==0){ return MapVirtualKey(VK_OEM_4,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"]")==0){ return MapVirtualKey(VK_OEM_6,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"-")==0){ return MapVirtualKey(VK_OEM_MINUS,MAPVK_VK_TO_VSC); }
-  else if(strcmp(pKey,"=")==0){ return MapVirtualKey(VK_OEM_PLUS,MAPVK_VK_TO_VSC); }
-  else{ return (-1); }
-}
-
-bool pEventKeyPress(const char *pKey){
-  if(windowOn){
-    if(modifyKey(pKey)>=0&&modifyKey(pKey)<256){
-      if(keyPress[modifyKey(pKey)]==1){
-        keyPress[modifyKey(pKey)]=2;
-        return true;
-
-      } else{ return false; }
-    } else{
-      if(debugOn){
-        printf("[Warning] Invalid Key,\n");
-        fflush(stdout);
-      }
-      return false;
-    }
-  } else{
-    if(debugOn){
-      printf("[Error] Could not handle Key Event,\n");
-      fflush(stdout);
-    }
-    return false;
-  }
-}
-
-bool pEventKeyHold(const char *pKey){
-  if(windowOn){
-    if(modifyKey(pKey)>=0&&modifyKey(pKey)<256){
-      if(keyHold[modifyKey(pKey)]){ return true; }
-      else{ return false; }
-    } else{
-      if(debugOn){
-        printf("[Warning] Invalid Key,\n");
-        fflush(stdout);
-      }
-      return false;
-    }
-  } else{
-    if(debugOn){
-      printf("[Error] Could not handle Key Event,\n");
-      fflush(stdout);
-    }
-    return false;
-  }
-}
-
-bool pEventKeyLast(const char* pKey){
-  if(keySecond==modifyKey(pKey)){ return true; }
-  else{ return false; }
-}
-
-bool pEventCapsOn(){
-  if(GetKeyState(VK_CAPITAL)&0x0001){ return true; }
-  else{ return false; }
+  else if(strcmp(key,"`")==0){ return MapVirtualKey(VK_OEM_3,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,",")==0){ return MapVirtualKey(VK_OEM_COMMA,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,".")==0){ return MapVirtualKey(VK_OEM_PERIOD,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"/")==0){ return MapVirtualKey(VK_OEM_2,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,";")==0){ return MapVirtualKey(VK_OEM_SEMICOLON,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"'")==0){ return MapVirtualKey(VK_OEM_QUOTE,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"\\")==0){ return MapVirtualKey(VK_OEM_5,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"[")==0){ return MapVirtualKey(VK_OEM_4,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"]")==0){ return MapVirtualKey(VK_OEM_6,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"-")==0){ return MapVirtualKey(VK_OEM_MINUS,MAPVK_VK_TO_VSC); }
+  else if(strcmp(key,"=")==0){ return MapVirtualKey(VK_OEM_PLUS,MAPVK_VK_TO_VSC); }
+  else{ return 0; }
 }
