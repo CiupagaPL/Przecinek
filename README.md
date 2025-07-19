@@ -5,7 +5,7 @@
 You are currently on **Unstable** branch.
 Remember that all Przecinek versions from here are prepared for testing purposes only and are **very unsafe to use for your projects**!
 > [!WARNING]
-> Several features are still broken / unfinished depending on **{,}** version
+> Several features are still broken / unfinished x.x
 
 ### About Project
 **Przecinek is a minimal graphics and audio library** being developed in C.
@@ -17,9 +17,9 @@ It's well-documented and is being actively improved and extended.
 
 ### Project Layout
 Przecinek consists of three main components:
-- **{,} Przecinek Window** which manages window and key events,
-- **{,} Przecinek Audio** which is responsible for handling audio events,
-- **{,} Przecinek Graphics** which manages sprites.
+- **{,} Window** which manages windows, objects and global events,
+- **{,} Audio** which is responsible for handling audio events,
+- **{,} Graphics** which manages textures and sprites.
 > [!IMPORTANT]
 > **{,} Audio** and **{,} Graphics** are unavailable for now c.c
 
@@ -32,11 +32,11 @@ Przecinek consists of three main components:
 ## Assets
 Przecinek uses two libraries:
 - For Windows version [WinAPI](https://github.com/microsoft/Windows-classic-samples) is being used,
-- for Linux(X11) version [X11Lib](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
+- for Linux(X11) version [X11LIB](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
 ## Version
-> Newest Version (Unstable): **u,1**;<br>
-> Last Updated: **18-07-2025**;
+> Newest Version (Unstable): **u,2**;<br>
+> Last Updated: **19-07-2025**;
 
 ## LICENSE
 ```

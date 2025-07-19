@@ -13,6 +13,14 @@
 bool debug=false;
 void pDebug(bool on){ debug=on; }
 
+typedef struct{ unsigned int width,height; } pScreen;
+typedef struct{ unsigned int x,y; } pCursor;
+
+typedef struct{
+  pScreen display;
+  pCursor cursor;
+} pStatus;
+
 typedef struct{
   unsigned int ID;
   bool on,active;
@@ -20,23 +28,36 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
+
+  pCursor cursor;
 } pWindow;
 
 typedef struct{
-  bool on;
+  bool on,active;
+
+  unsigned int x,y,width,height,mode;
+  char title[256];
+  unsigned int red,green,blue;
+
+  pCursor cursor;
 
   Display *display;
   int screen;
   Window base;
   Atom wmDelete;
-
   XEvent event,report;
+
+  bool W_DESTROY;
+
   unsigned int keyPress;
   bool keyHold[256];
 } pWindowX11;
 
 unsigned int activeWinID=0;
 pWindowX11 windowX11[64];
+pStatus przecinek;
+
+void pWindowReset(pWindow* window);
 
 pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   pWindow window;
@@ -49,8 +70,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
         printf("[Error] Too many Windows active,\n");
         fflush(stdout);
       }
-      window.on=false;
-      windowX11[window.ID-1].on=false;
+      pWindowReset(&window);
       return window;
     }
   }
@@ -61,8 +81,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
       printf("[Error] Could not open Display,\n");
       fflush(stdout);
     }
-    window.on=false;
-    windowX11[window.ID-1].on=false;
+    pWindowReset(&window);
     return window;
   }
 
@@ -80,17 +99,18 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
       printf("[Error] Could not create Window,\n");
       fflush(stdout);
     }
+    pWindowReset(&window);
     XCloseDisplay(windowX11[window.ID-1].display);
-    window.on=false;
-    windowX11[window.ID-1].on=false;
     return window;
-  } else{
-    window.on=true;
-    windowX11[window.ID-1].on=true;
-    window.width=width;
-    window.height=height;
-    window.mode=mode;
   }
+
+  window.on=true;
+  windowX11[window.ID-1].on=true;
+  window.width=width;
+  window.height=height;
+  window.x=(DisplayWidth(windowX11[window.ID-1].display,windowX11[window.ID-1].screen)-window.width)/2;
+  window.y=(DisplayHeight(windowX11[window.ID-1].display,windowX11[window.ID-1].screen)-window.height)/2;
+  window.mode=mode;
   XStoreName(windowX11[window.ID-1].display,windowX11[window.ID-1].base,"{,}");
 
   windowX11[window.ID-1].wmDelete=XInternAtom(windowX11[window.ID-1].display,"WM_DELETE_WINDOW",False);
@@ -111,11 +131,11 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
     XChangeProperty(windowX11[window.ID-1].display,windowX11[window.ID-1].base,wmHints,wmHints,32,PropModeReplace,(unsigned char*)hints,5);
   }
 
-  XSelectInput(windowX11[window.ID-1].display,windowX11[window.ID-1].base,ExposureMask|KeyPressMask|KeyReleaseMask|StructureNotifyMask|FocusChangeMask);
-  XMapWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].base);
+  przecinek.display.width=DisplayWidth(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
+  przecinek.display.height=DisplayHeight(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
 
-  window.x=(DisplayWidth(windowX11[window.ID-1].display,windowX11[window.ID-1].screen)-window.width)/2;
-  window.y=(DisplayHeight(windowX11[window.ID-1].display,windowX11[window.ID-1].screen)-window.height)/2;
+  XSelectInput(windowX11[window.ID-1].display,windowX11[window.ID-1].base,ExposureMask|KeyPressMask|KeyReleaseMask|StructureNotifyMask|FocusChangeMask|PointerMotionMask);
+  XMapWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].base);
   XMoveWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].base,window.x,window.y);
   XFlush(windowX11[window.ID-1].display);
 
@@ -123,25 +143,33 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
 }
 
 void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
-  window->x=x;
-  window->y=y;
-  XMoveWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base,x,y);
-  XFlush(windowX11[window->ID-1].display);
+  if(window->on){
+    window->x=x;
+    window->y=y;
+
+    XMoveWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base,x,y);
+    XFlush(windowX11[window->ID-1].display);
+  } else{
+    printf("[Error] Could not set Window Position,\n");
+    fflush(stdout);
+  }
+  return;
 }
 
 void pWindowSetTitle(pWindow* window,const char* title){
   if(window->on){
     strncpy(window->title,title,sizeof(window->title)-1);
     window->title[sizeof(window->title)-1]='\0';
+    strncpy(windowX11[window->ID-1].title,title,sizeof(windowX11[window->ID-1].title)-1);
+    windowX11[window->ID-1].title[sizeof(windowX11[window->ID-1].title)-1]='\0';
+
     XStoreName(windowX11[window->ID-1].display,windowX11[window->ID-1].base,window->title);
     XFlush(windowX11[window->ID-1].display);
-  } else{
-    if(debug){
-      printf("[Error] Could not set Title,\n");
-      fflush(stdout);
-    }
-    return;
+  } else if(debug){
+    printf("[Error] Could not set Window Title,\n");
+    fflush(stdout);
   }
+  return;
 }
 
 void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,unsigned int blue){
@@ -152,16 +180,18 @@ void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,un
     window->red=red;
     window->green=green;
     window->blue=blue;
+    windowX11[window->ID-1].red=red;
+    windowX11[window->ID-1].green=green;
+    windowX11[window->ID-1].blue=blue;
+
     XSetWindowBackground(windowX11[window->ID-1].display,windowX11[window->ID-1].base,((window->red<<16)|(window->green<<8)|window->blue));
     XClearWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
     XFlush(windowX11[window->ID-1].display);
-  } else{
-    if(debug){
-      printf("[Error] Could not set Background Color,\n");
-      fflush(stdout);
-    }
-    return;
+  } else if(debug){
+    printf("[Error] Could not set Window Background,\n");
+    fflush(stdout);
   }
+  return;
 }
 
 void pWindowHandle(pWindow* window){
@@ -169,22 +199,28 @@ void pWindowHandle(pWindow* window){
     if(XPending(windowX11[window->ID-1].display)>0){
       XNextEvent(windowX11[window->ID-1].display,&windowX11[window->ID-1].event);
       if(windowX11[window->ID-1].event.type==Expose){ XClearWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base); }
-      else if(windowX11[window->ID-1].event.type==ClientMessage){
-        if((Atom)windowX11[window->ID-1].event.xclient.data.l[0]==windowX11[window->ID-1].wmDelete){
-          window->on=false;
-          windowX11[window->ID-1].on=false;
-          XDestroyWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
-          XCloseDisplay(windowX11[window->ID-1].display);
-          return;
-        }
+      else if(windowX11[window->ID-1].event.type==ClientMessage&&(Atom)windowX11[window->ID-1].event.xclient.data.l[0]==windowX11[window->ID-1].wmDelete||
+          windowX11[window->ID-1].W_DESTROY){
+        pWindowReset(window);
+        XDestroyWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
+        XCloseDisplay(windowX11[window->ID-1].display);
+        return;
       } else if(windowX11[window->ID-1].event.type==ConfigureNotify){
-        window->width=windowX11[window->ID-1].event.xconfigure.width;
-        window->height=windowX11[window->ID-1].event.xconfigure.height;
+        windowX11[window->ID-1].x=windowX11[window->ID-1].event.xconfigure.x;
+        windowX11[window->ID-1].y=windowX11[window->ID-1].event.xconfigure.y;
+        windowX11[window->ID-1].width=windowX11[window->ID-1].event.xconfigure.width;
+        windowX11[window->ID-1].height=windowX11[window->ID-1].event.xconfigure.height;
+      } else if(windowX11[window->ID-1].event.type==MotionNotify){
+        windowX11[window->ID-1].cursor.x=windowX11[window->ID-1].event.xmotion.x;
+        windowX11[window->ID-1].cursor.y=windowX11[window->ID-1].event.xmotion.y;
+        przecinek.cursor.x=windowX11[window->ID-1].event.xmotion.x_root;
+        przecinek.cursor.y=windowX11[window->ID-1].event.xmotion.y_root;
       } else if(windowX11[window->ID-1].event.type==KeyPress){
         windowX11[window->ID-1].keyPress=windowX11[window->ID-1].event.xkey.keycode;
         windowX11[window->ID-1].keyHold[windowX11[window->ID-1].event.xkey.keycode]=true;
       } else if(windowX11[window->ID-1].event.type==KeyRelease){
         windowX11[window->ID-1].keyHold[windowX11[window->ID-1].event.xkey.keycode]=false;
+
         if(XEventsQueued(windowX11[window->ID-1].display,QueuedAfterReading)){
           XPeekEvent(windowX11[window->ID-1].display,&windowX11[window->ID-1].report);
           if(windowX11[window->ID-1].report.type==KeyPress&&windowX11[window->ID-1].report.xkey.time==windowX11[window->ID-1].event.xkey.time&&
@@ -195,67 +231,119 @@ void pWindowHandle(pWindow* window){
           }
         }
       } else if(windowX11[window->ID-1].event.type==FocusIn){
+        windowX11[window->ID-1].keyPress=0;
+        for(int c=0;c<256;c++){ windowX11[window->ID-1].keyHold[c]=false; }
+
         activeWinID=window->ID;
-        window->active=true;
+        windowX11[window->ID-1].active=true;
       } else if(windowX11[window->ID-1].event.type==FocusOut&&activeWinID==window->ID){
+        windowX11[window->ID-1].keyPress=0;
+        for(int c=0;c<256;c++){ windowX11[window->ID-1].keyHold[c]=false; }
+
         activeWinID=0;
-        window->active=false;
+        windowX11[window->ID-1].active=false;
       }
     }
-  } else{
-    if(debug){
-      printf("[Error] Could not handle Window,\n");
-      fflush(stdout);
-    }
-    return;
+
+    przecinek.display.width=DisplayWidth(windowX11[window->ID-1].display,windowX11[window->ID-1].screen);
+    przecinek.display.height=DisplayHeight(windowX11[window->ID-1].display,windowX11[window->ID-1].screen);
+
+    window->on=windowX11[window->ID-1].on;
+    window->active=windowX11[window->ID-1].active;
+
+    window->x=windowX11[window->ID-1].x;
+    window->y=windowX11[window->ID-1].y;
+    window->width=windowX11[window->ID-1].width;
+    window->height=windowX11[window->ID-1].height;
+    window->mode=windowX11[window->ID-1].mode;
+    strncpy(window->title,windowX11[window->ID-1].title,sizeof(window->title)-1);
+    window->title[sizeof(window->title)-1]='\0';
+    window->red=windowX11[window->ID-1].red;
+    window->green=windowX11[window->ID-1].green;
+    window->blue=windowX11[window->ID-1].blue;
+
+    window->cursor.x=windowX11[window->ID-1].cursor.x;
+    window->cursor.y=windowX11[window->ID-1].cursor.y;
+  } else if(debug){
+    printf("[Error] Could not handle Window,\n");
+    fflush(stdout);
   }
+  return;
+}
+
+void pWindowReset(pWindow* window){
+  window->on=false;
+  window->active=false;
+
+  window->x=0;
+  window->y=0;
+  window->width=0;
+  window->height=0;
+  window->mode=0;
+  strncpy(window->title,"{,}",sizeof(window->title)-1);
+  window->title[sizeof(window->title)-1]='\0';
+  window->red=0;
+  window->green=0;
+  window->blue=0;
+
+  window->cursor.x=0;
+  window->cursor.y=0;
+
+  windowX11[window->ID-1].on=false;
+  windowX11[window->ID-1].active=false;
+
+  windowX11[window->ID-1].x=0;
+  windowX11[window->ID-1].y=0;
+  windowX11[window->ID-1].width=0;
+  windowX11[window->ID-1].height=0;
+  windowX11[window->ID-1].mode=0;
+  strncpy(windowX11[window->ID-1].title,"{,}",sizeof(windowX11[window->ID-1].title)-1);
+  windowX11[window->ID-1].title[sizeof(windowX11[window->ID-1].title)-1]='\0';
+  windowX11[window->ID-1].red=0;
+  windowX11[window->ID-1].green=0;
+  windowX11[window->ID-1].blue=0;
+
+  windowX11[window->ID-1].cursor.x=0;
+  windowX11[window->ID-1].cursor.y=0;
+
+  windowX11[window->ID-1].W_DESTROY=false;
+  windowX11[window->ID-1].keyPress=0;
+  for(int c=0;c<256;c++){ windowX11[window->ID-1].keyHold[c]=false; }
+  return;
 }
 
 void pWindowClose(pWindow* window){
-  if(window->on){
-    window->on=false;
-    windowX11[window->ID-1].on=false;
-    XDestroyWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
-    XCloseDisplay(windowX11[window->ID-1].display);
-  } else{
-    if(debug){
-      printf("[Error] Could not close Window,\n");
-      fflush(stdout);
-    }
-    return;
+  if(window->on){ windowX11[window->ID-1].W_DESTROY=true; }
+  else if(debug){
+    printf("[Warning] Window is already closed,\n");
+    fflush(stdout);
   }
+  return;
 }
 
 unsigned int pModifyKey(const char* key);
 
 bool pKeyPress(const char* key){
   if(pModifyKey(key)>0&&pModifyKey(key)<256){
-    if(activeWinID!=0){
-      if(pModifyKey(key)==windowX11[activeWinID-1].keyPress){
-        windowX11[activeWinID-1].keyPress=0;
-        return true;
-      } else{ return false; }
-    } else{ return false; }
-  } else{
-    if(debug){
-      printf("[Warning] Invalid Key,\n");
-      fflush(stdout);
+    if(activeWinID!=0&&pModifyKey(key)==windowX11[activeWinID-1].keyPress){
+      windowX11[activeWinID-1].keyPress=0;
+      return true;
     }
-    return false;
+  } else if(debug){
+    printf("[Warning] Invalid Key,\n");
+    fflush(stdout);
   }
+  return false;
 }
 
 bool pKeyHold(const char* key){
   if(pModifyKey(key)>0&&pModifyKey(key)<256){
     if(activeWinID!=0){ return windowX11[activeWinID-1].keyHold[pModifyKey(key)]; }
-    else{ return false; }
-  } else{
-    if(debug){
-      printf("[Warning] Invalid Key,\n");
-      fflush(stdout);
-    }
-    return false;
+  } else if(debug){
+    printf("[Warning] Invalid Key,\n");
+    fflush(stdout);
   }
+  return false;
 }
 
 bool pKeyCaps(){
@@ -263,11 +351,11 @@ bool pKeyCaps(){
     XKeyboardState keyboardState;
     XGetKeyboardControl(windowX11[activeWinID-1].display,&keyboardState);
     return keyboardState.led_mask&(1<<1)!=0;
-  } else{
-    printf("[Warning] Could not return Caps State,\n");
+  } else if(debug){
+    printf("[Warning] Could not check Caps State,\n");
     fflush(stdout);
-    return false;
   }
+  return false;
 }
 
 unsigned int pModifyKey(const char* key){

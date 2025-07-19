@@ -10,6 +10,14 @@
 extern "C"{
   #endif
 
+  typedef struct{ unsigned int width,height; } pScreen;
+  typedef struct{ unsigned int x,y; } pCursor;
+
+  typedef struct{
+    pScreen display;
+    pCursor cursor;
+  } pStatus;
+
   typedef struct{
     unsigned int ID;
     bool on,active;
@@ -17,7 +25,11 @@ extern "C"{
     unsigned int x,y,width,height,mode;
     char title[256];
     unsigned int red,green,blue;
+
+    pCursor cursor;
   } pWindow;
+
+  extern pStatus przecinek;
 
   void pDebug(bool on);
 

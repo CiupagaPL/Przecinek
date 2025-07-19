@@ -16,6 +16,14 @@ void pDebug(bool on){
   } else{ FreeConsole(); }
 }
 
+typedef struct{ unsigned int width,height; } pScreen;
+typedef struct{ unsigned int x,y; } pCursor;
+
+typedef struct{
+  pScreen display;
+  pCursor cursor;
+} pStatus;
+
 typedef struct{
   unsigned int ID;
   bool on,active;
@@ -23,6 +31,8 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
+
+  pCursor cursor;
 } pWindow;
 
 typedef struct{
@@ -38,15 +48,19 @@ typedef struct{
 } pWindowProcL;
 
 typedef struct{
-  bool on;
+  bool on,active;
+
+  unsigned int x,y,width,height,mode;
+  char title[256];
+  unsigned int red,green,blue;
+
+  pCursor cursor;
 
   char CLASS[16];
   HWND hwnd;
-  bool W_DESTROY;
+  bool W_DESTROY,W_MOUSEMOVE;
   pWindowProcW W_ACTIVATE,W_KEYDOWN;
-  pWindowProcL W_SIZE;
-
-  unsigned int red,green,blue;
+  pWindowProcL W_SIZE,W_MOVE;
 
   unsigned int keyPress,keyHold[256];
 } pWindowWin;
@@ -63,6 +77,7 @@ unsigned int activeWinID=0,currentWinID=0;
 pWindowWin windowWin[64];
 pWindow currentWindow;
 MSG message;
+pStatus przecinek;
 
 void pWindowReset(pWindow* window);
 
@@ -92,9 +107,13 @@ LRESULT CALLBACK pWindowProc(HWND hwnd,UINT uMessage,WPARAM wParameter,LPARAM lP
     windowWin[windowPointer->ID-1].keyPress=0;
     windowWin[windowPointer->ID-1].W_ACTIVATE.on=true;
     windowWin[windowPointer->ID-1].W_ACTIVATE.wParameter=wParameter;
-  } else if(uMessage==WM_SIZE){
+  } else if(uMessage==WM_MOUSEMOVE){ windowWin[windowPointer->ID-1].W_MOUSEMOVE=true; }
+  else if(uMessage==WM_SIZE){
     windowWin[windowPointer->ID-1].W_SIZE.on=true;
     windowWin[windowPointer->ID-1].W_SIZE.lParameter=lParameter;
+  } else if(uMessage==WM_MOVE){
+    windowWin[windowPointer->ID-1].W_MOVE.on=true;
+    windowWin[windowPointer->ID-1].W_MOVE.lParameter=lParameter;
   } else if(uMessage==WM_KEYDOWN){
     if(windowWin[windowPointer->ID-1].keyHold[MapVirtualKey(wParameter,MAPVK_VK_TO_VSC)]==0){
       windowWin[windowPointer->ID-1].W_KEYDOWN.on=true;
@@ -122,9 +141,12 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
     }
   }
 
-  pWindowReset(&window);
+  window.on=true;
+  windowWin[window.ID-1].on=true;
   window.width=width;
   window.height=height;
+  window.x=(GetSystemMetrics(SM_CXSCREEN)-window.width)/2;
+  window.y=(GetSystemMetrics(SM_CYSCREEN)-window.height)/2;
   window.mode=mode;
   currentWindow=window;
 
@@ -168,17 +190,32 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
 
     InvalidateRect(windowWin[window.ID-1].hwnd,NULL,TRUE);
     ShowWindow(windowWin[window.ID-1].hwnd,SW_SHOW);
+    SetWindowPos(windowWin[window.ID-1].hwnd,NULL,window.x,window.y,0,0,SWP_NOZORDER|SWP_NOSIZE);
     SetForegroundWindow(windowWin[window.ID-1].hwnd);
   }
   return window;
 }
 
-void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){ return; }
+void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
+  if(window->on){
+    window->x=x;
+    window->y=y;
+
+    SetWindowPos(windowWin[window->ID-1].hwnd,NULL,window->x,window->y,0,0,SWP_NOZORDER|SWP_NOSIZE);
+  } else{
+    printf("[Error] Could not set Window Position,\n");
+    fflush(stdout);
+  }
+  return;
+}
 
 void pWindowSetTitle(pWindow* window,const char* title){
   if(window->on){
     strncpy(window->title,title,sizeof(window->title)-1);
     window->title[sizeof(window->title)-1]='\0';
+    strncpy(windowWin[window->ID-1].title,title,sizeof(windowWin[window->ID-1].title)-1);
+    windowWin[window->ID-1].title[sizeof(windowWin[window->ID-1].title)-1]='\0';
+
     SetWindowText(windowWin[window->ID-1].hwnd,window->title);
   } else if(debug){
     printf("[Error] Could not set Window Title,\n");
@@ -198,6 +235,7 @@ void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,un
     windowWin[window->ID-1].red=red;
     windowWin[window->ID-1].green=green;
     windowWin[window->ID-1].blue=blue;
+
     InvalidateRect(windowWin[window->ID-1].hwnd,NULL,TRUE);
   } else if(debug){
     printf("[Error] Could not set Window Background,\n");
@@ -217,17 +255,33 @@ void pWindowHandle(pWindow* window){
     if(windowWin[currentWinID-1].W_DESTROY){ pWindowReset(window); }
     if(windowWin[currentWinID-1].W_ACTIVATE.on){
       if(windowWin[currentWinID-1].W_ACTIVATE.wParameter==WA_ACTIVE||windowWin[currentWinID-1].W_ACTIVATE.wParameter==WA_CLICKACTIVE){
-        window->active=true;
+        windowWin[window->ID-1].active=true;
         activeWinID=window->ID;
       } else{
-        window->active=false;
+        windowWin[window->ID-1].active=false;
         if(activeWinID==window->ID){ activeWinID=0; }
       }
       windowWin[currentWinID-1].W_ACTIVATE.on=false;
+    }
+    if(windowWin[currentWinID-1].W_MOUSEMOVE){
+      POINT cursor;
+      if(GetCursorPos(&cursor)){
+        przecinek.cursor.x=cursor.x;
+        przecinek.cursor.y=cursor.y;
+
+        ScreenToClient(windowWin[window->ID-1].hwnd,&cursor);
+        windowWin[window->ID-1].cursor.x=cursor.x;
+        windowWin[window->ID-1].cursor.y=cursor.y;  
+      }
+      windowWin[currentWinID-1].W_MOUSEMOVE=false;
     } if(windowWin[currentWinID-1].W_SIZE.on){
-      window->width=LOWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
-      window->height=HIWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
+      windowWin[window->ID-1].width=LOWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
+      windowWin[window->ID-1].height=HIWORD(windowWin[currentWinID-1].W_SIZE.lParameter);
       windowWin[currentWinID-1].W_SIZE.on=false;
+    } if(windowWin[currentWinID-1].W_MOVE.on){
+      windowWin[window->ID-1].x=LOWORD(windowWin[currentWinID-1].W_MOVE.lParameter);
+      windowWin[window->ID-1].y=HIWORD(windowWin[currentWinID-1].W_MOVE.lParameter);
+      windowWin[currentWinID-1].W_MOVE.on=false;
     } if(windowWin[currentWinID-1].W_KEYDOWN.on){
       if(activeWinID==currentWinID){
         if(windowWin[window->ID-1].keyHold[MapVirtualKey(windowWin[currentWinID-1].W_KEYDOWN.wParameter,MAPVK_VK_TO_VSC)]==0){
@@ -237,6 +291,26 @@ void pWindowHandle(pWindow* window){
       }
       windowWin[currentWinID-1].W_KEYDOWN.on=false;
     }
+
+    przecinek.display.width=GetSystemMetrics(SM_CXSCREEN);
+    przecinek.display.height=GetSystemMetrics(SM_CYSCREEN);
+
+    window->on=windowWin[window->ID-1].on;
+    window->active=windowWin[window->ID-1].active;
+
+    window->x=windowWin[window->ID-1].x;
+    window->y=windowWin[window->ID-1].y;
+    window->width=windowWin[window->ID-1].width;
+    window->height=windowWin[window->ID-1].height;
+    window->mode=windowWin[window->ID-1].mode;
+    strncpy(window->title,windowWin[window->ID-1].title,sizeof(window->title)-1);
+    window->title[sizeof(window->title)-1]='\0';
+    window->red=windowWin[window->ID-1].red;
+    window->green=windowWin[window->ID-1].green;
+    window->blue=windowWin[window->ID-1].blue;
+
+    window->cursor.x=windowWin[window->ID-1].cursor.x;
+    window->cursor.y=windowWin[window->ID-1].cursor.y;
   } else if(debug){
     printf("[Error] Could not handle Window,\n");
     fflush(stdout);
@@ -259,18 +333,37 @@ void pWindowReset(pWindow* window){
   window->green=0;
   window->blue=0;
 
-  windowWin[window->ID-1].hwnd=NULL;
-  windowWin[window->ID-1].W_DESTROY=false;
-  windowWin[window->ID-1].W_ACTIVATE.on=false;
-  windowWin[window->ID-1].W_KEYDOWN.on=false;
-  windowWin[window->ID-1].W_SIZE.on=false;
+  windowWin[window->ID-1].on=false;
+  windowWin[window->ID-1].active=false;
 
+  window->cursor.x=0;
+  window->cursor.y=0;
+
+  windowWin[window->ID-1].x=0;
+  windowWin[window->ID-1].y=0;
+  windowWin[window->ID-1].width=0;
+  windowWin[window->ID-1].height=0;
+  windowWin[window->ID-1].mode=0;
+  strncpy(windowWin[window->ID-1].title,"{,}",sizeof(windowWin[window->ID-1].title)-1);
+  windowWin[window->ID-1].title[sizeof(windowWin[window->ID-1].title)-1]='\0';
   windowWin[window->ID-1].red=0;
   windowWin[window->ID-1].green=0;
   windowWin[window->ID-1].blue=0;
 
+  windowWin[window->ID-1].cursor.x=0;
+  windowWin[window->ID-1].cursor.y=0;
+
+  windowWin[window->ID-1].hwnd=NULL;
+  windowWin[window->ID-1].W_DESTROY=false;
+  windowWin[window->ID-1].W_MOUSEMOVE=false;
+  windowWin[window->ID-1].W_ACTIVATE.on=false;
+  windowWin[window->ID-1].W_KEYDOWN.on=false;
+  windowWin[window->ID-1].W_SIZE.on=false;
+  windowWin[window->ID-1].W_MOVE.on=false;
+
   windowWin[window->ID-1].keyPress=0;
   for(int c=0;c<256;c++){ windowWin[window->ID-1].keyHold[c]=0; }
+  return;
 }
 
 void pWindowClose(pWindow* window){
@@ -285,13 +378,23 @@ void pWindowClose(pWindow* window){
 unsigned int pModifyKey(const char* key);
 
 bool pKeyPress(const char *key){
+  if(pModifyKey(key)>0&&pModifyKey(key)<256){
+    if(activeWinID!=0&&windowWin[activeWinID-1].keyHold[pModifyKey(key)]==1){
+      windowWin[activeWinID-1].keyHold[pModifyKey(key)]=2;
+      windowWin[activeWinID-1].keyPress=0;
+      return true;
+    }
+  } else if(debug){
+    printf("[Warning] Invalid Key,\n");
+    fflush(stdout);
+  }
+  return false;
+}
+
+bool pKeyHold(const char *key){
   if(activeWinID!=0){
     if(pModifyKey(key)>0&&pModifyKey(key)<256){
-      if(windowWin[activeWinID-1].keyHold[pModifyKey(key)]==1){
-        windowWin[activeWinID-1].keyHold[pModifyKey(key)]=2;
-        windowWin[activeWinID-1].keyPress=0;
-        return true;
-      }
+      if(activeWinID!=0){ return windowWin[activeWinID-1].keyHold[pModifyKey(key)]!=0; }
     } else if(debug){
       printf("[Warning] Invalid Key,\n");
       fflush(stdout);
@@ -300,18 +403,14 @@ bool pKeyPress(const char *key){
   return false;
 }
 
-bool pKeyHold(const char *key){
-  if(activeWinID!=0){
-    if(pModifyKey(key)>0&&pModifyKey(key)<256){ return windowWin[activeWinID-1].keyHold[pModifyKey(key)]!=0; }
-    else if(debug){
-      printf("[Warning] Invalid Key,\n");
-      fflush(stdout);
-    }
+bool pKeyCaps(){
+  if(activeWinID!=0){ return GetKeyState(VK_CAPITAL)&0x0001; }
+  else if(debug){
+    printf("[Warning] Could not check Caps State,\n");
+    fflush(stdout);
   }
   return false;
 }
-
-bool pKeyCaps(){ return GetKeyState(VK_CAPITAL)&0x0001; }
 
 #define VK_1 0x31
 #define VK_2 0x32
@@ -449,5 +548,5 @@ unsigned int pModifyKey(const char *key){
   else if(strcmp(key,"]")==0){ return MapVirtualKey(VK_OEM_6,MAPVK_VK_TO_VSC); }
   else if(strcmp(key,"-")==0){ return MapVirtualKey(VK_OEM_MINUS,MAPVK_VK_TO_VSC); }
   else if(strcmp(key,"=")==0){ return MapVirtualKey(VK_OEM_PLUS,MAPVK_VK_TO_VSC); }
-  else{ return 0; }
+  return 0;
 }
