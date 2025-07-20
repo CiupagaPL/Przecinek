@@ -3,56 +3,35 @@
 /*NOTE: You can remove top comment from this file :-PP*/
 
 #include<iostream>
-#include<cstdlib>
+#include<math.h>
 using namespace std;
 
-#include"src/window.h"
+#include"head/window.h"
 
-int r=0,g=0,b=0,rPrev=0,gPrev=0,bPrev=0;
-string temp,rString,gString,bString;
+float tempRed=0.00,tempGreen=0.00;
+unsigned int red=0,green=0;
 
 int main(void){
-  pWindowCreate(1280,720,1,false);
-  pWindowSetBackground(255,255,255);
+  pDebug(true);
 
-  while(pWindowOn()){
-    pEventHandle();
-    if(!pWindowOn()){ break; }
+  pWindow window=pWindowCreate(1280,720,0);
+  pWindowSetBackground(&window,255,255,255);
+  pWindowSetTitle(&window,"{,} Color Gradient");
+  pWindowSetPosition(&window,300,300);
 
-    if(pEventKeyPress("r")){ pWindowSetBackground(255,0,0); }
-    if(pEventKeyPress("g")){ pWindowSetBackground(0,255,0); }
-    if(pEventKeyPress("b")){ pWindowSetBackground(0,0,255); }
+  while(window.on){
+    pWindowHandle(&window);
+    if(!window.on){ break; }
 
-    r=pWindowBackgroundRed();
-    g=pWindowBackgroundGreen();
-    b=pWindowBackgroundBlue();
-
-    if(pEventKeyHold(",")){
-      r=rand()%256;
-      g=rand()%256;
-      b=rand()%256;
-      pWindowSetBackground(r,g,b);
+    if(przecinek.cursor.x>window.x&&przecinek.cursor.x<window.x+window.width&&
+        przecinek.cursor.y>window.y&&przecinek.cursor.y<window.y+window.height){
+      tempRed=(float)255/window.width*(przecinek.cursor.x-window.x);
+      tempGreen=(float)255/window.height*(przecinek.cursor.y-window.y);
     }
 
-    if(rPrev!=r||gPrev!=g||bPrev!=b){
-      rString=to_string(r),gString=to_string(g),bString=to_string(b);
-      temp="{,} rgb("+rString+","+gString+","+bString+")";
-      const char *title=temp.c_str();
-
-      if(title!=pWindowTitle()){ pWindowSetTitle(title); }
-
-      rPrev=r;
-      gPrev=g;
-      bPrev=b;
-    }
-  }
-
-  pWindowCreate(300,200,2,false);
-  pWindowSetTitle("Boo!");
-
-  while(pWindowOn()){
-    pEventHandle();
-    if(!pWindowOn()){ break; }
+    red=(int)round(tempRed);
+    green=(int)round(tempGreen);
+    if(window.red!=red||window.green!=green){ pWindowSetBackground(&window,red,green,0); }
   }
 
   return 0;

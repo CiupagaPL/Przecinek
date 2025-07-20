@@ -1,7 +1,7 @@
 ![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek_general.png)
 # {,} Przecinek [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) [[unstable]](https://github.com/CiupagaPL/Przecinek/tree/unstable)
 
-### About
+### About Project
 **Przecinek is a minimal graphics and audio library** being developed in C.
 Its purpose is to make it easier for beginner programmers to create window applications while keeping their projects small in size.
 Przecinek uses only system-built-in libraries.
@@ -10,12 +10,12 @@ It's well-documented and is being actively improved and extended.
 > Remember that this project started not long ago and still doesn't have a good amount of features in it :-PP
 
 ### Project Layout
-{,} Przecinek consists of three main components:
-- **Przecinek Window** which manages window and key events,
-- **Przecinek Audio** which is responsible for handling audio events,
-- **Przecinek Graphics** which manages sprites.
+Przecinek consists of three main components:
+- **{,} Window** which manages windows, objects and global events,
+- **{,} Audio** which is responsible for handling audio events,
+- **{,} Graphics** which manages textures and sprites.
 > [!IMPORTANT]
-> **Przecinek Audio** and **Przecinek Graphics** are unavailable for now c.c
+> **{,} Audio** and **{,} Graphics** are unavailable for now c.c
 
 ### Installation and Configuration
 **Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Installation-and-Configuration) Wiki page**.
@@ -26,11 +26,11 @@ It's well-documented and is being actively improved and extended.
 ## Assets
 Przecinek uses two libraries:
 - For Windows version [WinAPI](https://github.com/microsoft/Windows-classic-samples) is being used,
-- for Linux(X11) version [X11Lib](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
+- for Linux(X11) version [X11LIB](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
 ## Version
-> Newest Version (Alpha): **a1,0**;<br>
-> Last Updated: **22-06-2025**;
+> Newest Version (Alpha): **a2,0**;<br>
+> Last Updated: **20-07-2025**;
 
 ## LICENSE
 ```
