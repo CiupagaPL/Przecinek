@@ -13,10 +13,10 @@ option(X11 "Przecinek for Linux" OFF)
 
 set(CODE "example.cpp")
 
-set(HEADERS "src/window.h")
+set(HEADERS "head/window.h")
 
 if(WIN)
-  add_executable(${PROJECT_NAME} WIN32 ${CODE} "src/windows/window.c" ${HEADERS})
+  add_executable(${PROJECT_NAME} WIN32 ${CODE} "src/win/window.c" ${HEADERS})
   set(CMAKE_C_COMPILER "x86_64-w64-mingw32-gcc")
   set(CMAKE_CXX_COMPILER "x86_64-w64-mingw32-g++")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")

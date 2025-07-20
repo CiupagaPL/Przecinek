@@ -31,8 +31,6 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
-
-  pCursor cursor;
 } pWindow;
 
 typedef struct{
@@ -53,8 +51,6 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
-
-  pCursor cursor;
 
   char CLASS[16];
   HWND hwnd;
@@ -188,6 +184,14 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
     window.on=true;
     windowWin[window.ID-1].on=true;
 
+    POINT cursor;
+    if(GetCursorPos(&cursor)){
+      przecinek.cursor.x=cursor.x;
+      przecinek.cursor.y=cursor.y;
+    }
+    przecinek.display.width=GetSystemMetrics(SM_CXSCREEN);
+    przecinek.display.height=GetSystemMetrics(SM_CYSCREEN);
+
     InvalidateRect(windowWin[window.ID-1].hwnd,NULL,TRUE);
     ShowWindow(windowWin[window.ID-1].hwnd,SW_SHOW);
     SetWindowPos(windowWin[window.ID-1].hwnd,NULL,window.x,window.y,0,0,SWP_NOZORDER|SWP_NOSIZE);
@@ -268,10 +272,6 @@ void pWindowHandle(pWindow* window){
       if(GetCursorPos(&cursor)){
         przecinek.cursor.x=cursor.x;
         przecinek.cursor.y=cursor.y;
-
-        ScreenToClient(windowWin[window->ID-1].hwnd,&cursor);
-        windowWin[window->ID-1].cursor.x=cursor.x;
-        windowWin[window->ID-1].cursor.y=cursor.y;  
       }
       windowWin[currentWinID-1].W_MOUSEMOVE=false;
     } if(windowWin[currentWinID-1].W_SIZE.on){
@@ -308,9 +308,6 @@ void pWindowHandle(pWindow* window){
     window->red=windowWin[window->ID-1].red;
     window->green=windowWin[window->ID-1].green;
     window->blue=windowWin[window->ID-1].blue;
-
-    window->cursor.x=windowWin[window->ID-1].cursor.x;
-    window->cursor.y=windowWin[window->ID-1].cursor.y;
   } else if(debug){
     printf("[Error] Could not handle Window,\n");
     fflush(stdout);
@@ -336,9 +333,6 @@ void pWindowReset(pWindow* window){
   windowWin[window->ID-1].on=false;
   windowWin[window->ID-1].active=false;
 
-  window->cursor.x=0;
-  window->cursor.y=0;
-
   windowWin[window->ID-1].x=0;
   windowWin[window->ID-1].y=0;
   windowWin[window->ID-1].width=0;
@@ -349,9 +343,6 @@ void pWindowReset(pWindow* window){
   windowWin[window->ID-1].red=0;
   windowWin[window->ID-1].green=0;
   windowWin[window->ID-1].blue=0;
-
-  windowWin[window->ID-1].cursor.x=0;
-  windowWin[window->ID-1].cursor.y=0;
 
   windowWin[window->ID-1].hwnd=NULL;
   windowWin[window->ID-1].W_DESTROY=false;

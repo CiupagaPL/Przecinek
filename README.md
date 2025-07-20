@@ -4,8 +4,8 @@
 ### About Current Branch
 You are currently on **Unstable** branch.
 Remember that all Przecinek versions from here are prepared for testing purposes only and are **very unsafe to use for your projects**!
-> [!WARNING]
-> Several features are still broken / unfinished x.x
+> [!NOTE]
+> [u,3]==[a2,0]
 
 ### About Project
 **Przecinek is a minimal graphics and audio library** being developed in C.
@@ -35,8 +35,8 @@ Przecinek uses two libraries:
 - for Linux(X11) version [X11LIB](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
 ## Version
-> Newest Version (Unstable): **u,2**;<br>
-> Last Updated: **19-07-2025**;
+> Newest Version (Unstable): **u,3**;<br>
+> Last Updated: **20-07-2025**;
 
 ## LICENSE
 ```

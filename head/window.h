@@ -25,8 +25,6 @@ extern "C"{
     unsigned int x,y,width,height,mode;
     char title[256];
     unsigned int red,green,blue;
-
-    pCursor cursor;
   } pWindow;
 
   extern pStatus przecinek;

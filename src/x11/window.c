@@ -28,8 +28,6 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
-
-  pCursor cursor;
 } pWindow;
 
 typedef struct{
@@ -38,8 +36,6 @@ typedef struct{
   unsigned int x,y,width,height,mode;
   char title[256];
   unsigned int red,green,blue;
-
-  pCursor cursor;
 
   Display *display;
   int screen;
@@ -131,13 +127,20 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
     XChangeProperty(windowX11[window.ID-1].display,windowX11[window.ID-1].base,wmHints,wmHints,32,PropModeReplace,(unsigned char*)hints,5);
   }
 
-  przecinek.display.width=DisplayWidth(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
-  przecinek.display.height=DisplayHeight(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
-
   XSelectInput(windowX11[window.ID-1].display,windowX11[window.ID-1].base,ExposureMask|KeyPressMask|KeyReleaseMask|StructureNotifyMask|FocusChangeMask|PointerMotionMask);
   XMapWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].base);
   XMoveWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].base,window.x,window.y);
   XFlush(windowX11[window.ID-1].display);
+
+  unsigned int currentX=0,currentY=0,windowX=0,windowY=0;
+  unsigned int state;
+  Window child=None;
+  XQueryPointer(windowX11[window.ID-1].display,RootWindow(windowX11[window.ID-1].display,windowX11[window.ID-1].screen),
+    &child,&child,&currentX,&currentY,&windowX,&windowY,&state);
+  przecinek.cursor.x=currentX;
+  przecinek.cursor.y=currentY;
+  przecinek.display.width=DisplayWidth(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
+  przecinek.display.height=DisplayHeight(windowX11[window.ID-1].display,windowX11[window.ID-1].screen);
 
   return window;
 }
@@ -211,8 +214,6 @@ void pWindowHandle(pWindow* window){
         windowX11[window->ID-1].width=windowX11[window->ID-1].event.xconfigure.width;
         windowX11[window->ID-1].height=windowX11[window->ID-1].event.xconfigure.height;
       } else if(windowX11[window->ID-1].event.type==MotionNotify){
-        windowX11[window->ID-1].cursor.x=windowX11[window->ID-1].event.xmotion.x;
-        windowX11[window->ID-1].cursor.y=windowX11[window->ID-1].event.xmotion.y;
         przecinek.cursor.x=windowX11[window->ID-1].event.xmotion.x_root;
         przecinek.cursor.y=windowX11[window->ID-1].event.xmotion.y_root;
       } else if(windowX11[window->ID-1].event.type==KeyPress){
@@ -261,9 +262,6 @@ void pWindowHandle(pWindow* window){
     window->red=windowX11[window->ID-1].red;
     window->green=windowX11[window->ID-1].green;
     window->blue=windowX11[window->ID-1].blue;
-
-    window->cursor.x=windowX11[window->ID-1].cursor.x;
-    window->cursor.y=windowX11[window->ID-1].cursor.y;
   } else if(debug){
     printf("[Error] Could not handle Window,\n");
     fflush(stdout);
@@ -286,9 +284,6 @@ void pWindowReset(pWindow* window){
   window->green=0;
   window->blue=0;
 
-  window->cursor.x=0;
-  window->cursor.y=0;
-
   windowX11[window->ID-1].on=false;
   windowX11[window->ID-1].active=false;
 
@@ -302,9 +297,6 @@ void pWindowReset(pWindow* window){
   windowX11[window->ID-1].red=0;
   windowX11[window->ID-1].green=0;
   windowX11[window->ID-1].blue=0;
-
-  windowX11[window->ID-1].cursor.x=0;
-  windowX11[window->ID-1].cursor.y=0;
 
   windowX11[window->ID-1].W_DESTROY=false;
   windowX11[window->ID-1].keyPress=0;
