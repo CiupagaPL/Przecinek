@@ -12,7 +12,7 @@ float tempRed=0.00,tempGreen=0.00;
 unsigned int red=0,green=0;
 
 int main(void){
-  pDebug(true);
+  przecinek.debug=true;
 
   pWindow window=pWindowCreate(1280,720,0);
   pWindowSetBackground(&window,255,255,255);

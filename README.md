@@ -18,21 +18,27 @@ Przecinek consists of three main components:
 > **{,} Audio** and **{,} Graphics** are unavailable for now c.c
 
 ### Installation and Configuration
-**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Installation-and-Configuration) Wiki page**.
+Check [[this]](https://github.com/CiupagaPL/Przecinek/wiki/Installation-and-Configuration) Wiki page.
+
+### Examples
+Check [[this]](https://github.com/CiupagaPL/Przecinek/wiki/Examples) Wiki page.
 
 ### Documentation
-**Check [this](https://github.com/CiupagaPL/Przecinek/wiki/Documentation) Wiki page**.
+- For **{,} Window** check [[this]](https://github.com/CiupagaPL/Przecinek/wiki/{,}-Window-Doc) Wiki page.
+- For **{,} Audio** check [[this]](https://github.com/CiupagaPL/Przecinek/wiki/{,}-Audio-Doc) Wiki page.
+- For **{,} Graphics** check [[this]](https://github.com/CiupagaPL/Przecinek/wiki/{,}-Graphics-Doc) Wiki page.
 
-## Assets
+### Assets
 Przecinek uses two libraries:
 - For Windows version [WinAPI](https://github.com/microsoft/Windows-classic-samples) is being used,
 - for Linux(X11) version [X11LIB](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
-## Version
-> Newest Version (Alpha): **a2,0**;<br>
-> Last Updated: **20-07-2025**;
+### Version
+> Newest Version (Alpha): **[a2,1]**;<br>
+> Newest Version (Unstable): **[u,4]**;<br>
+> Last Updated: **24-07-2025**;
 
-## LICENSE
+### LICENSE
 ```
 Copyright(C) 2025 Ciupaga
 {,} PRZECINEK

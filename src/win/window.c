@@ -7,29 +7,26 @@
 
 #include<windows.h>
 
-bool debug=false;
-void pDebug(bool on){
-  debug=on;
-  if(debug){
-    AllocConsole();
-    freopen("CONOUT$","w",stdout);
-  } else{ FreeConsole(); }
-}
-
-typedef struct{ unsigned int width,height; } pScreen;
-typedef struct{ unsigned int x,y; } pCursor;
+typedef struct{ unsigned int width,height; } pSize;
+typedef struct{ int x,y; } pPosition;
 
 typedef struct{
-  pScreen display;
-  pCursor cursor;
-} pStatus;
+  bool debug;
+
+  pSize display;
+  pPosition cursor;
+} pPrzecinek;
+
+pPrzecinek przecinek;
 
 typedef struct{
   unsigned int ID;
   bool on,active;
 
-  unsigned int x,y,width,height,mode;
+  int x,y;
+  unsigned int width,height,mode;
   char title[256];
+
   unsigned int red,green,blue;
 } pWindow;
 
@@ -48,8 +45,10 @@ typedef struct{
 typedef struct{
   bool on,active;
 
-  unsigned int x,y,width,height,mode;
+  int x,y;
+  unsigned int width,height,mode;
   char title[256];
+
   unsigned int red,green,blue;
 
   char CLASS[16];
@@ -64,8 +63,6 @@ typedef struct{
 typedef struct{
   unsigned int ID;
 
-  unsigned int x,y,width,height;
-
   HWND hwnd;
 } pWindowPointer;
 
@@ -73,7 +70,6 @@ unsigned int activeWinID=0,currentWinID=0;
 pWindowWin windowWin[64];
 pWindow currentWindow;
 MSG message;
-pStatus przecinek;
 
 void pWindowReset(pWindow* window);
 
@@ -83,8 +79,6 @@ LRESULT CALLBACK pWindowProc(HWND hwnd,UINT uMessage,WPARAM wParameter,LPARAM lP
   if(uMessage==WM_CREATE){
     pWindowPointer* newWindowPointer=(pWindowPointer*)malloc(sizeof(pWindowPointer));
     newWindowPointer->ID=currentWindow.ID;
-    newWindowPointer->width=currentWindow.width;
-    newWindowPointer->height=currentWindow.height;
     newWindowPointer->hwnd=hwnd;
     SetWindowLongPtr(hwnd,GWLP_USERDATA,(LONG_PTR)newWindowPointer);
   } else if(uMessage==WM_DESTROY){
@@ -121,13 +115,18 @@ LRESULT CALLBACK pWindowProc(HWND hwnd,UINT uMessage,WPARAM wParameter,LPARAM lP
 }
 
 pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
+  if(GetConsoleWindow()==NULL&&przecinek.debug){
+    AllocConsole();
+    freopen("CONOUT$","w",stdout);
+  } else if(GetConsoleWindow()!=NULL&&!przecinek.debug){ FreeConsole(); }
+
   pWindow window;
   for(int c=1;c<=64;c++){
     if(!windowWin[c-1].on){
       window.ID=c;
       break;
     } else if(c==64){
-      if(debug){
+      if(przecinek.debug){
         printf("[Error] Too many Windows active,\n");
         fflush(stdout);
       }
@@ -154,7 +153,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   wClass.lpszClassName=windowWin[window.ID-1].CLASS;
   wClass.hCursor=LoadCursor(NULL,IDC_ARROW);
   if(!RegisterClass(&wClass)){
-    if(debug){
+    if(przecinek.debug){
       printf("[Error] Could not register Window Class,\n");
       fflush(stdout);
     }
@@ -175,7 +174,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   );
 
   if(windowWin[window.ID-1].hwnd==NULL){
-    if(debug){
+    if(przecinek.debug){
       printf("[Error] Could not create Window,\n");
       fflush(stdout);
     }
@@ -200,7 +199,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   return window;
 }
 
-void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
+void pWindowSetPosition(pWindow* window,int x,int y){
   if(window->on){
     window->x=x;
     window->y=y;
@@ -215,13 +214,20 @@ void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
 
 void pWindowSetTitle(pWindow* window,const char* title){
   if(window->on){
-    strncpy(window->title,title,sizeof(window->title)-1);
-    window->title[sizeof(window->title)-1]='\0';
-    strncpy(windowWin[window->ID-1].title,title,sizeof(windowWin[window->ID-1].title)-1);
-    windowWin[window->ID-1].title[sizeof(windowWin[window->ID-1].title)-1]='\0';
+    if(strlen(title)>256){
+      if(przecinek.debug){
+        printf("[Error] Given Title is too Long,\n");
+        fflush(stdout);
+      }
+    } else{
+      strncpy(window->title,title,sizeof(window->title)-1);
+      window->title[sizeof(window->title)-1]='\0';
+      strncpy(windowWin[window->ID-1].title,title,sizeof(windowWin[window->ID-1].title)-1);
+      windowWin[window->ID-1].title[sizeof(windowWin[window->ID-1].title)-1]='\0';
 
-    SetWindowText(windowWin[window->ID-1].hwnd,window->title);
-  } else if(debug){
+      SetWindowText(windowWin[window->ID-1].hwnd,window->title);
+    }
+  } else if(przecinek.debug){
     printf("[Error] Could not set Window Title,\n");
     fflush(stdout);
   }
@@ -241,7 +247,7 @@ void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,un
     windowWin[window->ID-1].blue=blue;
 
     InvalidateRect(windowWin[window->ID-1].hwnd,NULL,TRUE);
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Error] Could not set Window Background,\n");
     fflush(stdout);
   }
@@ -308,7 +314,7 @@ void pWindowHandle(pWindow* window){
     window->red=windowWin[window->ID-1].red;
     window->green=windowWin[window->ID-1].green;
     window->blue=windowWin[window->ID-1].blue;
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Error] Could not handle Window,\n");
     fflush(stdout);
   }
@@ -359,7 +365,7 @@ void pWindowReset(pWindow* window){
 
 void pWindowClose(pWindow* window){
   if(window->on){ PostMessage(windowWin[window->ID-1].hwnd,WM_CLOSE,0,0); }
-  else if(debug){
+  else if(przecinek.debug){
     printf("[Warning] Window is already closed,\n");
     fflush(stdout);
   }
@@ -375,7 +381,7 @@ bool pKeyPress(const char *key){
       windowWin[activeWinID-1].keyPress=0;
       return true;
     }
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Warning] Invalid Key,\n");
     fflush(stdout);
   }
@@ -386,7 +392,7 @@ bool pKeyHold(const char *key){
   if(activeWinID!=0){
     if(pModifyKey(key)>0&&pModifyKey(key)<256){
       if(activeWinID!=0){ return windowWin[activeWinID-1].keyHold[pModifyKey(key)]!=0; }
-    } else if(debug){
+    } else if(przecinek.debug){
       printf("[Warning] Invalid Key,\n");
       fflush(stdout);
     }
@@ -396,7 +402,7 @@ bool pKeyHold(const char *key){
 
 bool pKeyCaps(){
   if(activeWinID!=0){ return GetKeyState(VK_CAPITAL)&0x0001; }
-  else if(debug){
+  else if(przecinek.debug){
     printf("[Warning] Could not check Caps State,\n");
     fflush(stdout);
   }
