@@ -10,29 +10,31 @@
 extern "C"{
   #endif
 
-  typedef struct{ unsigned int width,height; } pScreen;
-  typedef struct{ unsigned int x,y; } pCursor;
+  typedef struct{ unsigned int width,height; } pSize;
+  typedef struct{ int x,y; } pPosition;
 
   typedef struct{
-    pScreen display;
-    pCursor cursor;
-  } pStatus;
+    bool debug;
+
+    pSize display;
+    pPosition cursor;
+  } pPrzecinek;
+
+  extern pPrzecinek przecinek;
 
   typedef struct{
     unsigned int ID;
     bool on,active;
 
-    unsigned int x,y,width,height,mode;
+    int x,y;
+    unsigned int width,height,mode;
     char title[256];
+
     unsigned int red,green,blue;
   } pWindow;
 
-  extern pStatus przecinek;
-
-  void pDebug(bool on);
-
   pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode);
-  void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y);
+  void pWindowSetPosition(pWindow* window,int x,int y);
   void pWindowSetTitle(pWindow* window,const char* title);
   void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,unsigned int blue);
   void pWindowHandle(pWindow* window);

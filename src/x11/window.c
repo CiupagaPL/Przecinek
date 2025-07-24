@@ -10,38 +10,43 @@
 #include<X11/Xutil.h>
 #include<X11/keysym.h>
 
-bool debug=false;
-void pDebug(bool on){ debug=on; }
-
-typedef struct{ unsigned int width,height; } pScreen;
-typedef struct{ unsigned int x,y; } pCursor;
+typedef struct{ unsigned int width,height; } pSize;
+typedef struct{ int x,y; } pPosition;
 
 typedef struct{
-  pScreen display;
-  pCursor cursor;
-} pStatus;
+  bool debug;
+
+  pSize display;
+  pPosition cursor;
+} pPrzecinek;
+
+pPrzecinek przecinek;
 
 typedef struct{
   unsigned int ID;
   bool on,active;
 
-  unsigned int x,y,width,height,mode;
+  int x,y;
+  unsigned int width,height,mode;
   char title[256];
+
   unsigned int red,green,blue;
 } pWindow;
 
 typedef struct{
   bool on,active;
 
-  unsigned int x,y,width,height,mode;
+  int x,y;
+  unsigned int width,height,mode;
   char title[256];
+
   unsigned int red,green,blue;
 
   Display *display;
-  int screen;
   Window base;
   Atom wmDelete;
   XEvent event,report;
+  int screen;
 
   bool W_DESTROY;
 
@@ -51,7 +56,6 @@ typedef struct{
 
 unsigned int activeWinID=0;
 pWindowX11 windowX11[64];
-pStatus przecinek;
 
 void pWindowReset(pWindow* window);
 
@@ -62,7 +66,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
       window.ID=c;
       break;
     } else if(c==64){
-      if(debug){
+      if(przecinek.debug){
         printf("[Error] Too many Windows active,\n");
         fflush(stdout);
       }
@@ -73,7 +77,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
 
   windowX11[window.ID-1].display=XOpenDisplay(NULL);
   if(windowX11[window.ID-1].display==NULL){
-    if(debug){
+    if(przecinek.debug){
       printf("[Error] Could not open Display,\n");
       fflush(stdout);
     }
@@ -91,7 +95,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   );
 
   if(windowX11[window.ID-1].base==0){
-    if(debug){
+    if(przecinek.debug){
       printf("[Error] Could not create Window,\n");
       fflush(stdout);
     }
@@ -145,7 +149,7 @@ pWindow pWindowCreate(unsigned int width,unsigned int height,unsigned int mode){
   return window;
 }
 
-void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
+void pWindowSetPosition(pWindow* window,int x,int y){
   if(window->on){
     window->x=x;
     window->y=y;
@@ -161,14 +165,21 @@ void pWindowSetPosition(pWindow* window,unsigned int x,unsigned int y){
 
 void pWindowSetTitle(pWindow* window,const char* title){
   if(window->on){
-    strncpy(window->title,title,sizeof(window->title)-1);
-    window->title[sizeof(window->title)-1]='\0';
-    strncpy(windowX11[window->ID-1].title,title,sizeof(windowX11[window->ID-1].title)-1);
-    windowX11[window->ID-1].title[sizeof(windowX11[window->ID-1].title)-1]='\0';
+    if(strlen(title)>256){
+      if(przecinek.debug){
+        printf("[Error] Given Title is too Long,\n");
+        fflush(stdout);
+      }
+    } else{
+      strncpy(window->title,title,sizeof(window->title)-1);
+      window->title[sizeof(window->title)-1]='\0';
+      strncpy(windowX11[window->ID-1].title,title,sizeof(windowX11[window->ID-1].title)-1);
+      windowX11[window->ID-1].title[sizeof(windowX11[window->ID-1].title)-1]='\0';
 
-    XStoreName(windowX11[window->ID-1].display,windowX11[window->ID-1].base,window->title);
-    XFlush(windowX11[window->ID-1].display);
-  } else if(debug){
+      XStoreName(windowX11[window->ID-1].display,windowX11[window->ID-1].base,window->title);
+      XFlush(windowX11[window->ID-1].display);
+    }
+  } else if(przecinek.debug){
     printf("[Error] Could not set Window Title,\n");
     fflush(stdout);
   }
@@ -190,7 +201,7 @@ void pWindowSetBackground(pWindow* window,unsigned int red,unsigned int green,un
     XSetWindowBackground(windowX11[window->ID-1].display,windowX11[window->ID-1].base,((window->red<<16)|(window->green<<8)|window->blue));
     XClearWindow(windowX11[window->ID-1].display,windowX11[window->ID-1].base);
     XFlush(windowX11[window->ID-1].display);
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Error] Could not set Window Background,\n");
     fflush(stdout);
   }
@@ -262,7 +273,7 @@ void pWindowHandle(pWindow* window){
     window->red=windowX11[window->ID-1].red;
     window->green=windowX11[window->ID-1].green;
     window->blue=windowX11[window->ID-1].blue;
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Error] Could not handle Window,\n");
     fflush(stdout);
   }
@@ -306,7 +317,7 @@ void pWindowReset(pWindow* window){
 
 void pWindowClose(pWindow* window){
   if(window->on){ windowX11[window->ID-1].W_DESTROY=true; }
-  else if(debug){
+  else if(przecinek.debug){
     printf("[Warning] Window is already closed,\n");
     fflush(stdout);
   }
@@ -321,7 +332,7 @@ bool pKeyPress(const char* key){
       windowX11[activeWinID-1].keyPress=0;
       return true;
     }
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Warning] Invalid Key,\n");
     fflush(stdout);
   }
@@ -331,7 +342,7 @@ bool pKeyPress(const char* key){
 bool pKeyHold(const char* key){
   if(pModifyKey(key)>0&&pModifyKey(key)<256){
     if(activeWinID!=0){ return windowX11[activeWinID-1].keyHold[pModifyKey(key)]; }
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Warning] Invalid Key,\n");
     fflush(stdout);
   }
@@ -343,7 +354,7 @@ bool pKeyCaps(){
     XKeyboardState keyboardState;
     XGetKeyboardControl(windowX11[activeWinID-1].display,&keyboardState);
     return keyboardState.led_mask&(1<<1)!=0;
-  } else if(debug){
+  } else if(przecinek.debug){
     printf("[Warning] Could not check Caps State,\n");
     fflush(stdout);
   }
