@@ -34,9 +34,9 @@ Przecinek uses two libraries:
 - for Linux(X11) version [X11LIB](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
 
 ### Version
-> Newest Version (Alpha): **[a2,1]**;<br>
-> Newest Version (Unstable): **[u,4]**;<br>
-> Last Updated: **24-07-2025**;
+> Newest Version (Alpha): **[None]**;<br>
+> Newest Version (Unstable): **[u,5]**;<br>
+> Last Updated: **22-08-2025**;
 
 ### LICENSE
 ```
