@@ -35,8 +35,8 @@ Przecinek uses two libraries:
 
 ### Version
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,5]**;<br>
-> Last Updated: **22-08-2025**;
+> Newest Version (Unstable): **[u,6]**;<br>
+> Last Updated: **08-09-2025**;
 
 ### LICENSE
 ```

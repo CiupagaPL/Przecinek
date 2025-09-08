@@ -7,8 +7,8 @@
  * /   \  _\ = , = /
  * \__  \/        |
  *    \_         /
- *      \ \ \  \ \
- *      (,(,)-(,),)
+ *      \ \ \--\ \
+ *      {,{,} {,},}
  */
 #include <stdio.h>
 #include <stdbool.h>
@@ -64,11 +64,14 @@ typedef struct{
 
   struct timeval start, end;
   unsigned int frameCount;
+  double frameMax;
 } pBuildX11;
 
 unsigned int activeWinID=0;
+
 pBuildX11 build[32];
 XEvent currentEvent, currentReport, currentAction;
+
 bool debug=false;
 int windowCount=0;
 
@@ -101,16 +104,14 @@ typedef struct{
   pColor color;
 } pObject;
 
-/* [pDebug()] Function
- * |\_____/|
+/* |\_____/| [pDebug()] Function
  * |       |
  * | o   o |
  * \ = , = /
  */
 void pDebug(bool active){ debug=active; }
 
-/* [pWindowReset()] Function
- * |\_____/|
+/* |\_____/| [pWindowReset()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -145,13 +146,35 @@ void pWindowReset(pWindow *window){
   strncpy(build[window->ID-1].title, "{,}", sizeof(build[window->ID-1].title)-1);
   build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
 
+  build[window->ID-1].display=NULL;
+  build[window->ID-1].screen=0;
+  build[window->ID-1].base=0;
+  build[window->ID-1].buffer=0;
+
+  build[window->ID-1].delete=None;
+  build[window->ID-1].state=None;
+  build[window->ID-1].fullscreen=None;
+  build[window->ID-1].hidden=None;
+  build[window->ID-1].maximized=None;
+  build[window->ID-1].hint=None;
+
+  build[window->ID-1].graphics=NULL;
+  build[window->ID-1].colorMap=0;
+
+  build[window->ID-1].start.tv_sec=0;
+  build[window->ID-1].start.tv_usec=0;
+  build[window->ID-1].end.tv_sec=0;
+  build[window->ID-1].end.tv_usec=0;
+
+  build[window->ID-1].frameCount=0;
+  build[window->ID-1].frameMax=0;
+
   windowCount--;
 
   return;
 }
 
-/* [pWindowCreate()] Function
- * |\_____/|
+/* |\_____/| [pWindowCreate()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -167,7 +190,8 @@ pWindow pWindowCreate(unsigned int width, unsigned int height, unsigned int mode
     if(build[current-1].width==0 && build[current-1].height==0){
       window.ID=current;
       break;
-    } else if(current==32){
+    }
+    else if(current==32){
       if(debug==true){
         printf("[Error] Too many Windows active,\n");
         fflush(stdout);
@@ -279,7 +303,7 @@ pWindow pWindowCreate(unsigned int width, unsigned int height, unsigned int mode
     );
   }
 
-  /* |\____/| Setup and Show [build] Window
+  /* |\____/| Initialize and Show [build] Window
    * |  o o |
    */
   XSelectInput(build[window.ID-1].display, build[window.ID-1].base,
@@ -308,8 +332,7 @@ pWindow pWindowCreate(unsigned int width, unsigned int height, unsigned int mode
   return window;
 }
 
-/* [pWindowDraw()] Function
- * |\_____/|
+/* |\_____/| [pWindowDraw()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -331,7 +354,7 @@ void pWindowDraw(pWindow *window, pObject *object){
       &build[window->ID-1].color
     );
 
-    /* |\____/| Draw on [build] Window
+    /* |\____/| Draw on [build] Buffer
      * |  o o |
      */
     XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics,
@@ -349,15 +372,14 @@ void pWindowDraw(pWindow *window, pObject *object){
   return;
 }
 
-/* [WindowClear()] Function
- * |\_____/|
+/* |\_____/| [WindowClear()] Function
  * |       |
  * | o   o |
  * \ = , = /
  */
 void pWindowClear(pWindow* window){
   if(window->active==true){
-    /* |\____/| Clean [build] Window
+    /* |\____/| Clean [build] Buffer
      * |  o o |
      */
     XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics,
@@ -375,30 +397,34 @@ void pWindowClear(pWindow* window){
   return;
 }
 
-/* [WindowClose()] Function
- * |\_____/|
+/* |\_____/| [WindowClose()] Function
  * |       |
  * | o   o |
  * \ = , = /
  */
 void pWindowClose(pWindow *window){
-  /* |\____/| Send [window] Kill Event
-   * |  o o |
-   */
-  currentAction.type=ClientMessage;
-  currentAction.xclient.window=build[window->ID-1].base;
-  currentAction.xclient.message_type=build[window->ID-1].delete;
-  currentAction.xclient.format=32;
-  currentAction.xclient.data.l[0]=build[window->ID-1].delete;
-  currentAction.xclient.data.l[1]=CurrentTime;
+  if(window->active){
+    /* |\____/| Send [window] Kill Event
+     * |  o o |
+     */
+    currentAction.type=ClientMessage;
+    currentAction.xclient.window=build[window->ID-1].base;
+    currentAction.xclient.message_type=build[window->ID-1].delete;
+    currentAction.xclient.format=32;
+    currentAction.xclient.data.l[0]=build[window->ID-1].delete;
+    currentAction.xclient.data.l[1]=CurrentTime;
 
-  XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
+    XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
+  }
+  else if(debug){
+    printf("[Warning] Window is already closed,\n");
+    fflush(stdout);
+  }
 
   return;
 }
 
-/* [pEventReset()] Function
- * |\_____/|
+/* |\_____/| [pEventReset()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -425,13 +451,12 @@ void pEventReset(pEvent *event){
   event->cursor.y=0;
 
   event->windowCount=0;
-  event->debug=0;
+  event->debug=false;
 
   return;
 }
 
-/* [pEventCreate()] Function
- * |\_____/|
+/* |\_____/| [pEventCreate()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -465,14 +490,22 @@ pEvent pEventCreate(){
   return event;
 }
 
-/* [pEventHandle()] Function
- * |\_____/|
+/* |\_____/| [pEventHandle()] Function
  * |       |
  * | o   o |
  * \ = , = /
  */
 void pEventHandle(pWindow *window, pEvent *event){
   if(window->active==true){
+    /* |\____/| Change [window] Buffers
+     * |  o o |
+     */
+    XCopyArea(build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].base,
+      DefaultGC(build[window->ID-1].display, build[window->ID-1].screen),
+      0, 0, window->width, window->height, 0, 0
+    );
+    XFlush(build[window->ID-1].display);
+
     /* |\____/| Reset [event] Keys
      * |  o o |
      */
@@ -505,78 +538,63 @@ void pEventHandle(pWindow *window, pEvent *event){
       }
       else{ window->active=true; }
 
-      /* |\____/| Check for Window Change [currentEvent]
+      /* |\____/| Manage [window] position change
        * |  o o |
        */
-      if(currentEvent.type==ConfigureNotify){
-        /* |\____/| Manage [window] position change
-         * |  o o |
-         */
-        if(build[window->ID-1].x==window->x && build[window->ID-1].y==window->y){
-          if(window->x!=currentEvent.xconfigure.x || window->y!=currentEvent.xconfigure.y){
-            window->x=currentEvent.xconfigure.x;
-            window->y=currentEvent.xconfigure.y;
-            build[window->ID-1].x=currentEvent.xconfigure.x;
-            build[window->ID-1].y=currentEvent.xconfigure.y;
+      if(build[window->ID-1].x!=window->x || build[window->ID-1].y!=window->y){
+        build[window->ID-1].x=window->x;
+        build[window->ID-1].y=window->y;
 
-            event->positionChange=true;
-          }
-          else{ event->positionChange=false; }
-        }
-        else{
-          XMoveWindow(build[window->ID-1].display, build[window->ID-1].base, window->x, window->y);
+        XMoveWindow(build[window->ID-1].display, build[window->ID-1].base, window->x, window->y);
 
-          build[window->ID-1].x=window->x;
-          build[window->ID-1].y=window->y;
-
-          event->positionChange=true;
-        }
-
-        /* |\____/| Manage [window] size change
-         * |  o o |
-         */
-        if(build[window->ID-1].width==window->width && build[window->ID-1].height==window->height){
-          if(window->width!=currentEvent.xconfigure.width ||
-              window->height!=currentEvent.xconfigure.height){
-            window->width=currentEvent.xconfigure.width;
-            window->height=currentEvent.xconfigure.height;
-            build[window->ID-1].width=currentEvent.xconfigure.width;
-            build[window->ID-1].height=currentEvent.xconfigure.height;
-
-            build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-              build[window->ID-1].base, window->width, window->height,
-              DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
-            );
-
-            event->sizeChange=true;
-          }
-          else{ event->sizeChange=false; }
-        }
-        else{
-          XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
-            window->width, window->height
-          );
-          build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-            build[window->ID-1].base, window->width, window->height,
-            DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
-          );
-
-          build[window->ID-1].width=window->width;
-          build[window->ID-1].height=window->height;
-
-          event->sizeChange=true;
-        }
+        event->positionChange=true;
       }
-      else{
-        event->positionChange=false;
-        event->sizeChange=false;
+      else if(currentEvent.type==ConfigureNotify && window->x!=currentEvent.xconfigure.x){
+        window->x=currentEvent.xconfigure.x;
+        window->y=currentEvent.xconfigure.y;
+        build[window->ID-1].x=currentEvent.xconfigure.x;
+        build[window->ID-1].y=currentEvent.xconfigure.y;
+
+        event->positionChange=true;
       }
+      else{ event->positionChange=false; }
+
+      /* |\____/| Manage [window] size change
+       * |  o o |
+       */
+      if(build[window->ID-1].width!=window->width || build[window->ID-1].height!=window->height){
+        build[window->ID-1].width=window->width;
+        build[window->ID-1].height=window->height;
+
+        XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
+          window->width, window->height
+        );
+        build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
+          build[window->ID-1].base, window->width, window->height,
+          DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+        );
+
+        event->sizeChange=true;
+      }
+      else if(currentEvent.type==ConfigureNotify && window->width!=currentEvent.xconfigure.width){
+        window->width=currentEvent.xconfigure.width;
+        window->height=currentEvent.xconfigure.height;
+        build[window->ID-1].width=currentEvent.xconfigure.width;
+        build[window->ID-1].height=currentEvent.xconfigure.height;
+
+        build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
+          build[window->ID-1].base, window->width, window->height,
+          DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+        );
+
+        event->sizeChange=true;
+      }
+      else{ event->sizeChange=false; }
 
       /* |\____/| Check for Key Press [currentEvent]
        * |  o o |
        */
       if(currentEvent.type==KeyPress){
-        fflush(stdout);
         if(event->key[currentEvent.xkey.keycode]==0){ event->key[currentEvent.xkey.keycode]=1; }
         else{ event->key[currentEvent.xkey.keycode]=2; }
       }
@@ -585,7 +603,6 @@ void pEventHandle(pWindow *window, pEvent *event){
        * |  o o |
        */
       if(currentEvent.type==KeyRelease){
-        fflush(stdout);
         if(XEventsQueued(build[window->ID-1].display, QueuedAfterReading)){
           XPeekEvent(build[window->ID-1].display, &currentReport);
 
@@ -612,7 +629,7 @@ void pEventHandle(pWindow *window, pEvent *event){
       }
       else{ event->cursorMove=false; }
 
-      /* |\____/| Check for Window Focus in [currentEvent]
+      /* |\____/| Check for Window Focus In [currentEvent]
        * |  o o |
        */
       if(currentEvent.type==FocusIn){
@@ -620,7 +637,7 @@ void pEventHandle(pWindow *window, pEvent *event){
         event->focus=true;
       }
 
-      /* |\____/| Check for Window Focus out [currentEvent]
+      /* |\____/| Check for Window Focus Out [currentEvent]
        * |  o o |
        */
       if(currentEvent.type==FocusOut && activeWinID==window->ID){
@@ -671,24 +688,17 @@ void pEventHandle(pWindow *window, pEvent *event){
       window->mode=build[window->ID-1].mode;
     }
 
-    /* |\____/| Refresh and Delay [window]
+    /* |\____/| Limit and Count [window] Frames
      * |  o o |
      */
     build[window->ID-1].frameCount++;
-    XCopyArea(build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].base,
-      DefaultGC(build[window->ID-1].display, build[window->ID-1].screen),
-      0, 0, window->width, window->height, 0, 0
-    );
-    XFlush(build[window->ID-1].display);
     usleep((1000000/windowCount)/window->frameLimit);
 
-    /* |\____/| Count [window] Frames
-     * |  o o |
-     */
     gettimeofday(&build[window->ID-1].end, NULL);
+    build[window->ID-1].frameMax=(double)((build[window->ID-1].end.tv_sec-build[window->ID-1].start.tv_sec)+
+      (build[window->ID-1].end.tv_usec-build[window->ID-1].start.tv_usec)/1000000.0);
 
-    if((double)((build[window->ID-1].end.tv_sec-build[window->ID-1].start.tv_sec)+
-      (build[window->ID-1].end.tv_usec-build[window->ID-1].start.tv_usec)/1000000.0)>=1.0){
+    if(build[window->ID-1].frameMax>=1.0){
       build[window->ID-1].start=build[window->ID-1].end;
 
       event->frameCount=build[window->ID-1].frameCount;
@@ -703,8 +713,7 @@ void pEventHandle(pWindow *window, pEvent *event){
   return;
 }
 
-/* [pObjectCreate()] Function
- * |\_____/|
+/* |\_____/| [pObjectCreate()] Function
  * |       |
  * | o   o |
  * \ = , = /
@@ -728,8 +737,7 @@ pObject pObjectCreate(unsigned int width, unsigned int height){
   return object;
 }
 
-/* [pKeyConvert()] Function
- * |\_____/|
+/* |\_____/| [pKeyConvert()] Function
  * |       |
  * | o   o |
  * \ = , = /
