@@ -3,66 +3,149 @@
  */
 #include <iostream>
 #include <string.h>
+#include <cmath>
 using namespace std;
 
 #include "head/window.h"
 
 int main(void){
-  pDebug(true);
+  // Disable console, set frame limit to `60`
+  pSetup(false, 60);
 
-  /*Create and Setup [window]*/
-  pWindow window=pWindowCreate(100, 100, 2);
-  
-  window.width=200;
-  window.height=200;
+  // Create unresizable [window] and [event]
+  pWindow window=pWindowCreate(800, 600, false);
+  pEvent event=pEventCreate();
 
+  // Set [window] [title] to `debug`
   strncpy(window.title, "debug", sizeof(window.title)-1);
   window.title[sizeof(window.title)-1]='\0';
 
-  window.x=400;
-  window.y=400;
-  window.frameLimit=60;
+  // Create and setup [racket1] object
+  pObject racket1=pObjectCreate(15, 200);
+  racket1.x=0;
+  racket1.y=190;
+  racket1.color.r=0;
+  racket1.color.g=0;
+  racket1.color.b=0;
 
-  /*Create [event] for [window]*/
-  pEvent event=pEventCreate();
+  // Create and setup [racket2] object
+  pObject racket2=pObjectCreate(15, 200);
+  racket2.x=785;
+  racket2.y=190;
+  racket2.color.r=0;
+  racket2.color.g=0;
+  racket2.color.b=0;
 
-  /*Create and Setup [object1]*/
-  pObject object1=pObjectCreate(50, 50);
-  object1.x=25;
-  object1.y=25;
+  // Create and setup [middle1] object
+  pObject middle1=pObjectCreate(10, 600);
+  middle1.x=385;
+  middle1.y=0;
+  middle1.color.r=255;
+  middle1.color.g=125;
+  middle1.color.b=125;
 
-  object1.color.r=255;
-  object1.color.g=255;
-  object1.color.b=0;
+  // Create and setup [middle2] object
+  pObject middle2=pObjectCreate(10, 600);
+  middle2.x=395;
+  middle2.y=0;
+  middle2.color.r=125;
+  middle2.color.g=255;
+  middle2.color.b=125;
 
-  /*Create and Setup [object2]*/
-  pObject object2=pObjectCreate(50, 50);
-  object2.x=50;
-  object2.y=50;
+  // Create and setup [middle3] object
+  pObject middle3=pObjectCreate(10, 600);
+  middle3.x=405;
+  middle3.y=0;
+  middle3.color.r=125;
+  middle3.color.g=125;
+  middle3.color.b=255;
 
-  object2.color.r=255;
-  object2.color.g=0;
-  object2.color.b=0;
+  // Create and setup [ball] object
+  pObject ball=pObjectCreate(20, 20);
+  ball.x=390;
+  ball.y=290;
+  ball.color.r=0;
+  ball.color.g=0;
+  ball.color.b=0;
+
+  // Create some more variables
+  bool start=false;
+  short int timer=0, angle=90, direction=10;
 
   while(window.active){
-    /*Move [object2]*/
-    if(event.key[pKeyConvert("w")]>=1){ object2.y-=3; }
-    if(event.key[pKeyConvert("a")]>=1){ object2.x-=3; }
-    if(event.key[pKeyConvert("s")]>=1){ object2.y+=3; }
-    if(event.key[pKeyConvert("d")]>=1){ object2.x+=3; }
-
-    /*<3*/
-    if(event.key[pKeyConvert("c")]==1){
-      printf("c!! :-3\n");
-      fflush(stdout);
+    // Close [window] if `ESC` is being pressed
+    if(event.key[pKey("ESC")]==1){
+      pWindowClose(&window);
+      break;
     }
 
-    /*Clear [window] and Draw Objects*/
-    pWindowClear(&window);
-    pWindowDraw(&window, &object2);
-    pWindowDraw(&window, &object1);
+    // Start the game if `SPACE` is being pressed
+    if(event.key[pKey("SPACE")]==1){
+      start=true;
+      timer=0;
+    }
 
-    /*Handle [event] for [window]*/
+    if(start==false){
+      // Manage animation
+      timer++;
+      if(timer>40){ timer=0; }
+    }
+    else{
+      // Move [racket1] and [racket2] up if `W` or `UARROW` is being hold
+      if(event.key[pKey("W")]>=1 || event.key[pKey("UARROW")]>=1){
+        if(racket1.y>0 && racket2.y>0){
+          racket1.y-=7;
+          racket2.y-=7;
+        }
+      }
+      // Move [racket1] and [racket2] down if `S` or `DARROW` is being hold
+      if(event.key[pKey("S")]>=1 || event.key[pKey("DARROW")]>=1){
+        if(racket1.y<400 && racket2.y<400){
+          racket1.y+=7;
+          racket2.y+=7;
+        }
+      }
+
+      // Change [ball] position
+      ball.x+=direction;
+      if(przecinek.cursor.y-window.y<0){ ball.y=0; }
+      else if(przecinek.cursor.y-window.y>=580){ ball.y=580; }
+      else{ ball.y=przecinek.cursor.y-window.y; }
+
+      // Reset game
+      if(ball.x+ball.width>800 || ball.x<0){
+        start=false;
+        direction=10;
+        angle=90;
+
+        ball.x=390;
+        ball.y=290;
+
+        racket1.x=0;
+        racket1.y=190;
+        racket2.x=785;
+        racket2.y=190;
+      }
+
+      // Check for collisions
+      if(pCollision(racket1, ball)==true){ direction=10; }
+      if(pCollision(racket2, ball)==true){ direction=-10; }
+    }
+
+    // Clear [window]
+    pWindowClear(&window);
+
+    // Draw objects
+    pWindowDrawObject(&window, &middle1);
+    pWindowDrawObject(&window, &middle2);
+    pWindowDrawObject(&window, &middle3);
+
+    pWindowDrawObject(&window, &racket1);
+    pWindowDrawObject(&window, &racket2);
+
+    if(timer<20){ pWindowDrawObject(&window, &ball); }
+
+    // Handle [window] [event]
     pEventHandle(&window, &event);
   }
 
