@@ -12,8 +12,8 @@
  */
 #include <stdbool.h>
 
-#ifndef GRAPHICS_H
-#define GRAPHICS_H
+#ifndef TEXT_H
+#define TEXT_H
 
 #ifdef __cplusplus
 extern "C"{

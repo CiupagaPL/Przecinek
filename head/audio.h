@@ -1,2 +1,25 @@
-/*Orginal {,} Made By Ciupaga*/
-/*https://github.com/CiupagaPL/Przecinek*/
+/* Orginal {,} Made By Ciupaga
+ * https://github.com/CiupagaPL/Przecinek
+ * Make Sure to Read the License!
+ *         |\_____/|
+ *         |       |
+ *  ___    | >   < |
+ * /   \  _\ = , = /
+ * \__  \/        |
+ *    \_         /
+ *      \ \ \--\ \
+ *      {,{,} {,},}
+ */
+#include <stdbool.h>
+
+#ifndef AUDIO_H
+#define AUDIO_H
+
+#ifdef __cplusplus
+extern "C"{
+  #endif
+
+  #ifdef __cplusplus
+}
+#endif
+#endif
