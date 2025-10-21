@@ -1,12 +1,11 @@
-/* |\____/| Example {,} Script
+/* |\____/| Example {,} Ping Pong Script
  * |  o o |
  */
 #include <iostream>
 #include <string.h>
 #include <cmath>
-using namespace std;
 
-#include "head/window.h"
+#include "przecinek.h"
 
 int main(void){
   // Disable console, set frame limit to `60`
@@ -112,8 +111,12 @@ int main(void){
       else if(przecinek.cursor.y-window.y>=580){ ball.y=580; }
       else{ ball.y=przecinek.cursor.y-window.y; }
 
+      // Check for collisions
+      if(pObjectCollision(racket1, ball)==true){ direction=10; }
+      else if(pObjectCollision(racket2, ball)==true){ direction=-10; }
+
       // Reset game
-      if(ball.x+ball.width>800 || ball.x<0){
+      else if(ball.x+ball.width>800 || ball.x<0){
         start=false;
         direction=10;
         angle=90;
@@ -126,10 +129,6 @@ int main(void){
         racket2.x=785;
         racket2.y=190;
       }
-
-      // Check for collisions
-      if(pCollision(racket1, ball)==true){ direction=10; }
-      if(pCollision(racket2, ball)==true){ direction=-10; }
     }
 
     // Clear [window]

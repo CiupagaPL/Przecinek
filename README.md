@@ -9,12 +9,17 @@ It's under active development.
 > [!NOTE]
 > Don't forget that it's still in early development.
 
-### Project Layout
-Przecinek consists of four main components:
-- **{,} Window** which manages windows, objects and global events,
-- **{,} Audio** *[NOT AVAILABLE]* which is responsible for handling audio,
-- **{,} Graphics** *[NOT AVAILABLE]* which manages textures and sprites.
-- **{,} Text** *[NOT AVAILABLE]* which renders text and manages fonts.
+### Features / TODO
+- [X] Creating and managing windows,
+- [X] Limiting and counting frames,
+- [X] Checking global values like mouse position or screen size,
+- [X] Input system,
+- [X] Drawing and clearing windows,
+- [X] Simple objects and collisions,
+- [ ] Creating diffrent shapes, managing them and checking their collisions,
+- [ ] Audio system,
+- [ ] Loading images and rendering textures,
+- [ ] Managing fonts and rendering texts.
 
 ### About Wiki
 You can find all the information about managing, configuring and setting up this project in the Wiki.
@@ -22,15 +27,10 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 > [!NOTE]
 > It's also in early access.
 
-### Assets
-Przecinek uses two libraries:
-- For Windows builds [[WinAPI]](https://github.com/microsoft/Windows-classic-samples) is being used,
-- For Linux builds [[X11LIB]](https://gitlab.freedesktop.org/xorg/lib/libx11) is being used.
-
 ### Version
-> Newest Version (Alpha): **[a3,0]**;<br>
-> Newest Version (Unstable): **[u,7]**;<br>
-> Last Updated: **11-10-2025**;
+> Newest Version (Alpha): **[a3,1]**;<br>
+> Newest Version (Unstable): **[u,8]**;<br>
+> Last Updated: **21-10-2025**;
 
 ### LICENSE
 ```
@@ -55,6 +55,3 @@ b) "Comments" refer to any messages in the source code.
 
 This software is provided "as-is" without any warranties. The author
 is not liable for any damages arising from its use.
-```
-> [!IMPORTANT]
-> The license has been updated and will take effect with the new alpha release.
