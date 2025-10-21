@@ -89,16 +89,16 @@
 /* |\____/| [pSize], [pPosition], [pColor] Structure
  * |  o o |
  */
-typedef struct{ unsigned int width, height; } pSize;
+typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned int r, g, b; } pColor;
+typedef struct{ unsigned short int r, g, b; } pColor;
 
 /* |\____/| [pPrzecinek] Structure and Variable
  * |  o o |
  */
 typedef struct{
   bool debug;
-  unsigned int windowCount, frameLimit;
+  unsigned short int windowCount, frameLimit;
 
   pSize display;
   pPosition cursor;
@@ -110,16 +110,16 @@ pPrzecinek przecinek={ false, 0, FRAME_DEF };
  * |  o o |
  */
 typedef struct{
-  unsigned int ID;
+  unsigned short int ID;
   bool active;
 
   int x, y;
-  unsigned int width, height;
-  unsigned int widthMin, heightMin, widthMax, heightMax;
+  unsigned short int width, height;
+  unsigned short int widthMin, heightMin, widthMax, heightMax;
 
   bool resize;
   char title[TITLE_MAX];
-  unsigned int border;
+  unsigned short int border;
   bool fullScreen;
 } pWindow;
 
@@ -130,13 +130,13 @@ typedef struct{
   int x, y;
   int xBac, yBac;
 
-  unsigned int width, height;
-  unsigned int widthMin, heightMin, widthMax, heightMax;
-  unsigned int widthBac, heightBac, widthFix, heightFix;
+  unsigned short int width, height;
+  unsigned short int widthMin, heightMin, widthMax, heightMax;
+  unsigned short int widthBac, heightBac, widthFix, heightFix;
 
   bool resize;
   char title[TITLE_MAX];
-  unsigned int border;
+  unsigned short int border;
   bool fullScreen;
 
   HBITMAP hBitmap;
@@ -155,14 +155,14 @@ typedef struct{
   pPosition MOVE;
 
   bool KEYON;
-  unsigned int KEY[KEY_MAX];
+  unsigned short int KEY[KEY_MAX];
 
   DWORD frameStart;
-  unsigned int frameCount;
+  unsigned short int frameCount;
 } pBuildWin;
 
-unsigned int activeWinID=0, currentWinID=0, createWinID=0;
-unsigned int winCount=0;
+unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
+unsigned short int winCount=0;
 
 pBuildWin build[WINDOW_MAX];
 MSG message;
@@ -172,7 +172,7 @@ PAINTSTRUCT paintStruct;
 HBRUSH brush;
 
 typedef struct{
-  unsigned int ID;
+  unsigned short int ID;
 
   HWND hwnd;
 } pWindowPointer;
@@ -186,9 +186,9 @@ WINDOWPOS *limit;
  */
 typedef struct{
   bool focus;
-  unsigned int frameCount;
+  unsigned short int frameCount;
 
-  unsigned int key[KEY_MAX];
+  unsigned short int key[KEY_MAX];
   bool keyCaps;
 } pEvent;
 
@@ -199,7 +199,7 @@ pEvent change;
  */
 typedef struct{
   int x, y;
-  unsigned int width, height;
+  unsigned short int width, height;
 
   pColor color;
 } pObject;
@@ -209,7 +209,7 @@ typedef struct{
  * | o   o | [debug] (true/false), [frameLimit] (1:MAX)
  * \ = , = / Returns nothing
  */
-void pSetup(bool debug, unsigned int frameLimit){
+void pSetup(bool debug, unsigned short int frameLimit){
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
 
@@ -389,8 +389,12 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
         limit->cy=build[windowPointer->ID-1].heightMin+build[windowPointer->ID-1].heightFix;
       }
 
-      if(limit->cx>build[windowPointer->ID-1].widthMax){ limit->cx=build[windowPointer->ID-1].widthMax; }
-      if(limit->cy>build[windowPointer->ID-1].heightMax){ limit->cy=build[windowPointer->ID-1].heightMax; }
+      if(limit->cx>build[windowPointer->ID-1].widthMax){
+        limit->cx=build[windowPointer->ID-1].widthMax;
+      }
+      if(limit->cy>build[windowPointer->ID-1].heightMax){
+        limit->cy=build[windowPointer->ID-1].heightMax;
+      }
     }
   }
 
@@ -431,7 +435,8 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
     build[windowPointer->ID-1].hdc=BeginPaint(hwnd, &paintStruct);
 
     // Switch [window] buffer
-    BitBlt(build[windowPointer->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
+    BitBlt(
+      build[windowPointer->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
       build[windowPointer->ID-1].hMemDC, 0, 0, SRCCOPY
     );
 
@@ -529,7 +534,7 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
  * | o   o | [width], [height] (MIN:MAX), [resize] (true/false)
  * \ = , = / Returns [window]
  */
-pWindow pWindowCreate(unsigned int width, unsigned int height, bool resize){
+pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize){
   // Manage console
   if(GetConsoleWindow()==NULL && przecinek.debug==true){
     AllocConsole();
@@ -666,6 +671,13 @@ printf(
   // Create [build] [wClass]
   build[window.ID-1].wClass.lpfnWndProc=pWindowProc;
   build[window.ID-1].wClass.hInstance=build[window.ID-1].hInstance;
+
+  // Check if [class] already exists
+  if(GetClassInfo(build[window.ID-1].hInstance, build[window.ID-1].class, &build[window.ID-1].wClass)){
+    sprintf(build[window.ID-1].class, "pClass%i", window.ID+WINDOW_MAX);
+  }
+
+  // Setup [build] [wClass]
   build[window.ID-1].wClass.lpszClassName=build[window.ID-1].class;
   build[window.ID-1].wClass.hCursor=LoadCursor(NULL, IDC_ARROW);
   if(!RegisterClass(&build[window.ID-1].wClass)){
@@ -881,7 +893,8 @@ void pEventHandle(pWindow *window, pEvent *event){
     // Switch [window] buffer
     InvalidateRect(build[window->ID-1].hwnd, NULL, TRUE);
     build[window->ID-1].hdc=BeginPaint(build[window->ID-1].hwnd, &paintStruct);
-    BitBlt(build[window->ID-1].hdc, 0, 0, window->width, window->height,
+    BitBlt(
+      build[window->ID-1].hdc, 0, 0, window->width, window->height,
       build[window->ID-1].hMemDC, 0, 0, SRCCOPY
     );
     EndPaint(build[window->ID-1].hwnd, &paintStruct);
@@ -962,14 +975,15 @@ void pEventHandle(pWindow *window, pEvent *event){
       SetWindowLong(build[window->ID-1].hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 
       // Resize and move [window]
-      SetWindowPos(build[window->ID-1].hwnd, HWND_TOP, window->x, window->y,
+      SetWindowPos(
+        build[window->ID-1].hwnd, HWND_TOP, window->x, window->y,
         window->width, window->height, SWP_NOOWNERZORDER | SWP_FRAMECHANGED
       );
 
       // Update buffer
       build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-      build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-        window->width, window->height
+      build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+        build[window->ID-1].hdc, window->width, window->height
       );
       SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
       ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1000,7 +1014,8 @@ void pEventHandle(pWindow *window, pEvent *event){
       ShowWindow(build[window->ID-1].hwnd, SW_RESTORE);
 
       // Resize and move [window]
-      SetWindowPos(build[window->ID-1].hwnd, NULL, window->x, window->y,
+      SetWindowPos(
+        build[window->ID-1].hwnd, NULL, window->x, window->y,
         window->width, window->height, SWP_NOZORDER | SWP_FRAMECHANGED
       );
 
@@ -1010,8 +1025,8 @@ void pEventHandle(pWindow *window, pEvent *event){
 
       // Update buffer
       build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-      build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-        window->width, window->height
+      build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+        build[window->ID-1].hdc, window->width, window->height
       );
       SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
       ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1084,7 +1099,8 @@ printf(
         }
 
         // Move [window]
-        SetWindowPos(build[window->ID-1].hwnd, NULL, build[window->ID-1].x, build[window->ID-1].y,
+        SetWindowPos(
+          build[window->ID-1].hwnd, NULL, build[window->ID-1].x, build[window->ID-1].y,
           0, 0, SWP_NOZORDER | SWP_NOSIZE
         );
 
@@ -1172,7 +1188,8 @@ printf(
         build[window->ID-1].height=window->height;
 
         // Resize [window]
-        SetWindowPos(build[window->ID-1].hwnd, NULL, 0, 0,
+        SetWindowPos(
+          build[window->ID-1].hwnd, NULL, 0, 0,
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
@@ -1183,8 +1200,8 @@ printf(
 
         // Update buffer
         build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-        build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-          window->width, window->height
+        build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+          build[window->ID-1].hdc, window->width, window->height
         );
         SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1207,8 +1224,8 @@ printf(
 
         // Update buffer
         build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-        build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-          window->width, window->height
+        build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+          build[window->ID-1].hdc, window->width, window->height
         );
         SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1447,7 +1464,8 @@ printf(
         build[window->ID-1].width=build[window->ID-1].widthMin;
 
         // Resize [window]
-        SetWindowPos(build[window->ID-1].hwnd, NULL, 0, 0,
+        SetWindowPos(
+          build[window->ID-1].hwnd, NULL, 0, 0,
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
@@ -1458,8 +1476,8 @@ printf(
 
         // Update buffer
         build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-        build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-          window->width, window->height
+        build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+          build[window->ID-1].hdc, window->width, window->height
         );
         SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1474,7 +1492,8 @@ printf(
         build[window->ID-1].height=build[window->ID-1].heightMin;
 
         // Resize [window]
-        SetWindowPos(build[window->ID-1].hwnd, NULL, 0, 0,
+        SetWindowPos(
+          build[window->ID-1].hwnd, NULL, 0, 0,
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
@@ -1485,8 +1504,8 @@ printf(
 
         // Update buffer
         build[window->ID-1].hdc=GetDC(build[window->ID-1].hwnd);
-        build[window->ID-1].hBitmap=CreateCompatibleBitmap(build[window->ID-1].hdc,
-          window->width, window->height
+        build[window->ID-1].hBitmap=CreateCompatibleBitmap(
+          build[window->ID-1].hdc, window->width, window->height
         );
         SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
@@ -1525,7 +1544,7 @@ printf(
  * | o   o | [width], [height] (0:8bit)
  * \ = , = / Returns [object]
  */
-pObject pObjectCreate(unsigned int width, unsigned int height){
+pObject pObjectCreate(unsigned short int width, unsigned short int height){
   // Create local [object]
   pObject object;
 
@@ -1544,12 +1563,12 @@ pObject pObjectCreate(unsigned int width, unsigned int height){
   return object;
 }
 
-/* |\_____/| pCollision() Function
+/* |\_____/| pObjectCollision() Function
  * |       | Used for checking collisions between objects
  * | o   o | [object1], [object2]
  * \ = , = / Returns (true/false)
  */
-bool pCollision(pObject object1, pObject object2){
+bool pObjectCollision(pObject object1, pObject object2){
   return (object1.x<object2.x+object2.width &&
     object1.x+object1.width>object2.x &&
     object1.y<object2.y+object2.height &&
@@ -1562,7 +1581,7 @@ bool pCollision(pObject object1, pObject object2){
  * | o   o | [key]
  * \ = , = / Returns (0:255)
  */
-unsigned int pKey(const char *key){
+unsigned short int pKey(const char *key){
   if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 || strcmp(key, "lmouse")==0){
     return VK_LBUTTON;
   }

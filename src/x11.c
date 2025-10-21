@@ -45,16 +45,16 @@
 /* |\____/| [pSize], [pPosition], [pColor] Structure
  * |  o o |
  */
-typedef struct{ unsigned int width, height; } pSize;
+typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned int r, g, b; } pColor;
+typedef struct{ unsigned short int r, g, b; } pColor;
 
 /* |\____/| [pPrzecinek] Structure and Variable
  * |  o o |
  */
 typedef struct{
   bool debug;
-  unsigned int windowCount, frameLimit;
+  unsigned short int windowCount, frameLimit;
 
   pSize display;
   pPosition cursor;
@@ -66,16 +66,16 @@ pPrzecinek przecinek={ false, 0, FRAME_DEF };
  * |  o o |
  */
 typedef struct{
-  unsigned int ID;
+  unsigned short int ID;
   bool active;
 
   int x, y;
-  unsigned int width, height;
-  unsigned int widthMin, heightMin, widthMax, heightMax;
+  unsigned short int width, height;
+  unsigned short int widthMin, heightMin, widthMax, heightMax;
 
   bool resize;
   char title[TITLE_MAX];
-  unsigned int border;
+  unsigned short int border;
   bool fullScreen;
 } pWindow;
 
@@ -86,13 +86,13 @@ typedef struct{
   int x, y;
   int xBac, yBac;
 
-  unsigned int width, height;
-  unsigned int widthMin, heightMin, widthMax, heightMax;
-  unsigned int widthBac, heightBac;
+  unsigned short int width, height;
+  unsigned short int widthMin, heightMin, widthMax, heightMax;
+  unsigned short int widthBac, heightBac;
 
   bool resize;
   char title[TITLE_MAX];
-  unsigned int border;
+  unsigned short int border;
   bool fullScreen;
 
   Display *display;
@@ -113,12 +113,12 @@ typedef struct{
   XKeyboardState keyboardState;
 
   struct timeval frameStart, frameEnd;
-  unsigned int frameCount;
+  unsigned short int frameCount;
   double frameMax;
 } pBuildX11;
 
-unsigned int activeWinID=0;
-unsigned int winCount=0;
+unsigned short int activeWinID=0;
+unsigned short int winCount=0;
 
 pBuildX11 build[WINDOW_MAX];
 XEvent currentEvent, currentReport, currentAction;
@@ -133,9 +133,9 @@ unsigned int mask;
  */
 typedef struct{
   bool focus;
-  unsigned int frameCount;
+  unsigned short int frameCount;
 
-  unsigned int key[KEY_MAX];
+  unsigned short int key[KEY_MAX];
   bool keyCaps;
 } pEvent;
 
@@ -146,7 +146,7 @@ pEvent change;
  */
 typedef struct{
   int x, y;
-  unsigned int width, height;
+  unsigned short int width, height;
 
   pColor color;
 } pObject;
@@ -156,7 +156,7 @@ typedef struct{
  * | o   o | [debug] (true/false), [frameLimit] (1:MAX)
  * \ = , = / Returns nothing
  */
-void pSetup(bool debug, unsigned int frameLimit){
+void pSetup(bool debug, unsigned short int frameLimit){
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
 
@@ -204,7 +204,8 @@ printf(
   przecinek.display.height=XDisplayHeight(display, screen);
 
   // Update [przecinek] [cursor] values
-  if(XQueryPointer(display, root, &root, &root, &cursorMain.x, &cursorMain.y,
+  if(XQueryPointer(
+      display, root, &root, &root, &cursorMain.x, &cursorMain.y,
       &cursorLocal.x, &cursorLocal.y, &mask)){
     przecinek.cursor.x=cursorMain.x;
     przecinek.cursor.y=cursorMain.y;
@@ -310,7 +311,7 @@ void pWindowReset(pWindow *window){
  * | o   o | [width], [height] (MIN:MAX), [resize] (true/false)
  * \ = , = / Returns [window]
  */
-pWindow pWindowCreate(unsigned int width, unsigned int height, bool resize){
+pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize){
   // Create local [window]
   pWindow window;
 
@@ -483,8 +484,8 @@ printf(
 
   // Create [build] [delete] and [state]
   build[window.ID-1].delete=XInternAtom(build[window.ID-1].display, "WM_DELETE_WINDOW", False);
-  XSetWMProtocols(build[window.ID-1].display, build[window.ID-1].base,
-    &build[window.ID-1].delete, 1
+  XSetWMProtocols(
+    build[window.ID-1].display, build[window.ID-1].base, &build[window.ID-1].delete, 1
   );
   build[window.ID-1].state=XInternAtom(build[window.ID-1].display, "_NET_WM_STATE", False);
 
@@ -509,7 +510,8 @@ printf(
   XSetWMNormalHints(build[window.ID-1].display, build[window.ID-1].base, &build[window.ID-1].sizeHint);
 
   // Setup [build] input
-  XSelectInput(build[window.ID-1].display, build[window.ID-1].base,
+  XSelectInput(
+    build[window.ID-1].display, build[window.ID-1].base,
     KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask |
     ExposureMask | StructureNotifyMask | FocusChangeMask | PointerMotionMask
   );
@@ -520,10 +522,11 @@ printf(
   XFlush(build[window.ID-1].display);
 
   // Create [build] [graphics]
-  build[window.ID-1].graphics=XCreateGC(build[window.ID-1].display,
-    build[window.ID-1].base, 0, NULL
+  build[window.ID-1].graphics=XCreateGC(
+    build[window.ID-1].display, build[window.ID-1].base, 0, NULL
   );
-  XSetForeground(build[window.ID-1].display, build[window.ID-1].graphics,
+  XSetForeground(
+    build[window.ID-1].display, build[window.ID-1].graphics,
     WhitePixel(build[window.ID-1].display, build[window.ID-1].screen
   ));
 
@@ -531,7 +534,8 @@ printf(
   gettimeofday(&build[window.ID-1].frameStart, NULL);
 
   // Create [build] [buffer]
-  build[window.ID-1].buffer=XCreatePixmap(build[window.ID-1].display, build[window.ID-1].base,
+  build[window.ID-1].buffer=XCreatePixmap(
+    build[window.ID-1].display, build[window.ID-1].base,
     width, height, DefaultDepth(build[window.ID-1].display, build[window.ID-1].screen)
   );
 
@@ -553,18 +557,19 @@ void pWindowDrawObject(pWindow *window, pObject *object){
     build[window->ID-1].color.flags=DoRed | DoGreen | DoBlue;
 
     // Create [build] [colorMap]
-    build[window->ID-1].colorMap=DefaultColormap(build[window->ID-1].display,
-      build[window->ID-1].screen
+    build[window->ID-1].colorMap=DefaultColormap(
+      build[window->ID-1].display, build[window->ID-1].screen
     );
-    XAllocColor(build[window->ID-1].display, build[window->ID-1].colorMap,
-      &build[window->ID-1].color
+    XAllocColor(
+      build[window->ID-1].display, build[window->ID-1].colorMap, &build[window->ID-1].color
     );
 
     // Draw on [build] [buffer]
-    XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics,
-      build[window->ID-1].color.pixel
+    XSetForeground(
+      build[window->ID-1].display, build[window->ID-1].graphics, build[window->ID-1].color.pixel
     );
-    XFillRectangle(build[window->ID-1].display, build[window->ID-1].buffer,
+    XFillRectangle(
+      build[window->ID-1].display, build[window->ID-1].buffer,
       build[window->ID-1].graphics, object->x, object->y, object->width, object->height
     );
   }
@@ -584,10 +589,12 @@ void pWindowDrawObject(pWindow *window, pObject *object){
 void pWindowClear(pWindow* window){
   if(window->active==true){
     // Clear [build] [buffer]
-    XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics,
+    XSetForeground(
+      build[window->ID-1].display, build[window->ID-1].graphics,
       WhitePixel(build[window->ID-1].display, build[window->ID-1].screen)
     );
-    XFillRectangle(build[window->ID-1].display, build[window->ID-1].buffer,
+    XFillRectangle(
+      build[window->ID-1].display, build[window->ID-1].buffer,
       build[window->ID-1].graphics, 0, 0, window->width, window->height
     );
   }
@@ -669,7 +676,8 @@ void pEventHandle(pWindow *window, pEvent *event){
       // Update [przecinek] [cursor] values
       root=DefaultRootWindow(build[window->ID-1].display);
 
-      if(XQueryPointer(build[window->ID-1].display, root, &root, &root,
+      if(XQueryPointer(
+          build[window->ID-1].display, root, &root, &root,
           &cursorMain.x, &cursorMain.y, &cursorLocal.x, &cursorLocal.y, &mask)){
         przecinek.cursor.x=cursorMain.x;
         przecinek.cursor.y=cursorMain.y;
@@ -703,9 +711,6 @@ void pEventHandle(pWindow *window, pEvent *event){
       // Manage close [currentEvent]
       if(currentEvent.type==ClientMessage &&
           (Atom)currentEvent.xclient.data.l[0]==build[window->ID-1].delete){
-        // Reset [window]
-        pWindowReset(window);
-
         // Clean [buffer] and [graphics]
         XFreePixmap(build[window->ID-1].display, build[window->ID-1].buffer);
         XFreeGC(build[window->ID-1].display, build[window->ID-1].graphics);
@@ -713,6 +718,9 @@ void pEventHandle(pWindow *window, pEvent *event){
         // Destroy [base] and close [display]
         XDestroyWindow(build[window->ID-1].display, build[window->ID-1].base);
         XCloseDisplay(build[window->ID-1].display);
+
+        // Reset [window]
+        pWindowReset(window);
 
         // Set [change] value and reset [event]
         change=pEventCreate();
@@ -740,8 +748,8 @@ void pEventHandle(pWindow *window, pEvent *event){
         XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
           window->width, window->height
         );
-        build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-          build[window->ID-1].base, window->width, window->height,
+        build[window->ID-1].buffer=XCreatePixmap(
+          build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
           DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
         );
 
@@ -764,11 +772,11 @@ void pEventHandle(pWindow *window, pEvent *event){
         build[window->ID-1].height=window->height;
 
         // Resize [window] and update [buffer]
-        XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
-          window->width, window->height
+        XResizeWindow(
+          build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
         );
-        build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-          build[window->ID-1].base, window->width, window->height,
+        build[window->ID-1].buffer=XCreatePixmap(
+          build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
           DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
         );
 
@@ -928,11 +936,12 @@ printf(
           }
 
           // Resize [window] and update [buffer]
-          XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
+          XResizeWindow(
+            build[window->ID-1].display, build[window->ID-1].base,
             window->width, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-            build[window->ID-1].base, window->width, window->height,
+          build[window->ID-1].buffer=XCreatePixmap(
+            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
         }
@@ -949,16 +958,18 @@ printf(
           }
 
           // Update [buffer]
-          build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-            build[window->ID-1].base, window->width, window->height,
+          build[window->ID-1].buffer=XCreatePixmap(
+            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
 
           // Clear [window]
-          XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics,
+          XSetForeground(
+            build[window->ID-1].display, build[window->ID-1].graphics,
             WhitePixel(build[window->ID-1].display, build[window->ID-1].screen)
           );
-          XFillRectangle(build[window->ID-1].display, build[window->ID-1].base,
+          XFillRectangle(
+            build[window->ID-1].display, build[window->ID-1].base,
             build[window->ID-1].graphics, 0, 0, window->width, window->height
           );
         }
@@ -1236,11 +1247,11 @@ printf(
           }
 
           // Resize [window] and update [buffer]
-          XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
-            window->width, window->height
+          XResizeWindow(
+            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-            build[window->ID-1].base, window->width, window->height,
+          build[window->ID-1].buffer=XCreatePixmap(
+            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
         }
@@ -1257,11 +1268,11 @@ printf(
           }
 
           // Resize [window] and update [buffer]
-          XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
-            window->height, window->height
+          XResizeWindow(
+            build[window->ID-1].display, build[window->ID-1].base, window->height, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(build[window->ID-1].display,
-            build[window->ID-1].base, window->height, window->height,
+          build[window->ID-1].buffer=XCreatePixmap(
+            build[window->ID-1].display, build[window->ID-1].base, window->height, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
         }
@@ -1276,7 +1287,8 @@ printf(
 
     // Switch [window] [buffer]
     if(currentEvent.type!=ConfigureNotify){
-      XCopyArea(build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].base,
+      XCopyArea(
+        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].base,
         DefaultGC(build[window->ID-1].display, build[window->ID-1].screen),
         0, 0, window->width, window->height, 0, 0
       );
@@ -1287,8 +1299,8 @@ printf(
 
     // Update [window] [sizeHint]
     if(build[window->ID-1].limitChange==true){
-      XSetWMNormalHints(build[window->ID-1].display,
-        build[window->ID-1].base, &build[window->ID-1].sizeHint
+      XSetWMNormalHints(
+        build[window->ID-1].display, build[window->ID-1].base, &build[window->ID-1].sizeHint
       );
 
       build[window->ID-1].limitChange=false;
@@ -1326,7 +1338,7 @@ printf(
  * | o   o | [width], [height] (0:8bit)
  * \ = , = / Returns [object]
  */
-pObject pObjectCreate(unsigned int width, unsigned int height){
+pObject pObjectCreate(unsigned short int width, unsigned short int height){
   // Create local [object]
   pObject object;
 
@@ -1345,12 +1357,12 @@ pObject pObjectCreate(unsigned int width, unsigned int height){
   return object;
 }
 
-/* |\_____/| pCollision() Function
+/* |\_____/| pObjectCollision() Function
  * |       | Used for checking collisions between objects
  * | o   o | [object1], [object2]
  * \ = , = / Returns (true/false)
  */
-bool pCollision(pObject object1, pObject object2){
+bool pObjectCollision(pObject object1, pObject object2){
   return (object1.x<object2.x+object2.width &&
     object1.x+object1.width>object2.x &&
     object1.y<object2.y+object2.height &&
@@ -1363,7 +1375,7 @@ bool pCollision(pObject object1, pObject object2){
  * | o   o | [key]
  * \ = , = / Returns (0:255)
  */
-unsigned int pKey(const char *key){
+unsigned short int pKey(const char *key){
   if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 ||
     strcmp(key, "lmouse")==0){ return 1; }
   if(strcmp(key, "MMOUSE")==0 || strcmp(key, "MMouse")==0 ||

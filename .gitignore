@@ -1,2 +1,4 @@
 build/
-backup/
+__backup/
+main.c
+main.cpp

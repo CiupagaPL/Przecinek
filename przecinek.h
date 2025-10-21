@@ -12,8 +12,8 @@
  */
 #include <stdbool.h>
 
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef PRZECINEK_H
+#define PRZECINEK_H
 
 #ifdef __cplusplus
 extern "C"{
@@ -41,16 +41,16 @@ extern "C"{
   /* |\____/| [pSize], [pPosition], [pColor] Structure
    * |  o o |
    */
-  typedef struct{ unsigned int width, height; } pSize;
+  typedef struct{ unsigned short int width, height; } pSize;
   typedef struct{ int x, y; } pPosition;
-  typedef struct{ unsigned int r, g, b; } pColor;
+  typedef struct{ unsigned short int r, g, b; } pColor;
 
   /* |\____/| [pPrzecinek] Structure and Variable
    * |  o o |
    */
   typedef struct{
     bool debug;
-    unsigned int windowCount, frameLimit;
+    unsigned short int windowCount, frameLimit;
 
     pSize display;
     pPosition cursor;
@@ -62,16 +62,16 @@ extern "C"{
    * |  o o |
    */
   typedef struct{
-    unsigned int ID;
+    unsigned short int ID;
     bool active;
 
     int x, y;
-    unsigned int width, height;
-    unsigned int widthMin, heightMin, widthMax, heightMax;
+    unsigned short int width, height;
+    unsigned short int widthMin, heightMin, widthMax, heightMax;
 
     bool resize;
     char title[TITLE_MAX];
-    unsigned int border;
+    unsigned short int border;
     bool fullScreen;
   } pWindow;
 
@@ -85,9 +85,9 @@ extern "C"{
    */
   typedef struct{
     bool focus;
-    unsigned int frameCount;
+    unsigned short int frameCount;
 
-    unsigned int key[KEY_MAX];
+    unsigned short int key[KEY_MAX];
     bool keyCaps;
   } pEvent;
 
@@ -96,7 +96,7 @@ extern "C"{
    */
   typedef struct{
     int x, y;
-    unsigned int width, height;
+    unsigned short int width, height;
 
     pColor color;
   } pObject;
@@ -106,7 +106,7 @@ extern "C"{
    * | o   o | [debug] (true/false), [frameLimit] (1:MAX)
    * \ = , = / Returns nothing
    */
-  void pSetup(bool debug, unsigned int frameLimit);
+  void pSetup(bool debug, unsigned short int frameLimit);
 
   /* |\_____/| pClear() Function
    * |       | Used for clearing console
@@ -134,7 +134,7 @@ extern "C"{
    * | o   o | [width], [height] (MIN:MAX), [resize] (true/false)
    * \ = , = / Returns [window]
    */
-  pWindow pWindowCreate(unsigned int width, unsigned int height, bool resize);
+  pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
 
   /* |\_____/| pWindowDrawObject() Function
    * |       | Used for drawing objects on window
@@ -176,21 +176,21 @@ extern "C"{
    * | o   o | [width], [height] (0:8bit)
    * \ = , = / Returns [object]
    */
-  pObject pObjectCreate(unsigned int width, unsigned int height);
+  pObject pObjectCreate(unsigned short int width, unsigned short int height);
 
-  /* |\_____/| pCollision() Function
+  /* |\_____/| pObjectCollision() Function
    * |       | Used for checking collisions between objects
    * | o   o | [object1], [object2]
    * \ = , = / Returns (true/false)
    */
-  bool pCollision(pObject object1, pObject object2);
+  bool pObjectCollision(pObject object1, pObject object2);
 
   /* |\_____/| pKey() Function
    * |       | Used for converting key names into codes
    * | o   o | [key]
    * \ = , = / Returns (0:255)
    */
-  unsigned int pKey(const char *key);
+  unsigned short int pKey(const char *key);
 
   #ifdef __cplusplus
 }
