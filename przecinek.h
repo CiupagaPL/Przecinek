@@ -34,16 +34,22 @@ extern "C"{
 
   #define TITLE_DEF "{,}"
   #define TITLE_MAX 255
+
   #define KEY_MAX 255
   #define FRAME_DEF 24
   #define FRAME_MAX 1024
+
+  #define FONT_MAX 32
+  #define FONT_SIZE_MAX 512
+  #define FONT_DIR_MAX 255
+  #define TEXT_MAX 8192
 
   /* |\____/| [pSize], [pPosition], [pColor] Structure
    * |  o o |
    */
   typedef struct{ unsigned short int width, height; } pSize;
   typedef struct{ int x, y; } pPosition;
-  typedef struct{ unsigned short int r, g, b; } pColor;
+  typedef struct{ unsigned short int red, green, blue; } pColor;
 
   /* |\____/| [pPrzecinek] Structure and Variable
    * |  o o |
@@ -101,6 +107,35 @@ extern "C"{
     pColor color;
   } pObject;
 
+  /* |\____/| [pFont] Structure
+   * |  o o |
+   */
+  typedef struct{
+    unsigned int ID;
+
+    unsigned short int size;
+    char name[FONT_DIR_MAX];
+
+    pColor color;
+  } pFont;
+
+  /* |\____/| [pFontX11], [pFontWin] Structures
+   * |  o o |
+   */
+  //pFontX11, pFontWin
+
+  /* |\____/| [pText] Structure
+   * |  o o |
+   */
+  typedef struct{
+    int x, y;
+    unsigned short int size;
+
+    char value[TEXT_MAX];
+
+    pColor color;
+  } pText;
+
   /* |\_____/| pSetup() Function
    * |       | Used for initialization of the library
    * | o   o | [debug] (true/false), [frameLimit] (1:MAX)
@@ -143,6 +178,9 @@ extern "C"{
    */
   void pWindowDrawObject(pWindow *window, pObject *object);
 
+  //temp
+  void pWindowDrawText(pWindow *window, pFont *font, pText *text);
+
   /* |\_____/| WindowClear() Function
    * |       | Used for clearing window
    * | o   o | [window]
@@ -173,7 +211,7 @@ extern "C"{
 
   /* |\_____/| pObjectCreate() Function
    * |       | Used for creating objects
-   * | o   o | [width], [height] (0:8bit)
+   * | o   o | [width], [height] (0:s_int)
    * \ = , = / Returns [object]
    */
   pObject pObjectCreate(unsigned short int width, unsigned short int height);
@@ -184,6 +222,18 @@ extern "C"{
    * \ = , = / Returns (true/false)
    */
   bool pObjectCollision(pObject object1, pObject object2);
+
+  //temp
+  //void pFontReset(pFont *font);
+
+  //temp
+  pFont pFontCreate(const char *name, unsigned short int size);
+
+  //temp
+  void pFontClose(pFont *font);
+
+  //temp
+  pText pTextCreate(const char *value);
 
   /* |\_____/| pKey() Function
    * |       | Used for converting key names into codes

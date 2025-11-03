@@ -32,9 +32,15 @@
 
 #define TITLE_DEF "{,}"
 #define TITLE_MAX 255
+
 #define KEY_MAX 255
 #define FRAME_DEF 24
 #define FRAME_MAX 1024
+
+#define FONT_MAX 32
+#define FONT_SIZE_MAX 512
+#define FONT_DIR_MAX 255
+#define TEXT_MAX 8192
 
 /* |\____/| Define [pKey] Values
  * |  o o |
@@ -203,6 +209,50 @@ typedef struct{
 
   pColor color;
 } pObject;
+
+/* |\____/| [pFont] Structure
+ * |  o o |
+ */
+typedef struct{
+  unsigned int ID;
+
+  unsigned short int size;
+  char name[FONT_DIR_MAX];
+
+  pColor color;
+} pFont;
+
+/* |\____/| [pFontWin] Structure and Variables
+ * |  o o |
+ */
+//pFontWin
+
+/* |\____/| [pText] Structure
+ * |  o o |
+ */
+typedef struct{
+  int x, y;
+
+  char value[TEXT_MAX];
+} pText;
+
+/* |\____/| Base Function List
+ * |  o o |
+ */
+void pWindowReset(pWindow *window);
+pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
+void pWindowDrawObject(pWindow *window, pObject *object);
+void pWindowDrawText(pWindow *window, pFont *font, pText *text);
+void pWindowClear(pWindow *window);
+void pWindowClose(pWindow *window);
+pEvent pEventCreate();
+void pEventHandle(pWindow *window, pEvent *event);
+pObject pObjectCreate(unsigned short int width, unsigned short int height);
+bool pObjectCollision(pObject object1, pObject object2);
+void pFontReset(pFont *font);
+pFont pFontCreate(const char *name, unsigned short int size);
+void pFontClose(pFont *font);
+pText pTextCreate(const char *value);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -1276,12 +1326,8 @@ printf(
     }
 
     // Update [window] [title]
-    if(window->title!=build[window->ID-1].title){
+    if(strcmp(window->title, build[window->ID-1].title)!=0){
       if(strlen(window->title)>TITLE_MAX){
-        // Reset [window] [title]
-        strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
-        window->title[sizeof(window->title)-1]='\0';
-
         if(przecinek.debug==true){
 printf(
   "[pWarning, W005] \"Window title is too long\" (changing back to: %s),\n",
@@ -1289,6 +1335,10 @@ printf(
 );
           fflush(stdout);
         }
+
+        // Reset [window] [title]
+        strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
+        window->title[sizeof(window->title)-1]='\0';
       }
       else{
         // Update [build] [title]
@@ -1541,7 +1591,7 @@ printf(
 
 /* |\_____/| pObjectCreate() Function
  * |       | Used for creating objects
- * | o   o | [width], [height] (0:8bit)
+ * | o   o | [width], [height] (0:s_int)
  * \ = , = / Returns [object]
  */
 pObject pObjectCreate(unsigned short int width, unsigned short int height){
@@ -1569,6 +1619,7 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
  * \ = , = / Returns (true/false)
  */
 bool pObjectCollision(pObject object1, pObject object2){
+  // Return collision
   return (object1.x<object2.x+object2.width &&
     object1.x+object1.width>object2.x &&
     object1.y<object2.y+object2.height &&

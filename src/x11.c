@@ -21,6 +21,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#include <X11/Xft/Xft.h>
 #include <X11/keysym.h>
 
 /* |\____/| Define Default Values
@@ -38,16 +39,22 @@
 
 #define TITLE_DEF "{,}"
 #define TITLE_MAX 255
+
 #define KEY_MAX 255
 #define FRAME_DEF 24
 #define FRAME_MAX 1024
+
+#define FONT_MAX 32
+#define FONT_SIZE_MAX 512
+#define FONT_DIR_MAX 255
+#define TEXT_MAX 8192
 
 /* |\____/| [pSize], [pPosition], [pColor] Structure
  * |  o o |
  */
 typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int r, g, b; } pColor;
+typedef struct{ unsigned short int red, green, blue; } pColor;
 
 /* |\____/| [pPrzecinek] Structure and Variable
  * |  o o |
@@ -109,6 +116,7 @@ typedef struct{
   GC graphics;
   XColor color;
   Colormap colorMap;
+  XftDraw *textDraw;
 
   XKeyboardState keyboardState;
 
@@ -125,8 +133,12 @@ XEvent currentEvent, currentReport, currentAction;
 Display *display;
 int screen;
 Window root;
-pPosition cursorMain, cursorLocal;
 unsigned int mask;
+
+pPosition cursorMain, cursorLocal;
+
+XftColor textColor;
+XRenderColor renderTextColor;
 
 /* |\____/| [pEvent] Structure and Variables
  * |  o o |
@@ -150,6 +162,60 @@ typedef struct{
 
   pColor color;
 } pObject;
+
+/* |\____/| [pFont] Structure
+ * |  o o |
+ */
+typedef struct{
+  unsigned int ID;
+
+  unsigned short int size;
+  char name[FONT_DIR_MAX];
+
+  pColor color;
+} pFont;
+
+/* |\____/| [pFontX11] Structure and Variables
+ * |  o o |
+ */
+typedef struct{
+  unsigned short int size;
+  char name[FONT_DIR_MAX];
+
+  char value[FONT_DIR_MAX+8];
+  XftFont *style;
+
+  bool change;
+} pFontX11;
+
+pFontX11 view[WINDOW_MAX];
+
+/* |\____/| [pText] Structure
+ * |  o o |
+ */
+typedef struct{
+  int x, y;
+
+  char value[TEXT_MAX];
+} pText;
+
+/* |\____/| Base Function List
+ * |  o o |
+ */
+void pWindowReset(pWindow *window);
+pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
+void pWindowDrawObject(pWindow *window, pObject *object);
+void pWindowDrawText(pWindow *window, pFont *font, pText *text);
+void pWindowClear(pWindow *window);
+void pWindowClose(pWindow *window);
+pEvent pEventCreate();
+void pEventHandle(pWindow *window, pEvent *event);
+pObject pObjectCreate(unsigned short int width, unsigned short int height);
+bool pObjectCollision(pObject object1, pObject object2);
+void pFontReset(pFont *font);
+pFont pFontCreate(const char *name, unsigned short int size);
+void pFontClose(pFont *font);
+pText pTextCreate(const char *value);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -339,6 +405,8 @@ printf(
 
       // Reset and return [window]
       pWindowReset(&window);
+
+      window.ID=0;
       return window;
     }
   }
@@ -443,6 +511,8 @@ printf(
 
     // Reset and return [window]
     pWindowReset(&window);
+
+    window.ID=0;
     return window;
   }
 
@@ -472,6 +542,8 @@ printf(
     // Reset [window] and close [build] [display]
     pWindowReset(&window);
     XCloseDisplay(build[window.ID-1].display);
+
+    window.ID=0;
     return window;
   }
 
@@ -551,15 +623,17 @@ printf(
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
     // Set [build] [color] values
-    build[window->ID-1].color.red=(unsigned char)object->color.r*256;
-    build[window->ID-1].color.green=(unsigned char)object->color.g*256;
-    build[window->ID-1].color.blue=(unsigned char)object->color.b*256;
+    build[window->ID-1].color.red=(unsigned char)object->color.red*256;
+    build[window->ID-1].color.green=(unsigned char)object->color.green*256;
+    build[window->ID-1].color.blue=(unsigned char)object->color.blue*256;
     build[window->ID-1].color.flags=DoRed | DoGreen | DoBlue;
 
     // Create [build] [colorMap]
-    build[window->ID-1].colorMap=DefaultColormap(
-      build[window->ID-1].display, build[window->ID-1].screen
-    );
+    if(build[window->ID-1].colorMap==0){
+        build[window->ID-1].colorMap=DefaultColormap(
+          build[window->ID-1].display, build[window->ID-1].screen
+      );
+    }
     XAllocColor(
       build[window->ID-1].display, build[window->ID-1].colorMap, &build[window->ID-1].color
     );
@@ -575,6 +649,134 @@ void pWindowDrawObject(pWindow *window, pObject *object){
   }
   else if(przecinek.debug==true){
     printf("[pError, W301] \"Could not draw object\" (window is closed),\n");
+    fflush(stdout);
+  }
+
+  return;
+}
+
+//temp
+void pWindowDrawText(pWindow *window, pFont *font, pText *text){
+  if(window->active==true){
+    if(font->ID!=0){
+      if(build[window->ID-1].textDraw==NULL){
+        // Create [textDraw] for [build]
+        build[window->ID-1].textDraw=XftDrawCreate(
+          build[window->ID-1].display, build[window->ID-1].buffer,
+          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+          build[window->ID-1].colorMap
+        );
+      }
+
+      // Update [view] [size]
+      if(font->size!=view[font->ID-1].size){
+        // Check [font] [size] value
+        if(font->size==0){
+          if(przecinek.debug==true){
+            printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=1;
+        }
+        if(font->size>FONT_SIZE_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWarning, F002] \"Font size value is too big\" (changing from: %i to %i),\n",
+  font->size, FONT_SIZE_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=FONT_SIZE_MAX;
+        }
+
+        // Refresh [view] values
+        view[font->ID-1].size=font->size;
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [name]
+      if(strcmp(font->name, view[font->ID-1].name)!=0){
+        if(strlen(font->name)>FONT_DIR_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWarning, F003] \"Font name is too long\" (changing back to: %s),\n",
+  view[font->ID-1].name
+);
+            fflush(stdout);
+          }
+
+          // Change [font] [name] value
+          strncpy(font->name, view[font->ID-1].name, sizeof(font->name)-1);
+          font->name[sizeof(font->name)-1]='\0';
+        }
+        else{
+          // Change [view] [name] value
+          strncpy(view[font->ID-1].name, font->name, sizeof(view[font->ID-1].name)-1);
+          view[font->ID-1].name[sizeof(view[font->ID-1].name)-1]='\0';
+        }
+
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [style]
+      if(view[font->ID-1].change==true){
+        snprintf(
+          view[font->ID-1].value, sizeof(view[font->ID-1].value),
+          "%s:size=%u:antialias=true", font->name, font->size
+        );
+
+        // Recreate [view] [style]
+        view[font->ID-1].style=XftFontOpenName(
+          display, screen,
+          view[font->ID-1].value
+        );
+        if(view[font->ID-1].style==false){
+          if(przecinek.debug==true){
+            printf("[pError, F003] \"Could not find font\",\n");
+            printf("[pError, W303] \"Could not draw text\" (font is closed),\n");
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+
+        view[font->ID-1].change=false;
+      }
+
+      // Set [renderTextColor] values
+      renderTextColor.red=(unsigned short)font->color.red*256;
+      renderTextColor.green=(unsigned short)font->color.green*256;
+      renderTextColor.blue=(unsigned short)font->color.blue*256;
+      renderTextColor.alpha=(unsigned short)65535;
+
+      // Allocate [renderTextColor]
+      XftColorAllocValue(
+        build[window->ID-1].display,
+        DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+        build[window->ID-1].colorMap, &renderTextColor, &textColor
+      );
+
+      // Draw on [build] [textDraw]
+      XftDrawStringUtf8(
+        build[window->ID-1].textDraw, &textColor, view[font->ID-1].style, text->x, text->y,
+        (const XftChar8 *)text->value, strlen(text->value)
+      );
+    }
+    else if(przecinek.debug==true){
+      printf("[pError, W303] \"Could not draw text\" (font is closed),\n");
+      fflush(stdout);
+    }
+  }
+  else if(przecinek.debug==true){
+    printf("[pError, W302] \"Could not draw text\" (window is closed),\n");
     fflush(stdout);
   }
 
@@ -599,7 +801,7 @@ void pWindowClear(pWindow* window){
     );
   }
   else if(przecinek.debug==true){
-    printf("[pError, W302] \"Could not clear screen\" (window is closed),\n");
+    printf("[pError, W303] \"Could not clear screen\" (window is closed),\n");
     fflush(stdout);
   }
 
@@ -726,6 +928,7 @@ void pEventHandle(pWindow *window, pEvent *event){
         change=pEventCreate();
         event=&change;
 
+        window->ID=0;
         return;
       }
       else{ window->active=true; }
@@ -1047,12 +1250,8 @@ printf(
       }
 
       // Update [window] [title]
-      if(window->title!=build[window->ID-1].title){
+      if(strcmp(window->title, build[window->ID-1].title)!=0){
         if(strlen(window->title)>TITLE_MAX){
-          // Reset [window] [title]
-          strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
-          window->title[sizeof(window->title)-1]='\0';
-
           if(przecinek.debug==true){
 printf(
   "[pWarning, W005] \"Window title is too long\" (changing back to: %s),\n",
@@ -1060,6 +1259,10 @@ printf(
 );
             fflush(stdout);
           }
+
+          // Reset [window] [title]
+          strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
+          window->title[sizeof(window->title)-1]='\0';
         }
         else{
           // Update [build] [title]
@@ -1335,7 +1538,7 @@ printf(
 
 /* |\_____/| pObjectCreate() Function
  * |       | Used for creating objects
- * | o   o | [width], [height] (0:8bit)
+ * | o   o | [width], [height] (0:s_int)
  * \ = , = / Returns [object]
  */
 pObject pObjectCreate(unsigned short int width, unsigned short int height){
@@ -1349,9 +1552,9 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
   object.width=width;
   object.height=height;
 
-  object.color.r=0;
-  object.color.g=0;
-  object.color.b=0;
+  object.color.red=0;
+  object.color.green=0;
+  object.color.blue=0;
 
   // Return local [object]
   return object;
@@ -1363,11 +1566,168 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
  * \ = , = / Returns (true/false)
  */
 bool pObjectCollision(pObject object1, pObject object2){
-  return (object1.x<object2.x+object2.width &&
+  // Return collision
+  return(
+    object1.x<object2.x+object2.width &&
     object1.x+object1.width>object2.x &&
     object1.y<object2.y+object2.height &&
     object1.y+object1.height>object2.y
   );
+}
+
+//temp
+void pFontReset(pFont *font){
+  // Reset [font] values
+  font->size=0;
+  strncpy(font->name, "", sizeof(font->name)-1);
+  font->name[sizeof(font->name)-1]='\0';
+
+  font->color.red=0;
+  font->color.green=0;
+  font->color.blue=0;
+
+  // Reset [view] values
+  view[font->ID-1].size=0;
+  strncpy(view[font->ID-1].name, "", sizeof(view[font->ID-1].name)-1);
+  view[font->ID-1].name[sizeof(view[font->ID-1].name)-1]='\0';
+
+  strncpy(view[font->ID-1].value, "", sizeof(view[font->ID-1].value)-1);
+  view[font->ID-1].value[sizeof(view[font->ID-1].value)-1]='\0';
+  view[font->ID-1].style=NULL;
+
+  view[font->ID-1].change=false;
+
+  return;
+}
+
+//temp
+pFont pFontCreate(const char *name, unsigned short int size){
+  // Create local [font]
+  pFont font;
+
+  for(unsigned short int current=0; current<FONT_MAX; current++){
+    if(view[current].size==0){
+      // Set [font] [ID] and reset [font]
+      font.ID=current+1;
+      pFontReset(&font);
+
+      break;
+    }
+    else if(current==FONT_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pError, F001] \"Too many fonts were created\" (limit: %i),\n",
+  FONT_MAX
+);
+        fflush(stdout);
+      }
+
+      // Reset and return [font]
+      pFontReset(&font);
+      font.ID=0;
+
+      return font;
+    }
+  }
+
+  // Check [size] value
+  if(size==0){
+    if(przecinek.debug==true){
+      printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+      fflush(stdout);
+    }
+
+    // Change [size] value
+    size=1;
+  }
+  if(size>FONT_SIZE_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWarning, F002] \"Font size value is too big\" (changing from: %i to %i),\n",
+  size, FONT_SIZE_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [size] value
+    size=FONT_SIZE_MAX;
+  }
+
+  // Update [font] [name]
+  if(strlen(name)>FONT_DIR_MAX){
+    if(przecinek.debug==true){
+      printf("[pError, F002] \"Font name is too long\",\n");
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+
+  // Set [font] values
+  strncpy(font.name, name, sizeof(font.name)-1);
+  font.name[sizeof(font.name)-1]='\0';
+
+  font.size=size;
+
+  // Set [view] values
+  view[font.ID-1].size=size;
+  strncpy(view[font.ID-1].name, font.name, sizeof(view[font.ID-1].name)-1);
+  view[font.ID-1].name[sizeof(view[font.ID-1].name)-1]='\0';
+
+  snprintf(
+    view[font.ID-1].value, sizeof(view[font.ID-1].value),
+    "%s:size=%u:antialias=true", name, size
+  );
+
+  // Create [view] [style]
+  view[font.ID-1].style=XftFontOpenName(
+    display, screen,
+    view[font.ID-1].value
+  );
+  if(view[font.ID-1].style==false){
+    if(przecinek.debug==true){
+      printf("[pError, F003] \"Could not find font\",\n");
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+
+  // Return local [font]
+  return font;
+}
+
+//temp
+void pFontClose(pFont *font){
+  // Fully reset [font]
+  pFontReset(font);
+  font->ID=0;
+
+  return;
+}
+
+//temp
+pText pTextCreate(const char *value){
+  // Create local [text]
+  pText text;
+
+  // Set [text] values
+  text.x=0;
+  text.y=0;
+
+  strncpy(text.value, value, sizeof(text.value)-1);
+  text.value[sizeof(text.value)-1]='\0';
+
+  // Return local [text]
+  return text;
 }
 
 /* |\_____/| pKey() Function

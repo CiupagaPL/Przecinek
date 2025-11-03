@@ -1,13 +1,13 @@
 ![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek_general.png)
 # {,} Przecinek [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) [[unstable]](https://github.com/CiupagaPL/Przecinek/tree/unstable)
 
-### About Project
+### General
 **Przecinek is a minimal multimedia library** being developed in C.
 Its purpose is to make it easier for beginner programmers to create window applications while keeping their projects small in size.
 Przecinek uses only system-built-in libraries.
 It's under active development.
 > [!NOTE]
-> Don't forget that it's still in early development.
+> Don't forget that it's still in early development. Feature drops appear regularly.
 
 ### Features / TODO
 - [X] Creating and managing windows,
@@ -19,18 +19,17 @@ It's under active development.
 - [ ] Creating diffrent shapes, managing them and checking their collisions,
 - [ ] Audio system,
 - [ ] Loading images and rendering textures,
-- [ ] Managing fonts and rendering texts.
+- [X] (1/2) Managing fonts and rendering texts.
 
-### About Wiki
-You can find all the information about managing, configuring and setting up this project in the Wiki.
-Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.
-> [!NOTE]
-> It's also in early access.
+### External
+You can find all the information about managing, configuring and setting up this project in the **Wiki**.
+Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.<br>
+You can check upcoming changes and current progress using [[this]](https://github.com/users/CiupagaPL/projects/4) link.
 
 ### Version
-> Newest Version (Alpha): **[a3,1]**;<br>
-> Newest Version (Unstable): **[u,8]**;<br>
-> Last Updated: **21-10-2025**;
+> Newest Version (Alpha): **[None]**;<br>
+> Newest Version (Unstable): **[u,9]**;<br>
+> Last Updated: **03-11-2025**;
 
 ### LICENSE
 ```

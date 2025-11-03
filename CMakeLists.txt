@@ -11,7 +11,7 @@ option(WIN "Przecinek Build for Windows" OFF)
 option(X11 "Przecinek Build for Linux(X11)" OFF)
 
 # Select all source files
-set(CODE "main.cpp")
+set(CODE "main.c")
 set(HEADERS "przecinek.h")
 
 if(WIN)
@@ -38,7 +38,8 @@ elseif(X11)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 
   # Set target libraries
-  target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES})
+  include_directories(/usr/include/freetype2  -I/usr/local/include/freetype2  -I/usr/include/libpng16)
+  target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES} Xft freetype)
 else()
   message(FATAL_ERROR "[pError, C001] \"No build Tag selected\",\n")
 endif()
