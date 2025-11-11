@@ -31,15 +31,15 @@
 #define WINDOW_HEIGHT_MAX 4320
 
 #define TITLE_DEF "{,}"
-#define TITLE_MAX 255
+#define TITLE_MAX 256
 
-#define KEY_MAX 255
+#define KEY_MAX 256
 #define FRAME_DEF 24
-#define FRAME_MAX 1024
+#define FRAME_MAX 480
 
-#define FONT_MAX 32
-#define FONT_SIZE_MAX 512
-#define FONT_DIR_MAX 255
+#define FONT_MAX 64
+#define FONT_SIZE_MAX 1024
+#define FONT_NAME_MAX 256
 #define TEXT_MAX 8192
 
 /* |\____/| Define [pKey] Values
@@ -97,7 +97,7 @@
  */
 typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int r, g, b; } pColor;
+typedef struct{ unsigned short int red, green, blue; } pColor;
 
 /* |\____/| [pPrzecinek] Structure and Variable
  * |  o o |
@@ -129,7 +129,7 @@ typedef struct{
   bool fullScreen;
 } pWindow;
 
-/* |\____/| [pBuildWin], [pWindowPointer] Structure and Variables
+/* |\____/| [pBuildWin], [pWindowPointWin] Structure and Variables
  * |  o o |
  */
 typedef struct{
@@ -171,6 +171,7 @@ unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
 unsigned short int winCount=0;
 
 pBuildWin build[WINDOW_MAX];
+
 MSG message;
 POINT cursor;
 RECT rectangle, fix;
@@ -181,9 +182,9 @@ typedef struct{
   unsigned short int ID;
 
   HWND hwnd;
-} pWindowPointer;
+} pWindowPointWin;
 
-pWindowPointer *windowPointer, *newWindowPointer;
+pWindowPointWin *windowPoint, *newWindowPoint;
 RECT *dpi;
 WINDOWPOS *limit;
 
@@ -217,17 +218,35 @@ typedef struct{
   unsigned int ID;
 
   unsigned short int size;
-  char name[FONT_DIR_MAX];
+  char name[FONT_NAME_MAX];
 
   pColor color;
 } pFont;
 
-/* |\____/| [pFontWin] Structure and Variables
+/* |\____/| [pFontWin], [pFontCheckWin] Structure and Variables
  * |  o o |
  */
-//pFontWin
+typedef struct{
+  unsigned short int size;
+  char name[FONT_NAME_MAX];
 
-/* |\____/| [pText] Structure
+  HFONT base;
+
+  bool change;
+} pFontWin;
+
+pFontWin view[FONT_MAX];
+
+typedef struct{
+  bool found;
+  wchar_t name[FONT_NAME_MAX];
+
+  HDC hdc;
+} pFontCheckWin;
+
+pFontCheckWin fontCheck;
+
+/* |\____/| [pText] Structure and Variables
  * |  o o |
  */
 typedef struct{
@@ -236,23 +255,37 @@ typedef struct{
   char value[TEXT_MAX];
 } pText;
 
+wchar_t textConvert[TEXT_MAX];
+
 /* |\____/| Base Function List
  * |  o o |
  */
+void pSetup(bool debug, unsigned short int frameLimit);
+void pClear();
+
 void pWindowReset(pWindow *window);
+LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter);
 pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
 void pWindowDrawObject(pWindow *window, pObject *object);
 void pWindowDrawText(pWindow *window, pFont *font, pText *text);
 void pWindowClear(pWindow *window);
 void pWindowClose(pWindow *window);
+
 pEvent pEventCreate();
 void pEventHandle(pWindow *window, pEvent *event);
+
 pObject pObjectCreate(unsigned short int width, unsigned short int height);
 bool pObjectCollision(pObject object1, pObject object2);
+
 void pFontReset(pFont *font);
+int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter);
+void pFontCheck(pFont *font);
 pFont pFontCreate(const char *name, unsigned short int size);
 void pFontClose(pFont *font);
+
 pText pTextCreate(const char *value);
+
+unsigned short int pKey(const char *key);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -266,7 +299,9 @@ void pSetup(bool debug, unsigned short int frameLimit){
   // Update [przecinek] [frameLimit] value
   if(frameLimit==0){
     if(przecinek.debug==true){
-      printf("[pWarning, E001] \"Frame limit value is too low\" (changing from: 0 to: 1),\n");
+printf(
+  "[pWarning, G001] \"Frame limit value is too low\" (changing from: 0 to: 1),\n"
+);
       fflush(stdout);
     }
 
@@ -275,7 +310,7 @@ void pSetup(bool debug, unsigned short int frameLimit){
   else if(frameLimit>FRAME_MAX){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, E002] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
+  "[pWarning, G002] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
   frameLimit, FRAME_MAX
 );
       fflush(stdout);
@@ -333,8 +368,7 @@ void pWindowReset(pWindow *window){
   window->heightMax=0;
 
   window->resize=false;
-  strncpy(window->title, "", sizeof(window->title)-1);
-  window->title[sizeof(window->title)-1]='\0';
+  memset(window->title, 0, sizeof(window->title));
   window->border=0;
   window->fullScreen=false;
 
@@ -359,8 +393,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].heightFix=0;
 
   build[window->ID-1].resize=false;
-  strncpy(build[window->ID-1].title, "", sizeof(build[window->ID-1].title)-1);
-  build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
+  memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
   build[window->ID-1].border=0;
   build[window->ID-1].fullScreen=false;
 
@@ -371,8 +404,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].hwnd=NULL;
   build[window->ID-1].style=0;
 
-  strncpy(build[window->ID-1].class, "", sizeof(build[window->ID-1].class)-1);
-  build[window->ID-1].class[sizeof(build[window->ID-1].class)-1]='\0';
+  memset(build[window->ID-1].class, 0, sizeof(build[window->ID-1].class));
 
   build[window->ID-1].DESTROY=false;
   build[window->ID-1].FOCUSIN=false;
@@ -403,18 +435,18 @@ void pWindowReset(pWindow *window){
  * \ = , = / Returns `0`
  */
 LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter){
-  // Load current [windowPointer]
-  windowPointer=(pWindowPointer*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+  // Load current [windowPoint]
+  windowPoint=(pWindowPointWin*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
   // Manage [window] create signal
   if(uMessage==WM_CREATE){
-    // Create [newWindowPointer]
-    newWindowPointer=(pWindowPointer*)malloc(sizeof(pWindowPointer));
-    newWindowPointer->ID=createWinID;
-    newWindowPointer->hwnd=hwnd;
+    // Create [newWindowPoint]
+    newWindowPoint=(pWindowPointWin*)malloc(sizeof(pWindowPointWin));
+    newWindowPoint->ID=createWinID;
+    newWindowPoint->hwnd=hwnd;
 
-    // Send [newWindowPointer] to memory
-    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)newWindowPointer);
+    // Send [newWindowPoint] to memory
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)newWindowPoint);
   }
 
   // Manage [window] close signal
@@ -430,20 +462,20 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
   if(uMessage==WM_WINDOWPOSCHANGING){
     limit=(WINDOWPOS*)lParameter;
 
-    if(build[windowPointer->ID-1].resize==true){
+    if(build[windowPoint->ID-1].resize==true){
       // Update [window] limits
-      if(limit->cx<build[windowPointer->ID-1].widthMin+build[windowPointer->ID-1].widthFix){
-        limit->cx=build[windowPointer->ID-1].widthMin+build[windowPointer->ID-1].widthFix;
+      if(limit->cx<build[windowPoint->ID-1].widthMin+build[windowPoint->ID-1].widthFix){
+        limit->cx=build[windowPoint->ID-1].widthMin+build[windowPoint->ID-1].widthFix;
       }
-      if(limit->cy<build[windowPointer->ID-1].heightMin+build[windowPointer->ID-1].heightFix){
-        limit->cy=build[windowPointer->ID-1].heightMin+build[windowPointer->ID-1].heightFix;
+      if(limit->cy<build[windowPoint->ID-1].heightMin+build[windowPoint->ID-1].heightFix){
+        limit->cy=build[windowPoint->ID-1].heightMin+build[windowPoint->ID-1].heightFix;
       }
 
-      if(limit->cx>build[windowPointer->ID-1].widthMax){
-        limit->cx=build[windowPointer->ID-1].widthMax;
+      if(limit->cx>build[windowPoint->ID-1].widthMax){
+        limit->cx=build[windowPoint->ID-1].widthMax;
       }
-      if(limit->cy>build[windowPointer->ID-1].heightMax){
-        limit->cy=build[windowPointer->ID-1].heightMax;
+      if(limit->cy>build[windowPoint->ID-1].heightMax){
+        limit->cy=build[windowPoint->ID-1].heightMax;
       }
     }
   }
@@ -451,19 +483,19 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
   // Manage [window] focus change signal
   if(uMessage==WM_ACTIVATE){
     if(wParameter==WA_ACTIVE || wParameter==WA_CLICKACTIVE){
-      build[windowPointer->ID-1].FOCUSIN=true;
+      build[windowPoint->ID-1].FOCUSIN=true;
     }
-    else{ build[windowPointer->ID-1].FOCUSOUT=false; }
+    else{ build[windowPoint->ID-1].FOCUSOUT=false; }
   }
 
   // Manage [window] position change signal
   if(uMessage==WM_MOVE){
-    build[windowPointer->ID-1].MOVE.x=LOWORD(lParameter);
-    build[windowPointer->ID-1].MOVE.y=HIWORD(lParameter);
+    build[windowPoint->ID-1].MOVE.x=LOWORD(lParameter);
+    build[windowPoint->ID-1].MOVE.y=HIWORD(lParameter);
 
     // Correct [MOVE] values
-    if(build[windowPointer->ID-1].MOVE.x>32768){ build[windowPointer->ID-1].MOVE.x-=65536; }
-    if(build[windowPointer->ID-1].MOVE.y>32768){ build[windowPointer->ID-1].MOVE.y-=65536; }
+    if(build[windowPoint->ID-1].MOVE.x>32768){ build[windowPoint->ID-1].MOVE.x-=65536; }
+    if(build[windowPoint->ID-1].MOVE.y>32768){ build[windowPoint->ID-1].MOVE.y-=65536; }
   }
 
   // Manage [window] size change signal
@@ -476,26 +508,26 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
 
     // Set [brush] color
     brush=CreateSolidBrush(RGB(255, 255, 255));
-    SelectObject(build[windowPointer->ID-1].hMemDC, brush);
+    SelectObject(build[windowPoint->ID-1].hMemDC, brush);
 
     // Draw on [build] buffer
-    FillRect(build[windowPointer->ID-1].hMemDC, &rectangle, brush);
+    FillRect(build[windowPoint->ID-1].hMemDC, &rectangle, brush);
 
     InvalidateRect(hwnd, NULL, TRUE);
-    build[windowPointer->ID-1].hdc=BeginPaint(hwnd, &paintStruct);
+    build[windowPoint->ID-1].hdc=BeginPaint(hwnd, &paintStruct);
 
     // Switch [window] buffer
     BitBlt(
-      build[windowPointer->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
-      build[windowPointer->ID-1].hMemDC, 0, 0, SRCCOPY
+      build[windowPoint->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
+      build[windowPoint->ID-1].hMemDC, 0, 0, SRCCOPY
     );
 
     // Set [brush] color
     brush=CreateSolidBrush(RGB(255, 255, 255));
-    SelectObject(build[windowPointer->ID-1].hdc, brush);
+    SelectObject(build[windowPoint->ID-1].hdc, brush);
 
     // Draw on [window]
-    FillRect(build[windowPointer->ID-1].hdc, &rectangle, brush);
+    FillRect(build[windowPoint->ID-1].hdc, &rectangle, brush);
     EndPaint(hwnd, &paintStruct);
 
     // Clear [brush]
@@ -505,74 +537,74 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
     InvalidateRect(hwnd, NULL, TRUE);
     UpdateWindow(hwnd);
 
-    build[windowPointer->ID-1].SIZE.width=LOWORD(lParameter);
-    build[windowPointer->ID-1].SIZE.height=HIWORD(lParameter);
+    build[windowPoint->ID-1].SIZE.width=LOWORD(lParameter);
+    build[windowPoint->ID-1].SIZE.height=HIWORD(lParameter);
   }
 
   // Manage [window] dpi change signal
   if(uMessage==WM_DPICHANGED){
     dpi=(RECT*)lParameter;
 
-    build[windowPointer->ID-1].SIZE.width=dpi->right-dpi->left;
-    build[windowPointer->ID-1].SIZE.height=dpi->bottom-dpi->top;
+    build[windowPoint->ID-1].SIZE.width=dpi->right-dpi->left;
+    build[windowPoint->ID-1].SIZE.height=dpi->bottom-dpi->top;
   }
 
   // Manage [window] key down signal
   if(uMessage==WM_KEYDOWN){
-    build[windowPointer->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=1;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=1;
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Manage [window] key up signal
   if(uMessage==WM_KEYUP){
-    build[windowPointer->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=2;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=2;
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Manage [window] `lmouse` key down
   if(uMessage==WM_LBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_LBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_LBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
   }
   // Manage [window] `lmouse` key up
   if(uMessage==WM_LBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_LBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_LBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Manage [window] `rmouse` key down
   if(uMessage==WM_RBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_RBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_RBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
   }
   // Manage [window] `rmouse` key up
   if(uMessage==WM_RBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_RBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_RBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Manage [window] `mmouse` key down
   if(uMessage==WM_MBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_MBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_MBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
   }
   // Manage [window] `mmouse` key up
   if(uMessage==WM_MBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_MBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
+    build[windowPoint->ID-1].KEY[VK_MBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Manage [window] `back` and `forward` key down
   if(uMessage==WM_XBUTTONDOWN){
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPointer->ID-1].KEY[VK_XBUTTON1]=1; }
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPointer->ID-1].KEY[VK_XBUTTON2]=1; }
-    build[windowPointer->ID-1].KEYON=true;
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=1; }
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=1; }
+    build[windowPoint->ID-1].KEYON=true;
   }
   // Manage [window] `back` and `forward` key up
   if(uMessage==WM_XBUTTONUP){
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPointer->ID-1].KEY[VK_XBUTTON1]=2; }
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPointer->ID-1].KEY[VK_XBUTTON2]=2; }
-    build[windowPointer->ID-1].KEYON=true;
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=2; }
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=2; }
+    build[windowPoint->ID-1].KEYON=true;
   }
 
   // Return current [hwnd] values
@@ -767,7 +799,9 @@ printf(
   );
   if(build[window.ID-1].hwnd==NULL){
     if(przecinek.debug==true){
-      printf("[pError, W102] \"Could not create WIN hwnd\",\n");
+printf(
+  "[pError, W102] \"Could not create WIN hwnd\",\n"
+);
       fflush(stdout);
     }
 
@@ -777,10 +811,8 @@ printf(
   }
 
   // Set [title] value
-  strncpy(window.title, TITLE_DEF, sizeof(window.title)-1);
-  window.title[sizeof(window.title)-1]='\0';
-  strncpy(build[window.ID-1].title, TITLE_DEF, sizeof(build[window.ID-1].title)-1);
-  build[window.ID-1].title[sizeof(build[window.ID-1].title)-1]='\0';
+  strcpy(window.title, TITLE_DEF);
+  strcpy(build[window.ID-1].title, TITLE_DEF);
 
   // Calculate [window] offset
   GetWindowRect(build[window.ID-1].hwnd, &rectangle);
@@ -829,7 +861,7 @@ printf(
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
     // Set [brush] color
-    brush=CreateSolidBrush(RGB(object->color.r, object->color.g, object->color.b));
+    brush=CreateSolidBrush(RGB(object->color.red, object->color.green, object->color.blue));
     SelectObject(build[window->ID-1].hMemDC, brush);
 
     // Configure shape
@@ -845,7 +877,114 @@ void pWindowDrawObject(pWindow *window, pObject *object){
     DeleteObject(brush);
   }
   else if(przecinek.debug==true){
-    printf("[pError, W301] \"Could not draw object\" (window is closed),\n");
+printf(
+  "[pError, W301] \"Could not draw object\" (window is closed),\n"
+);
+    fflush(stdout);
+  }
+
+  return;
+}
+
+//temp
+void pWindowDrawText(pWindow *window, pFont *font, pText *text){
+  if(window->active==true){
+    if(font->ID!=0){
+      // Update [view] [size]
+      if(font->size!=view[font->ID-1].size){
+        // Check [font] [size] value
+        if(font->size==0){
+          if(przecinek.debug==true){
+            printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=1;
+        }
+        if(font->size>FONT_SIZE_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWarning, F002] \"Font size value is too big\" (changing from: %i to %i),\n",
+  font->size, FONT_SIZE_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=FONT_SIZE_MAX;
+        }
+
+        // Refresh [view] values
+        view[font->ID-1].size=font->size;
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [name] value
+      if(strcmp(font->name, view[font->ID-1].name)!=0){
+        strcpy(view[font->ID-1].name, font->name);
+
+        view[font->ID-1].change=true;
+      }
+
+      if(view[font->ID-1].change==true){
+        // Check if new [font] exists
+        pFontCheck(font);
+
+        if(fontCheck.found==true){
+          // Set [view] [base] value
+          view->base=CreateFont(
+            font->size, 0, 0, 0,
+            FW_NORMAL, FALSE, FALSE, FALSE,
+            ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            DEFAULT_QUALITY, DEFAULT_PITCH,
+            font->name
+          );
+        }
+        else{
+          if(przecinek.debug==true){
+printf(
+  "[pError, F002] \"Could not find font\",\n"
+);
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+      }
+
+      // Setup [build] [hMemDC] color and font
+      SetTextColor(build[window->ID-1].hMemDC, RGB(font->color.red, font->color.green, font->color.blue));
+      SelectObject(build[window->ID-1].hMemDC, view[font->ID-1].base);
+
+      // Change [textConvert] value
+      memset(textConvert, 0, sizeof(textConvert));
+      MultiByteToWideChar(
+        CP_UTF8, 0, (char *)text->value, -1, textConvert,
+        MultiByteToWideChar(CP_UTF8, 0, (char *)text->value, -1, NULL, 0)
+      );
+
+      // Draw on [build] buffer
+      TextOutW(build[window->ID-1].hMemDC, text->x, text->y, textConvert, wcslen(textConvert));
+    }
+    else if(przecinek.debug==true){
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
+      fflush(stdout);
+    }
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pError, W302] \"Could not draw text\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -876,7 +1015,9 @@ void pWindowClear(pWindow* window){
     DeleteObject(brush);
   }
   else if(przecinek.debug==true){
-    printf("[pError, W302] \"Could not clear screen\" (window is closed),\n");
+printf(
+  "[pError, W302] \"Could not clear screen\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -894,7 +1035,9 @@ void pWindowClose(pWindow* window){
     PostMessage(build[window->ID-1].hwnd, WM_CLOSE, 0, 0);
   }
   else if(przecinek.debug==true){
-    printf("[pWarning, W101] \"Window is already closed\",\n");
+printf(
+  "[pWarning, W101] \"Window is already closed\",\n"
+);
     fflush(stdout);
   }
 
@@ -1091,7 +1234,7 @@ void pEventHandle(pWindow *window, pEvent *event){
         if(window->x<-WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W006] \"Window x value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W005] \"Window x value is too low\" (changing from: %i to %i),\n",
   window->x, -WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1103,7 +1246,7 @@ printf(
         if(window->x>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W007] \"Window x value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W006] \"Window x value is too big\" (changing from: %i to %i),\n",
   window->x, WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1117,7 +1260,7 @@ printf(
         if(window->y<-WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W008] \"Window y value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W007] \"Window y value is too low\" (changing from: %i to %i),\n",
   window->y, -WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1129,7 +1272,7 @@ printf(
         if(window->y>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W009] \"Window y value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W008] \"Window y value is too big\" (changing from: %i to %i),\n",
   window->y, WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1184,10 +1327,10 @@ printf(
           // Check [window] [width] value
           if(window->width<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
-  printf(
-    "[pWarning, W001] \"Window width value is too low\" (changing from: %i to %i),\n",
-    window->width, WINDOW_WIDTH_MIN
-  );
+printf(
+  "[pWarning, W001] \"Window width value is too low\" (changing from: %i to %i),\n",
+  window->width, WINDOW_WIDTH_MIN
+);
             fflush(stdout);
           }
 
@@ -1196,10 +1339,10 @@ printf(
         }
         if(window->width>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W002] \"Window width value is too big\" (changing from: %i to %i),\n",
-    window->width, WINDOW_WIDTH_MAX
-  );
+printf(
+  "[pWarning, W002] \"Window width value is too big\" (changing from: %i to %i),\n",
+  window->width, WINDOW_WIDTH_MAX
+);
             fflush(stdout);
           }
 
@@ -1210,10 +1353,10 @@ printf(
         // Check [window] [height] value
         if(window->height<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W003] \"Window height value is too low\" (changing from: %i to %i),\n",
-    window->height, WINDOW_HEIGHT_MIN
-  );
+printf(
+  "[pWarning, W003] \"Window height value is too low\" (changing from: %i to %i),\n",
+  window->height, WINDOW_HEIGHT_MIN
+);
             fflush(stdout);
           }
 
@@ -1222,10 +1365,10 @@ printf(
         }
         if(window->height>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W004] \"Window height value is too big\" (changing from: %i to %i),\n",
-    window->height, WINDOW_HEIGHT_MAX
-  );
+printf(
+  "[pWarning, W004] \"Window height value is too big\" (changing from: %i to %i),\n",
+  window->height, WINDOW_HEIGHT_MAX
+);
             fflush(stdout);
           }
 
@@ -1325,29 +1468,13 @@ printf(
       build[window->ID-1].FOCUSOUT=false;
     }
 
-    // Update [window] [title]
+    // Update [window] [title] value
     if(strcmp(window->title, build[window->ID-1].title)!=0){
-      if(strlen(window->title)>TITLE_MAX){
-        if(przecinek.debug==true){
-printf(
-  "[pWarning, W005] \"Window title is too long\" (changing back to: %s),\n",
-  build[window->ID-1].title
-);
-          fflush(stdout);
-        }
+      // Change [build] [title] value
+      strcpy(build[window->ID-1].title, window->title);
 
-        // Reset [window] [title]
-        strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
-        window->title[sizeof(window->title)-1]='\0';
-      }
-      else{
-        // Update [build] [title]
-        strncpy(build[window->ID-1].title, window->title, sizeof(build[window->ID-1].title)-1);
-        build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
-
-        // Change [window] [title]
-        SetWindowText(build[window->ID-1].hwnd, window->title);
-      }
+      // Change [window] [title]
+      SetWindowText(build[window->ID-1].hwnd, window->title);
     }
 
     if(window->resize==true){
@@ -1356,7 +1483,7 @@ printf(
         if(window->widthMin<WINDOW_WIDTH_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W010] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W009] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MIN
 );
             fflush(stdout);
@@ -1368,7 +1495,7 @@ printf(
         else if(window->widthMin>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W011] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W010] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MAX
 );
             fflush(stdout);
@@ -1387,7 +1514,7 @@ printf(
         if(window->heightMin<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W012] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W011] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MIN
 );
             fflush(stdout);
@@ -1399,7 +1526,7 @@ printf(
         else if(window->heightMin>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W013] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W012] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MAX
 );
             fflush(stdout);
@@ -1418,7 +1545,7 @@ printf(
         if(window->widthMax<WINDOW_WIDTH_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W014] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W013] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MIN
 );
             fflush(stdout);
@@ -1430,7 +1557,7 @@ printf(
         else if(window->widthMax>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W015] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W014] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MAX
 );
             fflush(stdout);
@@ -1449,7 +1576,7 @@ printf(
         if(window->heightMax<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W016] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W015] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MIN
 );
             fflush(stdout);
@@ -1461,7 +1588,7 @@ printf(
         else if(window->heightMax>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W017] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W016] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MAX
 );
             fflush(stdout);
@@ -1479,7 +1606,7 @@ printf(
       if(build[window->ID-1].widthMin>build[window->ID-1].widthMax){
         if(przecinek.debug==true){
 printf(
-  "[pWarning, W018] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
+  "[pWarning, W017] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
   window->widthMin, window->widthMax
 );
           fflush(stdout);
@@ -1494,7 +1621,7 @@ printf(
       if(build[window->ID-1].heightMin>build[window->ID-1].heightMax){
         if(przecinek.debug==true){
 printf(
-  "[pWarning, W019] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
+  "[pWarning, W018] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
   window->heightMin, window->heightMax
 );
           fflush(stdout);
@@ -1582,7 +1709,9 @@ printf(
     }
   }
   else if(przecinek.debug==true){
-    printf("[pError, E001] \"Could not handle event\" (window is closed),\n");
+printf(
+  "[pError, G001] \"Could not handle event\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -1605,9 +1734,9 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
   object.width=width;
   object.height=height;
 
-  object.color.r=0;
-  object.color.g=0;
-  object.color.b=0;
+  object.color.red=0;
+  object.color.green=0;
+  object.color.blue=0;
 
   // Return local [object]
   return object;
@@ -1625,6 +1754,178 @@ bool pObjectCollision(pObject object1, pObject object2){
     object1.y<object2.y+object2.height &&
     object1.y+object1.height>object2.y
   );
+}
+
+//temp
+void pFontReset(pFont *font){
+  // Reset [font] values
+  font->size=0;
+  memset(font->name, 0, sizeof(font->name));
+
+  font->color.red=0;
+  font->color.green=0;
+  font->color.blue=0;
+
+  // Reset [view] values
+  view[font->ID-1].size=0;
+  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
+
+  view[font->ID-1].base=NULL;
+  view[font->ID-1].change=false;
+
+  return;
+}
+
+//temp
+int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter){
+  // Check for diffrence between [lLog] [lfFaceName] and [fontCheck] [name]
+  if(wcscmp(lLog->lfFaceName, fontCheck.name)==0){
+    // Return `true` and end loop
+    fontCheck.found=true;
+
+    return 0;
+  }
+
+  // Loop function
+  return 1;
+}
+
+//temp
+void pFontCheck(pFont *font){
+  // Set [fontCheck] values
+  fontCheck.hdc=GetDC(NULL);
+  fontCheck.found=false;
+
+  // Convert and set [fontCheck] [name] value
+  memset(fontCheck.name, 0, sizeof(fontCheck.name));
+  MultiByteToWideChar(
+    CP_UTF8, 0, (char *)font->name, -1, fontCheck.name,
+    MultiByteToWideChar(CP_UTF8, 0, (char *)font->name, -1, NULL, 0)
+  );
+
+  // Check if [font] exists and release [hdc]
+  EnumFontFamiliesExW(fontCheck.hdc, NULL, pEnumFontsProc, (LPARAM)&fontCheck, 0);
+  ReleaseDC(NULL, fontCheck.hdc);
+
+  return;
+}
+
+//temp
+pFont pFontCreate(const char *name, unsigned short int size){
+  // Create local [font]
+  pFont font;
+
+  for(unsigned short int current=0; current<FONT_MAX; current++){
+    if(view[current].size==0){
+      // Set [font] [ID] and reset [font]
+      font.ID=current+1;
+      pFontReset(&font);
+
+      break;
+    }
+    else if(current==FONT_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pError, F001] \"Too many fonts were created\" (limit: %i),\n",
+  FONT_MAX
+);
+        fflush(stdout);
+      }
+
+      // Reset and return [font]
+      pFontReset(&font);
+      font.ID=0;
+
+      return font;
+    }
+  }
+
+  // Check [size] value
+  if(size==0){
+    if(przecinek.debug==true){
+printf(
+  "[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n"
+);
+      fflush(stdout);
+    }
+
+    // Change [size] value
+    size=1;
+  }
+  if(size>FONT_SIZE_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWarning, F002] \"Font size value is too big\" (changing from: %i to %i),\n",
+  size, FONT_SIZE_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [size] value
+    size=FONT_SIZE_MAX;
+  }
+
+  // Set [font] values
+  strcpy(font.name, name);
+  font.size=size;
+
+  // Set [view] values
+  view[font.ID-1].size=size;
+  strcpy(view[font.ID-1].name, font.name);
+
+  // Check if [font] exists
+  pFontCheck(&font);
+  if(fontCheck.found==true){
+    // Set [view] [base] value
+    view->base=CreateFont(
+      size, 0, 0, 0,
+      FW_NORMAL, FALSE, FALSE, FALSE,
+      ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+      DEFAULT_QUALITY, DEFAULT_PITCH,
+      name
+    );
+  }
+  else{
+    if(przecinek.debug==true){
+printf(
+  "[pError, F002] \"Could not find font\",\n"
+);
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+
+  // Return local [font]
+  return font;
+}
+
+//temp
+void pFontClose(pFont *font){
+  // Fully reset [font]
+  pFontReset(font);
+  font->ID=0;
+
+  return;
+}
+
+//temp
+pText pTextCreate(const char *value){
+  // Create local [text]
+  pText text;
+
+  // Set [text] values
+  text.x=0;
+  text.y=0;
+
+  strcpy(text.value, value);
+
+  // Return local [text]
+  return text;
 }
 
 /* |\_____/| pKey() Function

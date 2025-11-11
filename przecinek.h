@@ -33,15 +33,15 @@ extern "C"{
   #define WINDOW_HEIGHT_MAX 4320
 
   #define TITLE_DEF "{,}"
-  #define TITLE_MAX 255
+  #define TITLE_MAX 256
 
-  #define KEY_MAX 255
+  #define KEY_MAX 256
   #define FRAME_DEF 24
-  #define FRAME_MAX 1024
+  #define FRAME_MAX 480
 
-  #define FONT_MAX 32
-  #define FONT_SIZE_MAX 512
-  #define FONT_DIR_MAX 255
+  #define FONT_MAX 64
+  #define FONT_SIZE_MAX 1024
+  #define FONT_NAME_MAX 256
   #define TEXT_MAX 8192
 
   /* |\____/| [pSize], [pPosition], [pColor] Structure
@@ -81,10 +81,11 @@ extern "C"{
     bool fullScreen;
   } pWindow;
 
-  /* |\____/| [pBuildX11], [pBuildWin] Structures
+  /* |\____/| [pBuildX11] / [pBuildWin], [pWindowPointWin] Structures
    * |  o o |
    */
-  //pBuildX11, pBuildWin
+  //pBuildX11
+  //pBuildWin, pWindowPointWin
 
   /* |\____/| [pEvent] Structure
    * |  o o |
@@ -114,15 +115,16 @@ extern "C"{
     unsigned int ID;
 
     unsigned short int size;
-    char name[FONT_DIR_MAX];
+    char name[FONT_NAME_MAX];
 
     pColor color;
   } pFont;
 
-  /* |\____/| [pFontX11], [pFontWin] Structures
+  /* |\____/| [pFontX11] / [pFontWin], [pFontCheckWin] Structures
    * |  o o |
    */
-  //pFontX11, pFontWin
+  //pFontX11
+  //pFontWin, pFontCheckWin
 
   /* |\____/| [pText] Structure
    * |  o o |
@@ -225,6 +227,12 @@ extern "C"{
 
   //temp
   //void pFontReset(pFont *font);
+
+  //temp
+  //int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter);
+
+  //temp
+  //void pFontCheck(pFont *font);
 
   //temp
   pFont pFontCreate(const char *name, unsigned short int size);

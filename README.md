@@ -19,7 +19,7 @@ It's under active development.
 - [ ] Creating diffrent shapes, managing them and checking their collisions,
 - [ ] Audio system,
 - [ ] Loading images and rendering textures,
-- [X] (1/2) Managing fonts and rendering texts.
+- [X] Managing fonts and rendering texts.
 
 ### External
 You can find all the information about managing, configuring and setting up this project in the **Wiki**.
@@ -28,8 +28,8 @@ You can check upcoming changes and current progress using [[this]](https://githu
 
 ### Version
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,9]**;<br>
-> Last Updated: **03-11-2025**;
+> Newest Version (Unstable): **[u,10]**;<br>
+> Last Updated: **11-11-2025**;
 
 ### LICENSE
 ```

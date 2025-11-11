@@ -38,15 +38,15 @@
 #define WINDOW_HEIGHT_MAX 4320
 
 #define TITLE_DEF "{,}"
-#define TITLE_MAX 255
+#define TITLE_MAX 256
 
-#define KEY_MAX 255
+#define KEY_MAX 256
 #define FRAME_DEF 24
-#define FRAME_MAX 1024
+#define FRAME_MAX 480
 
-#define FONT_MAX 32
-#define FONT_SIZE_MAX 512
-#define FONT_DIR_MAX 255
+#define FONT_MAX 64
+#define FONT_SIZE_MAX 1024
+#define FONT_NAME_MAX 256
 #define TEXT_MAX 8192
 
 /* |\____/| [pSize], [pPosition], [pColor] Structure
@@ -170,7 +170,7 @@ typedef struct{
   unsigned int ID;
 
   unsigned short int size;
-  char name[FONT_DIR_MAX];
+  char name[FONT_NAME_MAX];
 
   pColor color;
 } pFont;
@@ -180,15 +180,15 @@ typedef struct{
  */
 typedef struct{
   unsigned short int size;
-  char name[FONT_DIR_MAX];
+  char name[FONT_NAME_MAX];
 
-  char value[FONT_DIR_MAX+8];
+  char value[FONT_NAME_MAX+8];
   XftFont *style;
 
   bool change;
 } pFontX11;
 
-pFontX11 view[WINDOW_MAX];
+pFontX11 view[FONT_MAX];
 
 /* |\____/| [pText] Structure
  * |  o o |
@@ -202,20 +202,29 @@ typedef struct{
 /* |\____/| Base Function List
  * |  o o |
  */
+void pSetup(bool debug, unsigned short int frameLimit);
+void pClear();
+
 void pWindowReset(pWindow *window);
 pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
 void pWindowDrawObject(pWindow *window, pObject *object);
 void pWindowDrawText(pWindow *window, pFont *font, pText *text);
 void pWindowClear(pWindow *window);
 void pWindowClose(pWindow *window);
+
 pEvent pEventCreate();
 void pEventHandle(pWindow *window, pEvent *event);
+
 pObject pObjectCreate(unsigned short int width, unsigned short int height);
 bool pObjectCollision(pObject object1, pObject object2);
+
 void pFontReset(pFont *font);
 pFont pFontCreate(const char *name, unsigned short int size);
 void pFontClose(pFont *font);
+
 pText pTextCreate(const char *value);
+
+unsigned short int pKey(const char *key);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -229,7 +238,9 @@ void pSetup(bool debug, unsigned short int frameLimit){
   // Update [przecinek] [frameLimit] value
   if(frameLimit==0){
     if(przecinek.debug==true){
-      printf("[pWarning, E001] \"Frame limit value is too low\" (changing from: 0 to: 1),\n");
+printf(
+  "[pWarning, G001] \"Frame limit value is too low\" (changing from: 0 to: 1),\n"
+);
       fflush(stdout);
     }
 
@@ -238,7 +249,7 @@ void pSetup(bool debug, unsigned short int frameLimit){
   else if(frameLimit>FRAME_MAX){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, E002] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
+  "[pWarning, G002] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
   frameLimit, FRAME_MAX
 );
       fflush(stdout);
@@ -252,7 +263,9 @@ printf(
   display=XOpenDisplay(NULL);
   if(display==NULL){
     if(przecinek.debug==true){
-      printf("[pError, W201] \"Could not open X11 display\",\n");
+printf(
+  "[pError, W201] \"Could not open X11 display\",\n"
+);
       fflush(stdout);
     }
 
@@ -317,8 +330,7 @@ void pWindowReset(pWindow *window){
   window->heightMax=0;
 
   window->resize=false;
-  strncpy(window->title, "", sizeof(window->title)-1);
-  window->title[sizeof(window->title)-1]='\0';
+  memset(window->title, 0, sizeof(window->title));
   window->border=0;
   window->fullScreen=false;
 
@@ -341,8 +353,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].heightBac=0;
 
   build[window->ID-1].resize=false;
-  strncpy(build[window->ID-1].title, "", sizeof(build[window->ID-1].title)-1);
-  build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
+  memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
   build[window->ID-1].border=0;
   build[window->ID-1].fullScreen=false;
 
@@ -505,7 +516,9 @@ printf(
   build[window.ID-1].display=XOpenDisplay(NULL);
   if(build[window.ID-1].display==NULL){
     if(przecinek.debug==true){
-      printf("[pError, W201] \"Could not open X11 display\",\n");
+printf(
+  "[pError, W201] \"Could not open X11 display\",\n"
+);
       fflush(stdout);
     }
 
@@ -535,7 +548,9 @@ printf(
   );
   if(build[window.ID-1].base==0){
     if(przecinek.debug==true){
-      printf("[pError, W202] \"Could not create X11 window\",\n");
+printf(
+  "[pError, W202] \"Could not create X11 window\",\n"
+);
       fflush(stdout);
     }
 
@@ -549,10 +564,8 @@ printf(
 
   // Set [title] value
   XStoreName(build[window.ID-1].display, build[window.ID-1].base, TITLE_DEF);
-  strncpy(window.title, TITLE_DEF, sizeof(window.title)-1);
-  window.title[sizeof(window.title)-1]='\0';
-  strncpy(build[window.ID-1].title, TITLE_DEF, sizeof(build[window.ID-1].title)-1);
-  build[window.ID-1].title[sizeof(build[window.ID-1].title)-1]='\0';
+  strcpy(window.title, TITLE_DEF);
+  strcpy(build[window.ID-1].title, TITLE_DEF);
 
   // Create [build] [delete] and [state]
   build[window.ID-1].delete=XInternAtom(build[window.ID-1].display, "WM_DELETE_WINDOW", False);
@@ -648,7 +661,9 @@ void pWindowDrawObject(pWindow *window, pObject *object){
     );
   }
   else if(przecinek.debug==true){
-    printf("[pError, W301] \"Could not draw object\" (window is closed),\n");
+printf(
+  "[pError, W301] \"Could not draw object\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -673,7 +688,9 @@ void pWindowDrawText(pWindow *window, pFont *font, pText *text){
         // Check [font] [size] value
         if(font->size==0){
           if(przecinek.debug==true){
-            printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+printf(
+  "[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n"
+);
             fflush(stdout);
           }
 
@@ -698,26 +715,9 @@ printf(
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [name]
+      // Update [view] [name] value
       if(strcmp(font->name, view[font->ID-1].name)!=0){
-        if(strlen(font->name)>FONT_DIR_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWarning, F003] \"Font name is too long\" (changing back to: %s),\n",
-  view[font->ID-1].name
-);
-            fflush(stdout);
-          }
-
-          // Change [font] [name] value
-          strncpy(font->name, view[font->ID-1].name, sizeof(font->name)-1);
-          font->name[sizeof(font->name)-1]='\0';
-        }
-        else{
-          // Change [view] [name] value
-          strncpy(view[font->ID-1].name, font->name, sizeof(view[font->ID-1].name)-1);
-          view[font->ID-1].name[sizeof(view[font->ID-1].name)-1]='\0';
-        }
+        strcpy(view[font->ID-1].name, font->name);
 
         view[font->ID-1].change=true;
       }
@@ -736,8 +736,12 @@ printf(
         );
         if(view[font->ID-1].style==false){
           if(przecinek.debug==true){
-            printf("[pError, F003] \"Could not find font\",\n");
-            printf("[pError, W303] \"Could not draw text\" (font is closed),\n");
+printf(
+  "[pError, F002] \"Could not find font\",\n"
+);
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
             fflush(stdout);
           }
 
@@ -771,12 +775,16 @@ printf(
       );
     }
     else if(przecinek.debug==true){
-      printf("[pError, W303] \"Could not draw text\" (font is closed),\n");
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
       fflush(stdout);
     }
   }
   else if(przecinek.debug==true){
-    printf("[pError, W302] \"Could not draw text\" (window is closed),\n");
+printf(
+  "[pError, W302] \"Could not draw text\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -801,7 +809,9 @@ void pWindowClear(pWindow* window){
     );
   }
   else if(przecinek.debug==true){
-    printf("[pError, W303] \"Could not clear screen\" (window is closed),\n");
+printf(
+  "[pError, W303] \"Could not clear screen\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -826,7 +836,9 @@ void pWindowClose(pWindow *window){
     XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
   }
   else if(przecinek.debug==true){
-    printf("[pWarning, W101] \"Window is already closed\",\n");
+printf(
+  "[pWarning, W101] \"Window is already closed\",\n"
+);
     fflush(stdout);
   }
 
@@ -1002,7 +1014,7 @@ void pEventHandle(pWindow *window, pEvent *event){
           if(window->x<-WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W006] \"Window x value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W005] \"Window x value is too low\" (changing from: %i to %i),\n",
   window->x, -WINDOW_POS_MAX
 );
               fflush(stdout);
@@ -1014,7 +1026,7 @@ printf(
           if(window->x>WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W007] \"Window x value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W006] \"Window x value is too big\" (changing from: %i to %i),\n",
   window->x, WINDOW_POS_MAX
 );
               fflush(stdout);
@@ -1028,7 +1040,7 @@ printf(
           if(window->y<-WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W008] \"Window y value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W007] \"Window y value is too low\" (changing from: %i to %i),\n",
   window->y, -WINDOW_POS_MAX
 );
               fflush(stdout);
@@ -1040,7 +1052,7 @@ printf(
           if(window->y>WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W009] \"Window y value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W008] \"Window y value is too big\" (changing from: %i to %i),\n",
   window->y, WINDOW_POS_MAX
 );
               fflush(stdout);
@@ -1249,29 +1261,13 @@ printf(
         }
       }
 
-      // Update [window] [title]
+      // Update [window] [title] value
       if(strcmp(window->title, build[window->ID-1].title)!=0){
-        if(strlen(window->title)>TITLE_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWarning, W005] \"Window title is too long\" (changing back to: %s),\n",
-  build[window->ID-1].title
-);
-            fflush(stdout);
-          }
+        // Update [build] [title] value
+        strcpy(build[window->ID-1].title, window->title);
 
-          // Reset [window] [title]
-          strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
-          window->title[sizeof(window->title)-1]='\0';
-        }
-        else{
-          // Update [build] [title]
-          strncpy(build[window->ID-1].title, window->title, sizeof(build[window->ID-1].title)-1);
-          build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
-
-          // Change [window] [title]
-          XStoreName(build[window->ID-1].display, build[window->ID-1].base, window->title);
-        }
+        // Change [window] [title]
+        XStoreName(build[window->ID-1].display, build[window->ID-1].base, window->title);
       }
 
       if(window->resize==true){
@@ -1280,7 +1276,7 @@ printf(
           if(window->widthMin<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W010] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W009] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MIN
 );
               fflush(stdout);
@@ -1292,7 +1288,7 @@ printf(
           else if(window->widthMin>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W011] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W010] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MAX
 );
               fflush(stdout);
@@ -1313,7 +1309,7 @@ printf(
           if(window->heightMin<WINDOW_HEIGHT_MIN){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W012] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W011] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MIN
 );
               fflush(stdout);
@@ -1325,7 +1321,7 @@ printf(
           else if(window->heightMin>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W013] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W012] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MAX
 );
               fflush(stdout);
@@ -1346,7 +1342,7 @@ printf(
           if(window->widthMax<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W014] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W013] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MIN
 );
               fflush(stdout);
@@ -1358,7 +1354,7 @@ printf(
           else if(window->widthMax>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W015] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W014] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MAX
 );
               fflush(stdout);
@@ -1379,7 +1375,7 @@ printf(
           if(window->heightMax<WINDOW_HEIGHT_MIN){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W016] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
+  "[pWarning, W015] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MIN
 );
               fflush(stdout);
@@ -1391,7 +1387,7 @@ printf(
           else if(window->heightMax>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
 printf(
-  "[pWarning, W017] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
+  "[pWarning, W016] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MAX
 );
               fflush(stdout);
@@ -1412,7 +1408,7 @@ printf(
         if(build[window->ID-1].widthMin>build[window->ID-1].widthMax){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W018] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
+  "[pWarning, W017] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
   window->widthMin, window->widthMax
 );
             fflush(stdout);
@@ -1427,7 +1423,7 @@ printf(
         if(build[window->ID-1].heightMin>build[window->ID-1].heightMax){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W019] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
+  "[pWarning, W018] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
   window->heightMin, window->heightMax
 );
             fflush(stdout);
@@ -1529,7 +1525,9 @@ printf(
     }
   }
   else if(przecinek.debug==true){
-    printf("[pError, E001] \"Could not handle event\" (window is closed),\n");
+printf(
+  "[pError, G001] \"Could not handle event\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
@@ -1579,8 +1577,7 @@ bool pObjectCollision(pObject object1, pObject object2){
 void pFontReset(pFont *font){
   // Reset [font] values
   font->size=0;
-  strncpy(font->name, "", sizeof(font->name)-1);
-  font->name[sizeof(font->name)-1]='\0';
+  memset(font->name, 0, sizeof(font->name));
 
   font->color.red=0;
   font->color.green=0;
@@ -1588,11 +1585,9 @@ void pFontReset(pFont *font){
 
   // Reset [view] values
   view[font->ID-1].size=0;
-  strncpy(view[font->ID-1].name, "", sizeof(view[font->ID-1].name)-1);
-  view[font->ID-1].name[sizeof(view[font->ID-1].name)-1]='\0';
+  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
 
-  strncpy(view[font->ID-1].value, "", sizeof(view[font->ID-1].value)-1);
-  view[font->ID-1].value[sizeof(view[font->ID-1].value)-1]='\0';
+  memset(view[font->ID-1].value, 0, sizeof(view[font->ID-1].value));
   view[font->ID-1].style=NULL;
 
   view[font->ID-1].change=false;
@@ -1633,7 +1628,9 @@ printf(
   // Check [size] value
   if(size==0){
     if(przecinek.debug==true){
-      printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+printf(
+  "[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n"
+);
       fflush(stdout);
     }
 
@@ -1653,30 +1650,13 @@ printf(
     size=FONT_SIZE_MAX;
   }
 
-  // Update [font] [name]
-  if(strlen(name)>FONT_DIR_MAX){
-    if(przecinek.debug==true){
-      printf("[pError, F002] \"Font name is too long\",\n");
-      fflush(stdout);
-    }
-
-    // Reset and return [font]
-    pFontReset(&font);
-    font.ID=0;
-
-    return font;
-  }
-
   // Set [font] values
-  strncpy(font.name, name, sizeof(font.name)-1);
-  font.name[sizeof(font.name)-1]='\0';
-
+  strcpy(font.name, name);
   font.size=size;
 
   // Set [view] values
   view[font.ID-1].size=size;
-  strncpy(view[font.ID-1].name, font.name, sizeof(view[font.ID-1].name)-1);
-  view[font.ID-1].name[sizeof(view[font.ID-1].name)-1]='\0';
+  strcpy(view[font.ID-1].name, font.name);
 
   snprintf(
     view[font.ID-1].value, sizeof(view[font.ID-1].value),
@@ -1690,7 +1670,9 @@ printf(
   );
   if(view[font.ID-1].style==false){
     if(przecinek.debug==true){
-      printf("[pError, F003] \"Could not find font\",\n");
+printf(
+  "[pError, F002] \"Could not find font\",\n"
+);
       fflush(stdout);
     }
 
@@ -1723,8 +1705,7 @@ pText pTextCreate(const char *value){
   text.x=0;
   text.y=0;
 
-  strncpy(text.value, value, sizeof(text.value)-1);
-  text.value[sizeof(text.value)-1]='\0';
+  strcpy(text.value, value);
 
   // Return local [text]
   return text;
