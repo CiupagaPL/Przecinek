@@ -14,28 +14,34 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <locale.h>
+#include <wchar.h>
 
 #include <windows.h>
+#include <gdiplus.h>
+
+/*************************
+ * Structures and defines
+ *************************/
 
 /* |\____/| Define Default Values
  * |  o o |
  */
 #define WINDOW_MAX 16
-#define WINDOW_X_DEF 64
-#define WINDOW_Y_DEF 64
-#define WINDOW_POS_MAX 32768
-#define WINDOW_POS_CHANGE 65536
+#define WINDOW_X_DEF 128
+#define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
 #define WINDOW_HEIGHT_MIN 256
 #define WINDOW_WIDTH_MAX 7680
 #define WINDOW_HEIGHT_MAX 4320
+#define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
+#define WINDOW_POS_CHANGE 65536
 
 #define TITLE_DEF "{,}"
 #define TITLE_MAX 256
 
 #define KEY_MAX 256
-#define FRAME_DEF 24
-#define FRAME_MAX 480
+#define FRAME_MAX 640
 
 #define FONT_MAX 64
 #define FONT_SIZE_MAX 1024
@@ -97,9 +103,9 @@
  */
 typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int red, green, blue; } pColor;
+typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
 
-/* |\____/| [pPrzecinek] Structure and Variable
+/* |\____/| [pPrzecinek] Structure
  * |  o o |
  */
 typedef struct{
@@ -109,8 +115,6 @@ typedef struct{
   pSize display;
   pPosition cursor;
 } pPrzecinek;
-
-pPrzecinek przecinek={ false, 0, FRAME_DEF };
 
 /* |\____/| [pWindow] Structure
  * |  o o |
@@ -124,12 +128,12 @@ typedef struct{
   unsigned short int widthMin, heightMin, widthMax, heightMax;
 
   bool resize;
-  char title[TITLE_MAX];
+  wchar_t title[TITLE_MAX];
   unsigned short int border;
   bool fullScreen;
 } pWindow;
 
-/* |\____/| [pBuildWin], [pWindowPointWin] Structure and Variables
+/* |\____/| [pBuildWIN], [pWindowPointWIN] Structure
  * |  o o |
  */
 typedef struct{
@@ -142,6 +146,7 @@ typedef struct{
 
   bool resize;
   char title[TITLE_MAX];
+  wchar_t titleWide[TITLE_MAX];
   unsigned short int border;
   bool fullScreen;
 
@@ -149,11 +154,12 @@ typedef struct{
   HDC hdc;
   HDC hMemDC;
   HINSTANCE hInstance;
-  WNDCLASS wClass;
+  WNDCLASSW wClass;
   HWND hwnd;
   DWORD style;
+  GpGraphics *graphics;
 
-  char class[8];
+  wchar_t class[8];
 
   bool DESTROY, FOCUSIN, FOCUSOUT;
  
@@ -165,30 +171,15 @@ typedef struct{
 
   DWORD frameStart;
   unsigned short int frameCount;
-} pBuildWin;
-
-unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
-unsigned short int winCount=0;
-
-pBuildWin build[WINDOW_MAX];
-
-MSG message;
-POINT cursor;
-RECT rectangle, fix;
-PAINTSTRUCT paintStruct;
-HBRUSH brush;
+} pBuildWIN;
 
 typedef struct{
   unsigned short int ID;
 
   HWND hwnd;
-} pWindowPointWin;
+} pWindowPointWIN;
 
-pWindowPointWin *windowPoint, *newWindowPoint;
-RECT *dpi;
-WINDOWPOS *limit;
-
-/* |\____/| [pEvent] Structure and Variables
+/* |\____/| [pEvent] Structure
  * |  o o |
  */
 typedef struct{
@@ -198,8 +189,6 @@ typedef struct{
   unsigned short int key[KEY_MAX];
   bool keyCaps;
 } pEvent;
-
-pEvent change;
 
 /* |\____/| [pObject] Structure
  * |  o o |
@@ -218,74 +207,79 @@ typedef struct{
   unsigned int ID;
 
   unsigned short int size;
-  char name[FONT_NAME_MAX];
+  wchar_t name[FONT_NAME_MAX];
+  wchar_t directory[FONT_NAME_MAX];
 
   pColor color;
 } pFont;
 
-/* |\____/| [pFontWin], [pFontCheckWin] Structure and Variables
+/* |\____/| [pFontWIN] Structure
  * |  o o |
  */
 typedef struct{
   unsigned short int size;
-  char name[FONT_NAME_MAX];
+  wchar_t name[FONT_NAME_MAX];
+  wchar_t directory[FONT_NAME_MAX];
 
-  HFONT base;
+  GpFontFamily *fontFamily;
+  GpFont *base;
 
   bool change;
-} pFontWin;
+} pFontWIN;
 
-pFontWin view[FONT_MAX];
-
-typedef struct{
-  bool found;
-  wchar_t name[FONT_NAME_MAX];
-
-  HDC hdc;
-} pFontCheckWin;
-
-pFontCheckWin fontCheck;
-
-/* |\____/| [pText] Structure and Variables
+/* |\____/| [pText] Structure
  * |  o o |
  */
 typedef struct{
   int x, y;
 
-  char value[TEXT_MAX];
+  wchar_t value[TEXT_MAX];
 } pText;
 
-wchar_t textConvert[TEXT_MAX];
+/************
+ * Variables
+ ************/
 
-/* |\____/| Base Function List
+// Przecinek
+pPrzecinek przecinek;
+
+// Window
+unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
+unsigned short int winCount=0;
+
+pBuildWIN build[WINDOW_MAX];
+
+MSG message;
+POINT cursor;
+RECT rectangle, fix;
+RectF figure;
+PAINTSTRUCT paintStruct;
+GpSolidFill *fill;
+ARGB argb;
+HBRUSH brush;
+GpStatus status;
+
+// Window Pointer
+pWindowPointWIN *windowPoint, *newWindowPoint;
+RECT *dpi;
+WINDOWPOS *limit;
+
+// Event
+pEvent change;
+
+// Font
+pFontWIN view[FONT_MAX];
+GpFontCollection *collection;
+
+/************
+ * Functions
+ ************/
+
+/* |\____/| Reset functions
  * |  o o |
  */
-void pSetup(bool debug, unsigned short int frameLimit);
-void pClear();
-
 void pWindowReset(pWindow *window);
-LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter);
-pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
-void pWindowDrawObject(pWindow *window, pObject *object);
-void pWindowDrawText(pWindow *window, pFont *font, pText *text);
-void pWindowClear(pWindow *window);
-void pWindowClose(pWindow *window);
-
-pEvent pEventCreate();
-void pEventHandle(pWindow *window, pEvent *event);
-
-pObject pObjectCreate(unsigned short int width, unsigned short int height);
-bool pObjectCollision(pObject object1, pObject object2);
-
 void pFontReset(pFont *font);
-int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter);
-void pFontCheck(pFont *font);
-pFont pFontCreate(const char *name, unsigned short int size);
-void pFontClose(pFont *font);
-
-pText pTextCreate(const char *value);
-
-unsigned short int pKey(const char *key);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -293,6 +287,22 @@ unsigned short int pKey(const char *key);
  * \ = , = / Returns nothing
  */
 void pSetup(bool debug, unsigned short int frameLimit){
+  // Initialize GDI+
+  ULONG_PTR gdiplusToken;
+  GdiplusStartupInput gdiplusStartupInput;
+
+  // Initialize locale
+  setlocale(LC_ALL, "");
+
+  gdiplusStartupInput.GdiplusVersion=1;
+  gdiplusStartupInput.DebugEventCallback=NULL;
+  gdiplusStartupInput.SuppressBackgroundThread=FALSE;
+  gdiplusStartupInput.SuppressExternalCodecs=FALSE;
+  GpStatus status=GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+  // Initialize font [colleciton]
+  GdipNewPrivateFontCollection(&collection);
+
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
 
@@ -394,6 +404,7 @@ void pWindowReset(pWindow *window){
 
   build[window->ID-1].resize=false;
   memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
+  memset(build[window->ID-1].titleWide, 0, sizeof(build[window->ID-1].titleWide));
   build[window->ID-1].border=0;
   build[window->ID-1].fullScreen=false;
 
@@ -403,6 +414,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].hInstance=NULL;
   build[window->ID-1].hwnd=NULL;
   build[window->ID-1].style=0;
+  build[window->ID-1].graphics=NULL;
 
   memset(build[window->ID-1].class, 0, sizeof(build[window->ID-1].class));
 
@@ -416,7 +428,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].MOVE.y=0;
 
   build[window->ID-1].KEYON=false;
-  for(unsigned short int current=0; current<KEY_MAX; current++){
+  for(unsigned short int current=0; current<KEY_MAX; current+=1){
     build[window->ID-1].KEY[current]=0;
   }
 
@@ -436,12 +448,12 @@ void pWindowReset(pWindow *window){
  */
 LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter){
   // Load current [windowPoint]
-  windowPoint=(pWindowPointWin*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+  windowPoint=(pWindowPointWIN *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
   // Manage [window] create signal
   if(uMessage==WM_CREATE){
     // Create [newWindowPoint]
-    newWindowPoint=(pWindowPointWin*)malloc(sizeof(pWindowPointWin));
+    newWindowPoint=(pWindowPointWIN *)malloc(sizeof(pWindowPointWIN));
     newWindowPoint->ID=createWinID;
     newWindowPoint->hwnd=hwnd;
 
@@ -471,12 +483,8 @@ LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM
         limit->cy=build[windowPoint->ID-1].heightMin+build[windowPoint->ID-1].heightFix;
       }
 
-      if(limit->cx>build[windowPoint->ID-1].widthMax){
-        limit->cx=build[windowPoint->ID-1].widthMax;
-      }
-      if(limit->cy>build[windowPoint->ID-1].heightMax){
-        limit->cy=build[windowPoint->ID-1].heightMax;
-      }
+      if(limit->cx>build[windowPoint->ID-1].widthMax){ limit->cx=build[windowPoint->ID-1].widthMax; }
+      if(limit->cy>build[windowPoint->ID-1].heightMax){ limit->cy=build[windowPoint->ID-1].heightMax; }
     }
   }
 
@@ -628,16 +636,16 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
   pWindow window;
 
   // Change [winCount]
-  winCount++;
+  winCount+=1;
 
-  for(unsigned short int current=0; current<WINDOW_MAX; current++){
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
     if(build[current].width==0 && build[current].height==0){
       // Set [window] [ID] and reset [window]
       window.ID=current+1;
       pWindowReset(&window);
 
       // Change [winCount]
-      winCount++;
+      winCount+=1;
       break;
     }
     else if(current==WINDOW_MAX-1){
@@ -748,21 +756,21 @@ printf(
 
   // Setup [build] [hInstance] and [class]
   build[window.ID-1].hInstance=GetModuleHandle(NULL);
-  sprintf(build[window.ID-1].class, "pClass%i", window.ID);
+  swprintf(build[window.ID-1].class, sizeof(build[window.ID-1].class), L"pClass%i", window.ID);
 
   // Create [build] [wClass]
   build[window.ID-1].wClass.lpfnWndProc=pWindowProc;
   build[window.ID-1].wClass.hInstance=build[window.ID-1].hInstance;
 
   // Check if [class] already exists
-  if(GetClassInfo(build[window.ID-1].hInstance, build[window.ID-1].class, &build[window.ID-1].wClass)){
-    sprintf(build[window.ID-1].class, "pClass%i", window.ID+WINDOW_MAX);
+  if(GetClassInfoW(build[window.ID-1].hInstance, build[window.ID-1].class, &build[window.ID-1].wClass)){
+    swprintf(build[window.ID-1].class, sizeof(build[window.ID-1].class), L"pClass%i", window.ID+WINDOW_MAX);
   }
 
   // Setup [build] [wClass]
   build[window.ID-1].wClass.lpszClassName=build[window.ID-1].class;
   build[window.ID-1].wClass.hCursor=LoadCursor(NULL, IDC_ARROW);
-  if(!RegisterClass(&build[window.ID-1].wClass)){
+  if(!RegisterClassW(&build[window.ID-1].wClass)){
     if(przecinek.debug==true){
 printf(
   "[pError, W101] \"Could not register WIN class\" (tried: %s),\n",
@@ -792,8 +800,8 @@ printf(
   AdjustWindowRectEx(&rectangle, build[window.ID-1].style, FALSE, 0);
 
   // Create [hwnd] for [build]
-  build[window.ID-1].hwnd=CreateWindowEx(
-    0, build[window.ID-1].class, TITLE_DEF, build[window.ID-1].style,
+  build[window.ID-1].hwnd=CreateWindowExW(
+    0, build[window.ID-1].class, (wchar_t *)TITLE_DEF, build[window.ID-1].style,
     CW_USEDEFAULT, CW_USEDEFAULT, rectangle.right-rectangle.left, rectangle.bottom-rectangle.top,
     NULL, NULL, build[window.ID-1].hInstance, NULL
   );
@@ -811,8 +819,8 @@ printf(
   }
 
   // Set [title] value
-  strcpy(window.title, TITLE_DEF);
-  strcpy(build[window.ID-1].title, TITLE_DEF);
+  mbstowcs(window.title, TITLE_DEF, TITLE_MAX);
+  mbstowcs(build[window.ID-1].titleWide, TITLE_DEF, TITLE_MAX);
 
   // Calculate [window] offset
   GetWindowRect(build[window.ID-1].hwnd, &rectangle);
@@ -826,7 +834,6 @@ printf(
   build[window.ID-1].widthFix=(rectangle.right-rectangle.left)-(fix.right-fix.left);
   build[window.ID-1].heightFix=(rectangle.bottom-rectangle.top)-(fix.bottom-fix.top);
 
-  // Create [build] buffer
   build[window.ID-1].hMemDC=CreateCompatibleDC(build[window.ID-1].hdc);
   build[window.ID-1].hBitmap=CreateCompatibleBitmap(
     build[window.ID-1].hdc, rectangle.right-rectangle.left, rectangle.bottom-rectangle.top
@@ -860,21 +867,26 @@ printf(
  */
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
-    // Set [brush] color
-    brush=CreateSolidBrush(RGB(object->color.red, object->color.green, object->color.blue));
-    SelectObject(build[window->ID-1].hMemDC, brush);
+    // Set [argb] value
+    argb=(ARGB)(
+      ((int)((float)object->color.alpha*2.55)<<24) |
+      (object->color.red<<16) | (object->color.green<<8) | object->color.blue
+    );
 
-    // Configure shape
-    rectangle.left=object->x;
-    rectangle.top=object->y;
-    rectangle.right=object->x+object->width;
-    rectangle.bottom=object->y+object->height;
+    // Create [build] [graphics]
+    GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
 
-    // Draw on [build] buffer
-    FillRect(build[window->ID-1].hMemDC, &rectangle, brush);
+    // Draw on [build] [hMemDC]
+    GdipCreateSolidFill(argb, &fill);
+    GdipFillRectangle(
+      build[window->ID-1].graphics, fill,
+      object->x, object->y, object->x+object->width, object->y+object->height
+    );
 
-    // Clear [brush]
-    DeleteObject(brush);
+    // Clean [build] [fill] and [graphics]
+    GdipDeleteBrush(fill);
+    GdipDeleteGraphics(build[window->ID-1].graphics);
+    build[window->ID-1].graphics=NULL;
   }
   else if(przecinek.debug==true){
 printf(
@@ -890,12 +902,64 @@ printf(
 void pWindowDrawText(pWindow *window, pFont *font, pText *text){
   if(window->active==true){
     if(font->ID!=0){
+      // Check [font] [color] values
+      if(font->color.red>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F003] \"Font red color value is too big\" (changing from: %i to 255),\n",
+  font->color.red
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [red] value
+        font->color.red=255;
+      }
+      if(font->color.green>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F004] \"Font green color value is too big\" (changing from: %i to 255),\n",
+  font->color.green
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [green] value
+        font->color.green=255;
+      }
+      if(font->color.blue>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F005] \"Font blue color value is too big\" (changing from: %i to 255),\n",
+  font->color.blue
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [blue] value
+        font->color.blue=255;
+      }
+      if(font->color.alpha>100){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F006] \"Font alpha color value is too big\" (changing from: %i to 100),\n",
+  font->color.alpha
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [alpha] value
+        font->color.alpha=100;
+      }
+
       // Update [view] [size]
       if(font->size!=view[font->ID-1].size){
         // Check [font] [size] value
         if(font->size==0){
           if(przecinek.debug==true){
-            printf("[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n");
+printf(
+  "[pWarning, F001] \"Font size value is too low\" (changing from: 0 to 1),\n"
+);
             fflush(stdout);
           }
 
@@ -920,31 +984,27 @@ printf(
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [name] value
-      if(strcmp(font->name, view[font->ID-1].name)!=0){
-        strcpy(view[font->ID-1].name, font->name);
+      // Update [view] [name]
+      if(wcscmp(font->name, view[font->ID-1].name)!=0){
+        wcscpy(view[font->ID-1].name, font->name);
+
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [directory]
+      if(wcscmp(font->directory, view[font->ID-1].directory)!=0){
+        wcscpy(view[font->ID-1].directory, font->directory);
 
         view[font->ID-1].change=true;
       }
 
       if(view[font->ID-1].change==true){
-        // Check if new [font] exists
-        pFontCheck(font);
-
-        if(fontCheck.found==true){
-          // Set [view] [base] value
-          view->base=CreateFont(
-            font->size, 0, 0, 0,
-            FW_NORMAL, FALSE, FALSE, FALSE,
-            ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            DEFAULT_QUALITY, DEFAULT_PITCH,
-            font->name
-          );
-        }
-        else{
+        // Setup [collection] and check if [directory] exists
+        status=GdipPrivateAddFontFile(collection, view[font->ID-1].directory);
+        if(status!=Ok){
           if(przecinek.debug==true){
 printf(
-  "[pError, F002] \"Could not find font\",\n"
+  "[pError, F002] \"Could not load font\",\n"
 );
 printf(
   "[pError, W303] \"Could not draw text\" (font is closed),\n"
@@ -958,21 +1018,60 @@ printf(
 
           return;
         }
+
+        // Initialize [view] [base]
+        status=GdipCreateFontFamilyFromName(view[font->ID-1].name, collection, &view[font->ID-1].fontFamily);
+        if(status!=Ok){
+          if(przecinek.debug==true){
+printf(
+  "[pError, F101] \"Could not create WIN font\",\n"
+);
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+
+        // Create [view] [base]
+        GdipCreateFont(
+          view[font->ID-1].fontFamily, font->size, FontStyleRegular,
+          UnitPixel, &view[font->ID-1].base
+        );
+
+        view[font->ID-1].change=false;
       }
 
-      // Setup [build] [hMemDC] color and font
-      SetTextColor(build[window->ID-1].hMemDC, RGB(font->color.red, font->color.green, font->color.blue));
-      SelectObject(build[window->ID-1].hMemDC, view[font->ID-1].base);
-
-      // Change [textConvert] value
-      memset(textConvert, 0, sizeof(textConvert));
-      MultiByteToWideChar(
-        CP_UTF8, 0, (char *)text->value, -1, textConvert,
-        MultiByteToWideChar(CP_UTF8, 0, (char *)text->value, -1, NULL, 0)
+      // Set [argb] value
+      argb=(ARGB)(
+        ((int)((float)font->color.alpha*2.55)<<24) |
+        (font->color.red<<16) | (font->color.green<<8) | font->color.blue
       );
 
-      // Draw on [build] buffer
-      TextOutW(build[window->ID-1].hMemDC, text->x, text->y, textConvert, wcslen(textConvert));
+      // Change [figure] values
+      figure.X=text->x;
+      figure.Y=text->y;
+
+      // Create [build] [graphics]
+      GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
+
+      // Fill [build] [graphics]
+      GdipCreateSolidFill(argb, &fill);
+      GdipDrawString(
+        build[window->ID-1].graphics, text->value, wcslen(text->value),
+        view[font->ID-1].base, &figure, NULL, fill
+      );
+
+      // Clean [build] [fill] and [graphics]
+      GdipDeleteBrush(fill);
+      GdipDeleteGraphics(build[window->ID-1].graphics);
+      build[window->ID-1].graphics=NULL;
     }
     else if(przecinek.debug==true){
 printf(
@@ -1057,7 +1156,7 @@ pEvent pEventCreate(){
   event.focus=false;
   event.frameCount=0;
 
-  for(unsigned short int current=0; current<KEY_MAX; current++){
+  for(unsigned short int current=0; current<KEY_MAX; current+=1){
     event.key[current]=0;
   }
   event.keyCaps=false;
@@ -1068,7 +1167,7 @@ pEvent pEventCreate(){
 
 /* |\_____/| pEventHandle() Function
  * |       | Used for handling window events
- * | o   o | [window] [event]
+ * | o   o | [window], [event]
  * \ = , = / Returns nothing
  */
 void pEventHandle(pWindow *window, pEvent *event){
@@ -1092,8 +1191,8 @@ void pEventHandle(pWindow *window, pEvent *event){
     );
     EndPaint(build[window->ID-1].hwnd, &paintStruct);
 
-    // Change [event] [key] values from 1 to 2
-    for(unsigned short int current=0; current<KEY_MAX; current++){
+    // Change [event] [key] values from `1` to `2`
+    for(unsigned short int current=0; current<KEY_MAX; current+=1){
       if(event->key[current]==1){ event->key[current]=2; }
     }
 
@@ -1286,8 +1385,8 @@ printf(
         build[window->ID-1].x=window->x;
         build[window->ID-1].y=window->y;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1312,8 +1411,8 @@ printf(
         build[window->ID-1].x=build[window->ID-1].MOVE.x;
         build[window->ID-1].y=build[window->ID-1].MOVE.y;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1386,8 +1485,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1410,8 +1509,8 @@ printf(
         build[window->ID-1].width=window->width;
         build[window->ID-1].height=window->height;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1430,7 +1529,7 @@ printf(
     }
 
     if(build[window->ID-1].KEYON==true){
-      for(unsigned short int current=0; current<KEY_MAX; current++){
+      for(unsigned short int current=0; current<KEY_MAX; current+=1){
         // Manage key press [message]
         if(build[window->ID-1].KEY[current]==1){
           if(event->key[current]==0){ event->key[current]=1; }
@@ -1459,8 +1558,8 @@ printf(
       activeWinID=0;
       event->focus=false;
 
-      // Change [event] [key] values to 0
-      for(unsigned short int current=0; current<KEY_MAX; current++){
+      // Change [event] [key] values to `0`
+      for(unsigned short int current=0; current<KEY_MAX; current+=1){
         event->key[current]=0;
       }
 
@@ -1469,12 +1568,13 @@ printf(
     }
 
     // Update [window] [title] value
-    if(strcmp(window->title, build[window->ID-1].title)!=0){
-      // Change [build] [title] value
-      strcpy(build[window->ID-1].title, window->title);
+    if(wcscmp(window->title, build[window->ID-1].titleWide)!=0){
+      // Change [build] [title] and [titleWide] value
+      wcscpy(build[window->ID-1].titleWide, window->title);
+      wcstombs(build[window->ID-1].title, window->title, TITLE_MAX);
 
       // Change [window] [title]
-      SetWindowText(build[window->ID-1].hwnd, window->title);
+      SetWindowTextW(build[window->ID-1].hwnd, (wchar_t *)build[window->ID-1].title);
     }
 
     if(window->resize==true){
@@ -1646,8 +1746,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1674,8 +1774,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1696,8 +1796,8 @@ printf(
     }
 
     // Update [frameCount] and sleep
-    build[window->ID-1].frameCount++;
-    Sleep((1000/winCount)/przecinek.frameLimit);
+    build[window->ID-1].frameCount+=1;
+    Sleep((1000/winCount)/(przecinek.frameLimit+1));
 
     // Calculate current time
     if(GetTickCount()-build[window->ID-1].frameStart>=1000){
@@ -1737,6 +1837,7 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
   object.color.red=0;
   object.color.green=0;
   object.color.blue=0;
+  object.color.alpha=100;
 
   // Return local [object]
   return object;
@@ -1749,7 +1850,8 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
  */
 bool pObjectCollision(pObject object1, pObject object2){
   // Return collision
-  return (object1.x<object2.x+object2.width &&
+  return(
+    object1.x<object2.x+object2.width &&
     object1.x+object1.width>object2.x &&
     object1.y<object2.y+object2.height &&
     object1.y+object1.height>object2.y
@@ -1761,61 +1863,33 @@ void pFontReset(pFont *font){
   // Reset [font] values
   font->size=0;
   memset(font->name, 0, sizeof(font->name));
+  memset(font->directory, 0, sizeof(font->directory));
 
   font->color.red=0;
   font->color.green=0;
   font->color.blue=0;
+  font->color.alpha=100;
 
   // Reset [view] values
   view[font->ID-1].size=0;
-  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
 
+  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
+  memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
+
+  view[font->ID-1].fontFamily=NULL;
   view[font->ID-1].base=NULL;
+
   view[font->ID-1].change=false;
 
   return;
 }
 
 //temp
-int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter){
-  // Check for diffrence between [lLog] [lfFaceName] and [fontCheck] [name]
-  if(wcscmp(lLog->lfFaceName, fontCheck.name)==0){
-    // Return `true` and end loop
-    fontCheck.found=true;
-
-    return 0;
-  }
-
-  // Loop function
-  return 1;
-}
-
-//temp
-void pFontCheck(pFont *font){
-  // Set [fontCheck] values
-  fontCheck.hdc=GetDC(NULL);
-  fontCheck.found=false;
-
-  // Convert and set [fontCheck] [name] value
-  memset(fontCheck.name, 0, sizeof(fontCheck.name));
-  MultiByteToWideChar(
-    CP_UTF8, 0, (char *)font->name, -1, fontCheck.name,
-    MultiByteToWideChar(CP_UTF8, 0, (char *)font->name, -1, NULL, 0)
-  );
-
-  // Check if [font] exists and release [hdc]
-  EnumFontFamiliesExW(fontCheck.hdc, NULL, pEnumFontsProc, (LPARAM)&fontCheck, 0);
-  ReleaseDC(NULL, fontCheck.hdc);
-
-  return;
-}
-
-//temp
-pFont pFontCreate(const char *name, unsigned short int size){
+pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
   // Create local [font]
   pFont font;
 
-  for(unsigned short int current=0; current<FONT_MAX; current++){
+  for(unsigned short int current=0; current<FONT_MAX; current+=1){
     if(view[current].size==0){
       // Set [font] [ID] and reset [font]
       font.ID=current+1;
@@ -1866,29 +1940,21 @@ printf(
   }
 
   // Set [font] values
-  strcpy(font.name, name);
+  wcscpy(font.name, name);
+  wcscpy(font.directory, directory);
   font.size=size;
 
   // Set [view] values
+  wcscpy(view[font.ID-1].name, name);
+  wcscpy(view[font.ID-1].directory, directory);
   view[font.ID-1].size=size;
-  strcpy(view[font.ID-1].name, font.name);
 
-  // Check if [font] exists
-  pFontCheck(&font);
-  if(fontCheck.found==true){
-    // Set [view] [base] value
-    view->base=CreateFont(
-      size, 0, 0, 0,
-      FW_NORMAL, FALSE, FALSE, FALSE,
-      ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-      DEFAULT_QUALITY, DEFAULT_PITCH,
-      name
-    );
-  }
-  else{
+  // Setup [collection] and check if [directory] exists
+  status=GdipPrivateAddFontFile(collection, directory);
+  if(status!=Ok){
     if(przecinek.debug==true){
 printf(
-  "[pError, F002] \"Could not find font\",\n"
+  "[pError, F002] \"Could not load font\",\n"
 );
       fflush(stdout);
     }
@@ -1899,6 +1965,24 @@ printf(
 
     return font;
   }
+
+  // Initialize [view] [base]
+  status=GdipCreateFontFamilyFromName(name, collection, &view[font.ID-1].fontFamily);
+  if(status!=Ok){
+    if(przecinek.debug==true){
+printf(
+  "[pError, F101] \"Could not create WIN font\",\n"
+);
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+  GdipCreateFont(view[font.ID-1].fontFamily, size, FontStyleRegular, UnitPixel, &view[font.ID-1].base);
 
   // Return local [font]
   return font;
@@ -1914,7 +1998,7 @@ void pFontClose(pFont *font){
 }
 
 //temp
-pText pTextCreate(const char *value){
+pText pTextCreate(wchar_t *value){
   // Create local [text]
   pText text;
 
@@ -1922,7 +2006,7 @@ pText pTextCreate(const char *value){
   text.x=0;
   text.y=0;
 
-  strcpy(text.value, value);
+  wcscpy(text.value, value);
 
   // Return local [text]
   return text;
@@ -1931,49 +2015,31 @@ pText pTextCreate(const char *value){
 /* |\_____/| pKey() Function
  * |       | Used for converting key names into codes
  * | o   o | [key]
- * \ = , = / Returns (0:255)
+ * \ = , = / Returns (0:256)
  */
-unsigned short int pKey(const char *key){
-  if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 || strcmp(key, "lmouse")==0){
-    return VK_LBUTTON;
-  }
-  if(strcmp(key, "MMOUSE")==0 || strcmp(key, "MMouse")==0 || strcmp(key, "mmouse")==0){
-    return VK_MBUTTON;
-  }
-  if(strcmp(key, "RMOUSE")==0 || strcmp(key, "RMouse")==0 || strcmp(key, "rmouse")==0){
-    return VK_RBUTTON;
-  }
-  if(strcmp(key, "BACK")==0 || strcmp(key, "Back")==0 || strcmp(key, "back")==0){
-    return VK_XBUTTON1;
-  }
-  if(strcmp(key, "FORWARD")==0 || strcmp(key, "Forward")==0 || strcmp(key, "forward")==0){
-    return VK_XBUTTON2;
-  }
+unsigned short int pKey(char *key){
+  if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 || strcmp(key, "lmouse")==0){ return VK_LBUTTON; }
+  if(strcmp(key, "MMOUSE")==0 || strcmp(key, "MMouse")==0 || strcmp(key, "mmouse")==0){ return VK_MBUTTON; }
+  if(strcmp(key, "RMOUSE")==0 || strcmp(key, "RMouse")==0 || strcmp(key, "rmouse")==0){ return VK_RBUTTON; }
+  if(strcmp(key, "BACK")==0 || strcmp(key, "Back")==0 || strcmp(key, "back")==0){ return VK_XBUTTON1; }
+  if(strcmp(key, "FORWARD")==0 || strcmp(key, "Forward")==0 || strcmp(key, "forward")==0){ return VK_XBUTTON2; }
 
   if(strcmp(key, "ESC")==0 || strcmp(key, "esc")==0 || strcmp(key, "Esc")==0){
-    return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "TAB")==0 || strcmp(key, "tab")==0 || strcmp(key, "Tab")==0){
-    return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "CAPS")==0 || strcmp(key, "caps")==0 || strcmp(key, "Caps")==0){
-    return MapVirtualKey(VK_CAPITAL, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_CAPITAL, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "LSHIFT")==0 || strcmp(key, "lshift")==0 || strcmp(key, "LShift")==0){
-    return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "LCTRL")==0 || strcmp(key, "lctrl")==0 || strcmp(key, "LCtrl")==0){
-    return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "LMOD")==0 || strcmp(key, "lmod")==0 || strcmp(key, "LMod")==0){
-    return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "LALT")==0 || strcmp(key, "lalt")==0 || strcmp(key, "LAlt")==0){
-    return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "SPACE")==0 || strcmp(key, "space")==0 || strcmp(key, "Space")==0){
-    return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC); }
 
   else if(strcmp(key, "F1")==0 || strcmp(key, "f1")==0){ return MapVirtualKey(VK_F1, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "F2")==0 || strcmp(key, "f2")==0){ return MapVirtualKey(VK_F2, MAPVK_VK_TO_VSC); }
@@ -1989,67 +2055,47 @@ unsigned short int pKey(const char *key){
   else if(strcmp(key, "F12")==0 || strcmp(key, "f12")==0){ return MapVirtualKey(VK_F12, MAPVK_VK_TO_VSC); }
 
   else if(strcmp(key, "RALT")==0 || strcmp(key, "ralt")==0 || strcmp(key, "RAlt")==0){
-    return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "RWIN")==0 || strcmp(key, "rwin")==0 || strcmp(key, "RWin")==0){
-    return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "MENU")==0 || strcmp(key, "menu")==0 || strcmp(key, "Menu")==0){
-    return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "RCTRL")==0 || strcmp(key, "rctrl")==0 || strcmp(key, "RCtrl")==0){
-    return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "RSHIFT")==0 || strcmp(key, "rshift")==0 || strcmp(key, "RShift")==0){
-    return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "ENTER")==0 || strcmp(key, "enter")==0 || strcmp(key, "Enter")==0){
-    return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "BACKSPACE")==0 || strcmp(key, "backspace")==0 || strcmp(key, "Backspace")==0){
-    return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC); }
 
   else if(strcmp(key, "LARROW")==0 || strcmp(key, "larrow")==0 || strcmp(key, "LArrow")==0){
-    return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "DARROW")==0 || strcmp(key, "darrow")==0 || strcmp(key, "DArrow")==0){
-    return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "RARROW")==0 || strcmp(key, "rarrow")==0 || strcmp(key, "RArrow")==0){
-    return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "UARROW")==0 || strcmp(key, "uarrow")==0 || strcmp(key, "UArrow")==0){
-    return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC); }
 
   else if(strcmp(key, "PRINTSCRN")==0 || strcmp(key, "printscrn")==0 || strcmp(key, "PrintScrn")==0){
-    return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "SCROLLLOCK")==0 || strcmp(key, "scrolllock")==0 || strcmp(key, "ScrollLock")==0){
-    return MapVirtualKey(VK_SCROLL, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_SCROLL, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "PAUSEBREAK")==0 || strcmp(key, "pausebreak")==0 || strcmp(key, "PauseBreak")==0){
-    return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "INS")==0 || strcmp(key, "ins")==0 || strcmp(key, "Ins")==0){
-    return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "HOME")==0 || strcmp(key, "home")==0 || strcmp(key, "Home")==0){
-    return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "PAGEU")==0 || strcmp(key, "pageu")==0 || strcmp(key, "PageU")==0){
-    return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "DEL")==0 || strcmp(key, "del")==0 || strcmp(key, "Del")==0){
-    return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "END")==0 || strcmp(key, "end")==0 || strcmp(key, "End")==0){
-    return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "PAGED")==0 || strcmp(key, "paged")==0 || strcmp(key, "PageD")==0){
-    return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC);
-  }
+    return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC); }
 
   else if(strcmp(key, "Q")==0 || strcmp(key, "q")==0){ return MapVirtualKey(VK_Q, MAPVK_VK_TO_VSC); }
   else if(strcmp(key, "W")==0 || strcmp(key, "w")==0){ return MapVirtualKey(VK_W, MAPVK_VK_TO_VSC); }

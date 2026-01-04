@@ -14,35 +14,43 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <locale.h>
+#include <wchar.h>
 
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <X11/Xlib.h>
-#include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
-#include <X11/keysym.h>
+#include <X11/extensions/Xrender.h>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+/*************************
+ * Structures and defines
+ *************************/
 
 /* |\____/| Define Default Values
  * |  o o |
  */
 #define WINDOW_MAX 16
-#define WINDOW_X_DEF 64
-#define WINDOW_Y_DEF 64
-#define WINDOW_POS_MAX 32768
-#define WINDOW_POS_CHANGE 65536
+#define WINDOW_X_DEF 128
+#define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
 #define WINDOW_HEIGHT_MIN 256
 #define WINDOW_WIDTH_MAX 7680
 #define WINDOW_HEIGHT_MAX 4320
+#define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
+#define WINDOW_POS_CHANGE 65536
 
 #define TITLE_DEF "{,}"
 #define TITLE_MAX 256
 
 #define KEY_MAX 256
-#define FRAME_DEF 24
-#define FRAME_MAX 480
+#define FRAME_MAX 640
 
 #define FONT_MAX 64
 #define FONT_SIZE_MAX 1024
@@ -54,9 +62,9 @@
  */
 typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int red, green, blue; } pColor;
+typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
 
-/* |\____/| [pPrzecinek] Structure and Variable
+/* |\____/| [pPrzecinek] Structure
  * |  o o |
  */
 typedef struct{
@@ -66,8 +74,6 @@ typedef struct{
   pSize display;
   pPosition cursor;
 } pPrzecinek;
-
-pPrzecinek przecinek={ false, 0, FRAME_DEF };
 
 /* |\____/| [pWindow] Structure
  * |  o o |
@@ -81,12 +87,12 @@ typedef struct{
   unsigned short int widthMin, heightMin, widthMax, heightMax;
 
   bool resize;
-  char title[TITLE_MAX];
+  wchar_t title[TITLE_MAX];
   unsigned short int border;
   bool fullScreen;
 } pWindow;
 
-/* |\____/| [pBuildX11] Structure and Variables
+/* |\____/| [pBuildX11] Structure
  * |  o o |
  */
 typedef struct{
@@ -99,6 +105,7 @@ typedef struct{
 
   bool resize;
   char title[TITLE_MAX];
+  wchar_t titleWide[TITLE_MAX];
   unsigned short int border;
   bool fullScreen;
 
@@ -107,6 +114,7 @@ typedef struct{
   Window base;
   Pixmap buffer;
   bool limitChange;
+  bool sizeRefresh, screenRefresh;
 
   Atom delete, state;
   XSizeHints sizeHint;
@@ -114,9 +122,13 @@ typedef struct{
   XWindowAttributes attributeBorder;
 
   GC graphics;
-  XColor color;
+  XRenderColor color;
   Colormap colorMap;
+  XRenderPictFormat *format;
+  Picture picture;
+
   XftDraw *textDraw;
+  XftColor textColor;
 
   XKeyboardState keyboardState;
 
@@ -125,22 +137,7 @@ typedef struct{
   double frameMax;
 } pBuildX11;
 
-unsigned short int activeWinID=0;
-unsigned short int winCount=0;
-
-pBuildX11 build[WINDOW_MAX];
-XEvent currentEvent, currentReport, currentAction;
-Display *display;
-int screen;
-Window root;
-unsigned int mask;
-
-pPosition cursorMain, cursorLocal;
-
-XftColor textColor;
-XRenderColor renderTextColor;
-
-/* |\____/| [pEvent] Structure and Variables
+/* |\____/| [pEvent] Structure
  * |  o o |
  */
 typedef struct{
@@ -150,8 +147,6 @@ typedef struct{
   unsigned short int key[KEY_MAX];
   bool keyCaps;
 } pEvent;
-
-pEvent change;
 
 /* |\____/| [pObject] Structure
  * |  o o |
@@ -170,25 +165,33 @@ typedef struct{
   unsigned int ID;
 
   unsigned short int size;
-  char name[FONT_NAME_MAX];
+  wchar_t name[FONT_NAME_MAX];
+  wchar_t directory[FONT_NAME_MAX];
 
   pColor color;
 } pFont;
 
-/* |\____/| [pFontX11] Structure and Variables
+/* |\____/| [pFontX11] Structure
  * |  o o |
  */
 typedef struct{
   unsigned short int size;
   char name[FONT_NAME_MAX];
+  char directory[FONT_NAME_MAX];
 
-  char value[FONT_NAME_MAX+8];
-  XftFont *style;
+  wchar_t nameWide[FONT_NAME_MAX];
+  wchar_t directoryWide[FONT_NAME_MAX];
+  char value[FONT_NAME_MAX+42];
+  XftFont *base;
+
+  unsigned int x, y;
+
+  FcPattern *pattern;
+  FcObjectSet *objectSet;
+  FcFontSet *fontSet;
 
   bool change;
 } pFontX11;
-
-pFontX11 view[FONT_MAX];
 
 /* |\____/| [pText] Structure
  * |  o o |
@@ -196,35 +199,50 @@ pFontX11 view[FONT_MAX];
 typedef struct{
   int x, y;
 
-  char value[TEXT_MAX];
+  wchar_t value[TEXT_MAX];
 } pText;
 
-/* |\____/| Base Function List
+/************
+ * Variables
+ ************/
+
+// FreeType
+FT_Library freeType;
+FT_Face face;
+
+// Przecinek
+pPrzecinek przecinek;
+
+// Window
+unsigned short int activeWinID=0;
+unsigned short int winCount=0;
+pBuildX11 build[WINDOW_MAX];
+XEvent currentEvent, currentReport, currentAction;
+Display *display;
+int screen;
+Window root;
+unsigned int mask;
+
+// Cursor
+pPosition cursorMain, cursorLocal;
+
+// Event
+pEvent change;
+
+// Font
+FT_Error FTError;
+pFontX11 view[FONT_MAX];
+struct stat status;
+
+/************
+ * Functions
+ ************/
+
+/* |\____/| Reset functions
  * |  o o |
  */
-void pSetup(bool debug, unsigned short int frameLimit);
-void pClear();
-
 void pWindowReset(pWindow *window);
-pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
-void pWindowDrawObject(pWindow *window, pObject *object);
-void pWindowDrawText(pWindow *window, pFont *font, pText *text);
-void pWindowClear(pWindow *window);
-void pWindowClose(pWindow *window);
-
-pEvent pEventCreate();
-void pEventHandle(pWindow *window, pEvent *event);
-
-pObject pObjectCreate(unsigned short int width, unsigned short int height);
-bool pObjectCollision(pObject object1, pObject object2);
-
 void pFontReset(pFont *font);
-pFont pFontCreate(const char *name, unsigned short int size);
-void pFontClose(pFont *font);
-
-pText pTextCreate(const char *value);
-
-unsigned short int pKey(const char *key);
 
 /* |\_____/| pSetup() Function
  * |       | Used for initialization of the library
@@ -232,6 +250,12 @@ unsigned short int pKey(const char *key);
  * \ = , = / Returns nothing
  */
 void pSetup(bool debug, unsigned short int frameLimit){
+  // Initialize FreeType
+  FT_Init_FreeType(&freeType);
+
+  // Initialize locale
+  setlocale(LC_CTYPE, "");
+
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
 
@@ -354,6 +378,7 @@ void pWindowReset(pWindow *window){
 
   build[window->ID-1].resize=false;
   memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
+  memset(build[window->ID-1].titleWide, 0, sizeof(build[window->ID-1].titleWide));
   build[window->ID-1].border=0;
   build[window->ID-1].fullScreen=false;
 
@@ -362,12 +387,18 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].base=0;
   build[window->ID-1].buffer=0;
   build[window->ID-1].limitChange=false;
+  build[window->ID-1].sizeRefresh=false;
+  build[window->ID-1].screenRefresh=false;
 
   build[window->ID-1].delete=None;
   build[window->ID-1].state=None;
 
   build[window->ID-1].graphics=NULL;
   build[window->ID-1].colorMap=0;
+
+  build[window->ID-1].textDraw=NULL;
+  build[window->ID-1].format=NULL;
+  build[window->ID-1].picture=0;
 
   build[window->ID-1].frameStart.tv_sec=0;
   build[window->ID-1].frameStart.tv_usec=0;
@@ -393,16 +424,16 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
   pWindow window;
 
   // Change [winCount]
-  winCount++;
+  winCount+=1;
 
-  for(unsigned short int current=0; current<WINDOW_MAX; current++){
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
     if(build[current].width==0 && build[current].height==0){
       // Set [window] [ID] and reset [window]
       window.ID=current+1;
       pWindowReset(&window);
 
       // Change [winCount]
-      winCount++;
+      winCount+=1;
       break;
     }
     else if(current==WINDOW_MAX-1){
@@ -564,8 +595,9 @@ printf(
 
   // Set [title] value
   XStoreName(build[window.ID-1].display, build[window.ID-1].base, TITLE_DEF);
-  strcpy(window.title, TITLE_DEF);
+  mbstowcs(window.title, TITLE_DEF, TITLE_MAX);
   strcpy(build[window.ID-1].title, TITLE_DEF);
+  mbstowcs(build[window.ID-1].titleWide, TITLE_DEF, TITLE_MAX);
 
   // Create [build] [delete] and [state]
   build[window.ID-1].delete=XInternAtom(build[window.ID-1].display, "WM_DELETE_WINDOW", False);
@@ -615,13 +647,17 @@ printf(
     WhitePixel(build[window.ID-1].display, build[window.ID-1].screen
   ));
 
+  // Setup [build] [colorMap]
+  build[window.ID-1].colorMap=DefaultColormap(build[window.ID-1].display, build[window.ID-1].screen);
+
   // Set timer start value
   gettimeofday(&build[window.ID-1].frameStart, NULL);
 
   // Create [build] [buffer]
   build[window.ID-1].buffer=XCreatePixmap(
     build[window.ID-1].display, build[window.ID-1].base,
-    width, height, DefaultDepth(build[window.ID-1].display, build[window.ID-1].screen)
+    width, height,
+    DefaultDepth(build[window.ID-1].display, build[window.ID-1].screen)
   );
 
   // Return local [window]
@@ -635,29 +671,74 @@ printf(
  */
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
+    // Check [object] [color] values
+    if(object->color.red>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWarning, O001] \"Object red color value is too big\" (changing from: %i to 255),\n",
+  object->color.red
+);
+        fflush(stdout);
+      }
+
+      // Correct [object] [color] [red] value
+      object->color.red=255;
+    }
+    if(object->color.green>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWarning, O002] \"Object green color value is too big\" (changing from: %i to 255),\n",
+  object->color.green
+);
+        fflush(stdout);
+      }
+
+      // Correct [object] [color] [green] value
+      object->color.green=255;
+    }
+    if(object->color.blue>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWarning, O003] \"Object blue color value is too big\" (changing from: %i to 255),\n",
+  object->color.blue
+);
+        fflush(stdout);
+      }
+
+      // Correct [object] [color] [blue] value
+      object->color.blue=255;
+    }
+    if(object->color.alpha>100){
+      if(przecinek.debug==true){
+printf(
+  "[pWarning, O004] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
+  object->color.alpha
+);
+        fflush(stdout);
+      }
+
+      // Correct [object] [color] [alpha] value
+      object->color.alpha=100;
+    }
+
     // Set [build] [color] values
     build[window->ID-1].color.red=(unsigned char)object->color.red*256;
     build[window->ID-1].color.green=(unsigned char)object->color.green*256;
     build[window->ID-1].color.blue=(unsigned char)object->color.blue*256;
-    build[window->ID-1].color.flags=DoRed | DoGreen | DoBlue;
+    build[window->ID-1].color.alpha=(unsigned char)object->color.alpha*655;
 
-    // Create [build] [colorMap]
-    if(build[window->ID-1].colorMap==0){
-        build[window->ID-1].colorMap=DefaultColormap(
-          build[window->ID-1].display, build[window->ID-1].screen
-      );
-    }
-    XAllocColor(
-      build[window->ID-1].display, build[window->ID-1].colorMap, &build[window->ID-1].color
+    // Setup [build] [format] and [picture]
+    build[window->ID-1].format=XRenderFindVisualFormat(
+      build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
+    );
+    build[window->ID-1].picture=XRenderCreatePicture(
+      build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
     );
 
     // Draw on [build] [buffer]
-    XSetForeground(
-      build[window->ID-1].display, build[window->ID-1].graphics, build[window->ID-1].color.pixel
-    );
-    XFillRectangle(
-      build[window->ID-1].display, build[window->ID-1].buffer,
-      build[window->ID-1].graphics, object->x, object->y, object->width, object->height
+    XRenderFillRectangle(
+      build[window->ID-1].display, PictOpOver, build[window->ID-1].picture,
+      &build[window->ID-1].color, object->x, object->y, object->width, object->height
     );
   }
   else if(przecinek.debug==true){
@@ -674,13 +755,54 @@ printf(
 void pWindowDrawText(pWindow *window, pFont *font, pText *text){
   if(window->active==true){
     if(font->ID!=0){
-      if(build[window->ID-1].textDraw==NULL){
-        // Create [textDraw] for [build]
-        build[window->ID-1].textDraw=XftDrawCreate(
-          build[window->ID-1].display, build[window->ID-1].buffer,
-          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-          build[window->ID-1].colorMap
-        );
+      // Check [font] [color] values
+      if(font->color.red>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F003] \"Font red color value is too big\" (changing from: %i to 255),\n",
+  font->color.red
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [red] value
+        font->color.red=255;
+      }
+      if(font->color.green>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F004] \"Font green color value is too big\" (changing from: %i to 255),\n",
+  font->color.green
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [green] value
+        font->color.green=255;
+      }
+      if(font->color.blue>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F005] \"Font blue color value is too big\" (changing from: %i to 255),\n",
+  font->color.blue
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [blue] value
+        font->color.blue=255;
+      }
+      if(font->color.alpha>100){
+        if(przecinek.debug==true){
+printf(
+  "[pWarning, F006] \"Font alpha color value is too big\" (changing from: %i to 100),\n",
+  font->color.alpha
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [alpha] value
+        font->color.alpha=100;
       }
 
       // Update [view] [size]
@@ -710,34 +832,54 @@ printf(
           font->size=FONT_SIZE_MAX;
         }
 
+        // Update [face] size
+        FT_Set_Pixel_Sizes(face, 0, font->size);
+
         // Refresh [view] values
         view[font->ID-1].size=font->size;
         view[font->ID-1].change=true;
       }
 
       // Update [view] [name] value
-      if(strcmp(font->name, view[font->ID-1].name)!=0){
-        strcpy(view[font->ID-1].name, font->name);
+      if(wcscmp(font->name, view[font->ID-1].nameWide)!=0){
+        wcscpy(view[font->ID-1].nameWide, font->name);
 
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [style]
-      if(view[font->ID-1].change==true){
-        snprintf(
-          view[font->ID-1].value, sizeof(view[font->ID-1].value),
-          "%s:size=%u:antialias=true", font->name, font->size
-        );
+      // Update [view] [directory] value
+      if(wcscmp(font->directory, view[font->ID-1].directoryWide)!=0){
+        wcscpy(view[font->ID-1].directoryWide, font->directory);
 
-        // Recreate [view] [style]
-        view[font->ID-1].style=XftFontOpenName(
-          display, screen,
-          view[font->ID-1].value
-        );
-        if(view[font->ID-1].style==false){
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [base]
+      if(view[font->ID-1].change==true){
+        // Check if [directory] exists
+        if(stat(view[font->ID-1].directory, &status)!=0){
           if(przecinek.debug==true){
 printf(
-  "[pError, F002] \"Could not find font\",\n"
+  "[pError, F002] \"Could not load font\",\n"
+);
+printf(
+  "[pError, W303] \"Could not draw text\" (font is closed),\n"
+);
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+
+        // Load [face] and check if font loads properly
+        if(FT_New_Face(freeType, view[font->ID-1].directory, 0, &face)){
+          if(przecinek.debug==true){
+printf(
+  "[pError, F201] \"Could not create X11 font\",\n"
 );
 printf(
   "[pError, W303] \"Could not draw text\" (font is closed),\n"
@@ -755,24 +897,45 @@ printf(
         view[font->ID-1].change=false;
       }
 
-      // Set [renderTextColor] values
-      renderTextColor.red=(unsigned short)font->color.red*256;
-      renderTextColor.green=(unsigned short)font->color.green*256;
-      renderTextColor.blue=(unsigned short)font->color.blue*256;
-      renderTextColor.alpha=(unsigned short)65535;
+      // Set [view] [x] and [y] values
+      view[font->ID-1].x=text->x;
+      view[font->ID-1].y=text->y;
 
-      // Allocate [renderTextColor]
-      XftColorAllocValue(
-        build[window->ID-1].display,
-        DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-        build[window->ID-1].colorMap, &renderTextColor, &textColor
+      // Set [build] [color] values
+      build[window->ID-1].color.red=(unsigned char)font->color.red*256;
+      build[window->ID-1].color.green=(unsigned char)font->color.green*256;
+      build[window->ID-1].color.blue=(unsigned char)font->color.blue*256;
+      build[window->ID-1].color.alpha=(unsigned char)font->color.alpha*655;
+
+      // Setup [build] [format] and [picture]
+      build[window->ID-1].format=XRenderFindVisualFormat(
+        build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
+      );
+      build[window->ID-1].picture=XRenderCreatePicture(
+        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
       );
 
-      // Draw on [build] [textDraw]
-      XftDrawStringUtf8(
-        build[window->ID-1].textDraw, &textColor, view[font->ID-1].style, text->x, text->y,
-        (const XftChar8 *)text->value, strlen(text->value)
-      );
+      for(wchar_t *current=text->value; *current; current+=1){
+        // Load [current] character
+        if(FT_Load_Char(face, *current, FT_LOAD_RENDER)){ continue; }
+
+        // Fill [text] pixel by pixel
+        for(unsigned int row=0; row<face->glyph->bitmap.rows; row+=1){
+          for(unsigned int col=0; col<face->glyph->bitmap.width; col+=1){
+            if(face->glyph->bitmap.buffer[row*face->glyph->bitmap.pitch+col]){
+              // Draw on [build] [buffer]
+              XRenderFillRectangle(
+                build[window->ID-1].display, PictOpOver, build[window->ID-1].picture,
+                &build[window->ID-1].color, view[font->ID-1].x + col,
+                view[font->ID-1].y - face->glyph->bitmap_top + row, 1, 1
+              );
+            }
+          }
+        }
+
+        // Move current position
+        view[font->ID-1].x+=face->glyph->advance.x>>6;
+      }
     }
     else if(przecinek.debug==true){
 printf(
@@ -858,7 +1021,7 @@ pEvent pEventCreate(){
   event.focus=false;
   event.frameCount=0;
 
-  for(unsigned short int current=0; current<KEY_MAX; current++){
+  for(unsigned short int current=0; current<KEY_MAX; current+=1){
     event.key[current]=0;
   }
   event.keyCaps=false;
@@ -869,13 +1032,13 @@ pEvent pEventCreate(){
 
 /* |\_____/| pEventHandle() Function
  * |       | Used for handling window events
- * | o   o | [window] [event]
+ * | o   o | [window], [event]
  * \ = , = / Returns nothing
  */
 void pEventHandle(pWindow *window, pEvent *event){
   if(window->active==true){
-    // Change [event] [key] values from 1 to 2
-    for(unsigned short int current=0; current<KEY_MAX; current++){
+    // Change [event] [key] values from `1` to `2`
+    for(unsigned short int current=0; current<KEY_MAX; current+=1){
       if(event->key[current]==1){ event->key[current]=2; }
     }
 
@@ -964,7 +1127,8 @@ void pEventHandle(pWindow *window, pEvent *event){
           window->width, window->height
         );
         build[window->ID-1].buffer=XCreatePixmap(
-          build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
+          build[window->ID-1].display, build[window->ID-1].base,
+          window->width, window->height,
           DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
         );
 
@@ -978,6 +1142,7 @@ void pEventHandle(pWindow *window, pEvent *event){
         XMoveWindow(build[window->ID-1].display, build[window->ID-1].base, window->x, window->y);
 
         build[window->ID-1].fullScreen=true;
+        build[window->ID-1].screenRefresh=true;
       }
       else if(window->fullScreen==false && build[window->ID-1].fullScreen==true){
         // Change [window] and [build] size parameters to the backuped ones
@@ -991,7 +1156,8 @@ void pEventHandle(pWindow *window, pEvent *event){
           build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
         );
         build[window->ID-1].buffer=XCreatePixmap(
-          build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
+          build[window->ID-1].display, build[window->ID-1].base,
+          window->width, window->height,
           DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
         );
 
@@ -1005,7 +1171,9 @@ void pEventHandle(pWindow *window, pEvent *event){
         XMoveWindow(build[window->ID-1].display, build[window->ID-1].base, window->x, window->y);
 
         build[window->ID-1].fullScreen=false;
+        build[window->ID-1].screenRefresh=true;
       }
+      else{ build[window->ID-1].screenRefresh=false; }
 
       if(window->fullScreen==false){
         // Manage position change [currentEvent]
@@ -1066,8 +1234,8 @@ printf(
           build[window->ID-1].x=window->x;
           build[window->ID-1].y=window->y;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
 
@@ -1081,8 +1249,8 @@ printf(
           build[window->ID-1].x=window->x;
           build[window->ID-1].y=window->y;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
         }
@@ -1145,8 +1313,8 @@ printf(
           build[window->ID-1].width=window->width;
           build[window->ID-1].height=window->height;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
 
@@ -1156,9 +1324,12 @@ printf(
             window->width, window->height
           );
           build[window->ID-1].buffer=XCreatePixmap(
-            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
+            build[window->ID-1].display, build[window->ID-1].base,
+            window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
+
+          build[window->ID-1].sizeRefresh=true;
         }
         else if(currentEvent.type==ConfigureNotify && window->width!=currentEvent.xconfigure.width){
           // Update [window] and [build] size parameters
@@ -1167,14 +1338,15 @@ printf(
           build[window->ID-1].width=currentEvent.xconfigure.width;
           build[window->ID-1].height=currentEvent.xconfigure.height;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
 
           // Update [buffer]
           build[window->ID-1].buffer=XCreatePixmap(
-            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
+            build[window->ID-1].display, build[window->ID-1].base,
+            window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
 
@@ -1187,8 +1359,11 @@ printf(
             build[window->ID-1].display, build[window->ID-1].base,
             build[window->ID-1].graphics, 0, 0, window->width, window->height
           );
+
+          build[window->ID-1].sizeRefresh=true;
         }
       }
+      else{ build[window->ID-1].sizeRefresh=false; }
 
       // Manage key press [currentEvent]
       if(currentEvent.type==KeyPress){
@@ -1255,19 +1430,20 @@ printf(
         activeWinID=0;
         event->focus=false;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
       }
 
       // Update [window] [title] value
-      if(strcmp(window->title, build[window->ID-1].title)!=0){
+      if(wcscmp(window->title, build[window->ID-1].titleWide)!=0){
         // Update [build] [title] value
-        strcpy(build[window->ID-1].title, window->title);
+        wcscpy(build[window->ID-1].titleWide, window->title);
+        wcstombs(build[window->ID-1].title, window->title, TITLE_MAX);
 
         // Change [window] [title]
-        XStoreName(build[window->ID-1].display, build[window->ID-1].base, window->title);
+        XStoreName(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].title);
       }
 
       if(window->resize==true){
@@ -1440,8 +1616,8 @@ printf(
           window->width=build[window->ID-1].widthMin;
           build[window->ID-1].width=build[window->ID-1].widthMin;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
 
@@ -1450,7 +1626,8 @@ printf(
             build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
           );
           build[window->ID-1].buffer=XCreatePixmap(
-            build[window->ID-1].display, build[window->ID-1].base, window->width, window->height,
+            build[window->ID-1].display, build[window->ID-1].base,
+            window->width, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
         }
@@ -1461,8 +1638,8 @@ printf(
           window->height=build[window->ID-1].heightMin;
           build[window->ID-1].height=build[window->ID-1].heightMin;
 
-          // Change [event] [key] values to 0
-          for(unsigned short int current=0; current<KEY_MAX; current++){
+          // Change [event] [key] values to `0`
+          for(unsigned short int current=0; current<KEY_MAX; current+=1){
             event->key[current]=0;
           }
 
@@ -1471,7 +1648,8 @@ printf(
             build[window->ID-1].display, build[window->ID-1].base, window->height, window->height
           );
           build[window->ID-1].buffer=XCreatePixmap(
-            build[window->ID-1].display, build[window->ID-1].base, window->height, window->height,
+            build[window->ID-1].display, build[window->ID-1].base,
+            window->height, window->height,
             DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
           );
         }
@@ -1506,7 +1684,7 @@ printf(
     }
 
     // Update [frameCount] and sleep
-    build[window->ID-1].frameCount++;
+    build[window->ID-1].frameCount+=1;
     usleep((1000000/winCount)/przecinek.frameLimit);
 
     // Set and calculate current time
@@ -1553,6 +1731,7 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
   object.color.red=0;
   object.color.green=0;
   object.color.blue=0;
+  object.color.alpha=100;
 
   // Return local [object]
   return object;
@@ -1578,17 +1757,29 @@ void pFontReset(pFont *font){
   // Reset [font] values
   font->size=0;
   memset(font->name, 0, sizeof(font->name));
+  memset(font->directory, 0, sizeof(font->directory));
 
   font->color.red=0;
   font->color.green=0;
   font->color.blue=0;
+  font->color.alpha=100;
 
   // Reset [view] values
   view[font->ID-1].size=0;
   memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
+  memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
 
+  memset(view[font->ID-1].nameWide, 0, sizeof(view[font->ID-1].name));
+  memset(view[font->ID-1].directoryWide, 0, sizeof(view[font->ID-1].directory));
   memset(view[font->ID-1].value, 0, sizeof(view[font->ID-1].value));
-  view[font->ID-1].style=NULL;
+  view[font->ID-1].base=NULL;
+
+  view[font->ID-1].x=0;
+  view[font->ID-1].y=0;
+
+  view[font->ID-1].pattern=NULL;
+  view[font->ID-1].objectSet=NULL;
+  view[font->ID-1].fontSet=NULL;
 
   view[font->ID-1].change=false;
 
@@ -1596,11 +1787,11 @@ void pFontReset(pFont *font){
 }
 
 //temp
-pFont pFontCreate(const char *name, unsigned short int size){
+pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
   // Create local [font]
   pFont font;
 
-  for(unsigned short int current=0; current<FONT_MAX; current++){
+  for(unsigned short int current=0; current<FONT_MAX; current+=1){
     if(view[current].size==0){
       // Set [font] [ID] and reset [font]
       font.ID=current+1;
@@ -1651,27 +1842,22 @@ printf(
   }
 
   // Set [font] values
-  strcpy(font.name, name);
+  wcscpy(font.name, name);
+  wcscpy(font.directory, directory);
   font.size=size;
 
   // Set [view] values
   view[font.ID-1].size=size;
-  strcpy(view[font.ID-1].name, font.name);
+  wcscpy(view[font.ID-1].nameWide, name);
+  wcscpy(view[font.ID-1].directoryWide, directory);
+  wcstombs(view[font.ID-1].name, view[font.ID-1].nameWide, FONT_NAME_MAX);
+  wcstombs(view[font.ID-1].directory, view[font.ID-1].directoryWide, FONT_NAME_MAX);
 
-  snprintf(
-    view[font.ID-1].value, sizeof(view[font.ID-1].value),
-    "%s:size=%u:antialias=true", name, size
-  );
-
-  // Create [view] [style]
-  view[font.ID-1].style=XftFontOpenName(
-    display, screen,
-    view[font.ID-1].value
-  );
-  if(view[font.ID-1].style==false){
+  // Check if [directory] exists
+  if(stat(view[font.ID-1].directory, &status)!=0){
     if(przecinek.debug==true){
 printf(
-  "[pError, F002] \"Could not find font\",\n"
+  "[pError, F002] \"Could not load font\",\n"
 );
       fflush(stdout);
     }
@@ -1682,6 +1868,26 @@ printf(
 
     return font;
   }
+
+  // Load [face] and check if font loads properly
+  FTError=FT_New_Face(freeType, view[font.ID-1].directory, 0, &face);
+  if(FTError==true){
+    if(przecinek.debug==true){
+printf(
+  "[pError, F201] \"Could not create X11 font\",\n"
+);
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+
+  // Set [face] size
+  FT_Set_Pixel_Sizes(face, 0, font.size);
 
   // Return local [font]
   return font;
@@ -1697,7 +1903,7 @@ void pFontClose(pFont *font){
 }
 
 //temp
-pText pTextCreate(const char *value){
+pText pTextCreate(wchar_t *value){
   // Create local [text]
   pText text;
 
@@ -1705,7 +1911,7 @@ pText pTextCreate(const char *value){
   text.x=0;
   text.y=0;
 
-  strcpy(text.value, value);
+  wcscpy(text.value, value);
 
   // Return local [text]
   return text;
@@ -1714,9 +1920,9 @@ pText pTextCreate(const char *value){
 /* |\_____/| pKey() Function
  * |       | Used for converting key names into codes
  * | o   o | [key]
- * \ = , = / Returns (0:255)
+ * \ = , = / Returns (0:256)
  */
-unsigned short int pKey(const char *key){
+unsigned short int pKey(char *key){
   if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 ||
     strcmp(key, "lmouse")==0){ return 1; }
   if(strcmp(key, "MMOUSE")==0 || strcmp(key, "MMouse")==0 ||

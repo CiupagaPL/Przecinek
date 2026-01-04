@@ -7,10 +7,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Create options
-option(WIN "Przecinek Build for Windows" OFF)
-option(X11 "Przecinek Build for Linux(X11)" OFF)
+option(WIN "[pInfo] \"Przecinek build for WIN\",\n" OFF)
+option(X11 "[pInfo] \"Przecinek Build for X11\",\n" OFF)
 
-# Select all source files
+# Select source files
 set(CODE "main.c")
 set(HEADERS "przecinek.h")
 
@@ -20,29 +20,32 @@ if(WIN)
 
   # Set compiler flags
   set(CMAKE_C_COMPILER "x86_64-w64-mingw32-gcc")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc -static")
+
   set(CMAKE_CXX_COMPILER "x86_64-w64-mingw32-g++")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
 
   # Set target libraries
-  target_link_libraries(${PROJECT_NAME} user32 gdi32 winmm)
+  target_link_libraries(${PROJECT_NAME} user32 gdi32 msimg32 winmm gdiplus)
 elseif(X11)
-  # Set X11 location
-  add_executable(${PROJECT_NAME} ${CODE} "src/x11.c" ${HEADERS})
-
   # Check for packages
   find_package(X11 REQUIRED)
+  find_package(Freetype REQUIRED)
+
+  # Set X11 location
+  add_executable(${PROJECT_NAME} ${CODE} "src/x11.c" ${HEADERS})
 
   # Set compiler flags
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 
   # Set target libraries
-  include_directories(/usr/include/freetype2  -I/usr/local/include/freetype2  -I/usr/include/libpng16)
-  target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES} Xft freetype)
+  include_directories(${X11_INCLUDE_DIR} ${FREETYPE_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES} Xft Xrender ${FREETYPE_LIBRARIES})
 else()
-  message(FATAL_ERROR "[pError, C001] \"No build Tag selected\",\n")
+  message(FATAL_ERROR "[pError] \"No build tag selected\",\n")
 endif()
 
 # Set compile options
+target_compile_options(${PROJECT_NAME} PRIVATE -finput-charset=UTF-8 -fexec-charset=UTF-8)
 add_compile_options(-Wall -Werror)

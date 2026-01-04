@@ -10,7 +10,10 @@
  *      \ \ \--\ \
  *      {,{,} {,},}
  */
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
+#include <wchar.h>
 
 #ifndef PRZECINEK_H
 #define PRZECINEK_H
@@ -23,21 +26,20 @@ extern "C"{
    * |  o o |
    */
   #define WINDOW_MAX 16
-  #define WINDOW_X_DEF 64
-  #define WINDOW_Y_DEF 64
-  #define WINDOW_POS_MAX 32768
-  #define WINDOW_POS_CHANGE 65536
+  #define WINDOW_X_DEF 128
+  #define WINDOW_Y_DEF 128
   #define WINDOW_WIDTH_MIN 256
   #define WINDOW_HEIGHT_MIN 256
   #define WINDOW_WIDTH_MAX 7680
   #define WINDOW_HEIGHT_MAX 4320
+  #define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
+  #define WINDOW_POS_CHANGE 65536
 
   #define TITLE_DEF "{,}"
   #define TITLE_MAX 256
 
   #define KEY_MAX 256
-  #define FRAME_DEF 24
-  #define FRAME_MAX 480
+  #define FRAME_MAX 640
 
   #define FONT_MAX 64
   #define FONT_SIZE_MAX 1024
@@ -49,7 +51,7 @@ extern "C"{
    */
   typedef struct{ unsigned short int width, height; } pSize;
   typedef struct{ int x, y; } pPosition;
-  typedef struct{ unsigned short int red, green, blue; } pColor;
+  typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
 
   /* |\____/| [pPrzecinek] Structure and Variable
    * |  o o |
@@ -76,16 +78,16 @@ extern "C"{
     unsigned short int widthMin, heightMin, widthMax, heightMax;
 
     bool resize;
-    char title[TITLE_MAX];
+    wchar_t title[TITLE_MAX];
     unsigned short int border;
     bool fullScreen;
   } pWindow;
 
-  /* |\____/| [pBuildX11] / [pBuildWin], [pWindowPointWin] Structures
+  /* |\____/| [pBuildX11] / [pBuildWIN], [pWindowPointWIN] Structures
    * |  o o |
    */
   //pBuildX11
-  //pBuildWin, pWindowPointWin
+  //pBuildWIN, pWindowPointWIN
 
   /* |\____/| [pEvent] Structure
    * |  o o |
@@ -115,16 +117,17 @@ extern "C"{
     unsigned int ID;
 
     unsigned short int size;
-    char name[FONT_NAME_MAX];
+    wchar_t name[FONT_NAME_MAX];
+    wchar_t directory[FONT_NAME_MAX];
 
     pColor color;
   } pFont;
 
-  /* |\____/| [pFontX11] / [pFontWin], [pFontCheckWin] Structures
+  /* |\____/| [pFontX11] / [pFontWIN] Structures
    * |  o o |
    */
   //pFontX11
-  //pFontWin, pFontCheckWin
+  //pFontWIN
 
   /* |\____/| [pText] Structure
    * |  o o |
@@ -133,7 +136,7 @@ extern "C"{
     int x, y;
     unsigned short int size;
 
-    char value[TEXT_MAX];
+    wchar_t value[TEXT_MAX];
 
     pColor color;
   } pText;
@@ -206,7 +209,7 @@ extern "C"{
 
   /* |\_____/| pEventHandle() Function
    * |       | Used for handling window events
-   * | o   o | [window] [event]
+   * | o   o | [window], [event]
    * \ = , = / Returns nothing
    */
   void pEventHandle(pWindow *window, pEvent *event);
@@ -229,26 +232,20 @@ extern "C"{
   //void pFontReset(pFont *font);
 
   //temp
-  //int CALLBACK pEnumFontsProc(const LOGFONTW *lLog, const TEXTMETRICW *lMetric, DWORD fontType, LPARAM lParameter);
-
-  //temp
-  //void pFontCheck(pFont *font);
-
-  //temp
-  pFont pFontCreate(const char *name, unsigned short int size);
+  pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size);
 
   //temp
   void pFontClose(pFont *font);
 
   //temp
-  pText pTextCreate(const char *value);
+  pText pTextCreate(wchar_t *value);
 
   /* |\_____/| pKey() Function
    * |       | Used for converting key names into codes
    * | o   o | [key]
-   * \ = , = / Returns (0:255)
+   * \ = , = / Returns (0:256)
    */
-  unsigned short int pKey(const char *key);
+  unsigned short int pKey(char *key);
 
   #ifdef __cplusplus
 }
