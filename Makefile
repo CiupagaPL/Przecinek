@@ -1,8 +1,6 @@
-# |\____/| Example {,} Makefile
-# |  o o |
 .PHONY: default win x11 clean
 
-# Run Compiled Script
+# Run compiled script
 default:
 	./build/debug
 
@@ -11,7 +9,7 @@ win: clean
 	mkdir -p build/
 	cmake -B build/ . -DWIN=ON
 	cmake --build build/
-	for c in $(wildcard *.ttf); do \
+	for c in $(wildcard add/*.ttf); do \
 		cp $$c build/; \
 	done
 
@@ -20,10 +18,7 @@ x11: clean
 	mkdir -p build/
 	cmake -B build/ . -DX11=ON
 	cmake --build build/
-	for c in $(wildcard *.ttf); do \
-		cp $$c build/; \
-	done
 
-# Remove build/ Directory
+# Remove build/ directory
 clean:
 	rm -rf build/

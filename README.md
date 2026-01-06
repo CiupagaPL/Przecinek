@@ -14,8 +14,8 @@ It's under active development.
 |-----------------------------|------------|
 | Creating Windows            | **[a1,0]** |
 | Managing Windows            | **[a1,0]** |
-| Windows Event System        | **[a2,0]** |
-| Input System                | **[a2,0]** |
+| Input System                | **[a1,0]** |
+| Window Event System         | **[a2,0]** |
 | Window Frame Control        | **[a3,0]** |
 | Basic Render System         | **[a3,0]** |
 | Creating Basic Objects      | **[a3,0]** |
@@ -25,17 +25,18 @@ It's under active development.
 
 | Feature                     | WIN | X11 |
 |-----------------------------|-----|-----|
-| Supporting non-ASCII chars  | ❔* | ✅  |
+| Supporting non-ASCII chars  | ✅  | ✅  |
+| Supporting color alpha      | ✅  | ❔* |
 | Loading Fonts               | ✅  | ✅  |
 | Managing Fonts              | ✅  | ✅  |
 | Rendering Fonts             | ✅  | ❔* |
-| Loading Audio               | ❌  | ❌  |
-| Managing Audio              | ❌  | ❌  |
-| Playing Audio               | ❌  | ❌  |
 | Creating Diffrent Shapes    | ❌  | ❌  |
 | Checking Shapes Collisions  | ❌  | ❌  |
 | Loading Images              | ❌  | ❌  |
 | Rendering Images            | ❌  | ❌  |
+| Loading Audio               | ❌  | ❌  |
+| Managing Audio              | ❌  | ❌  |
+| Playing Audio               | ❌  | ❌  |
 
 `*` > Unfinished Features
 
@@ -46,9 +47,9 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 
 ### Version
 
-> Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,11]**;<br>
-> Last Updated: **04-01-2026**;
+> Newest Version (Alpha): **[a4,0]**;<br>
+> Newest Version (Unstable): **[u,12]**;<br>
+> Last Updated: **06-01-2026**;
 
 ### LICENSE
 

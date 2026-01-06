@@ -1,71 +1,66 @@
-/* |\____/| Example {,} Ping Pong Script
- * |  o o |
- */
 #include <iostream>
-#include <string.h>
 #include <cmath>
 
 #include "przecinek.h"
 
 int main(void){
-  // Disable console, set frame limit to `60`
+  // Initialize Przecinek, disable console, set frame limit to `60`
   pSetup(false, 60);
 
   // Create unresizable [window] and [event]
   pWindow window=pWindowCreate(800, 600, false);
   pEvent event=pEventCreate();
 
-  // Set [window] [title] to `debug`
-  strncpy(window.title, "debug", sizeof(window.title)-1);
-  window.title[sizeof(window.title)-1]='\0';
+  // Set [window] [title] to `{,} Ping Pong`
+  wcscpy(window.title, L"{,} Ping Pong");
 
   // Create and setup [racket1] object
   pObject racket1=pObjectCreate(15, 200);
   racket1.x=0;
   racket1.y=190;
-  racket1.color.r=0;
-  racket1.color.g=0;
-  racket1.color.b=0;
+  racket1.color.red=50;
+  racket1.color.green=50;
+  racket1.color.blue=60;
 
   // Create and setup [racket2] object
   pObject racket2=pObjectCreate(15, 200);
   racket2.x=785;
   racket2.y=190;
-  racket2.color.r=0;
-  racket2.color.g=0;
-  racket2.color.b=0;
+  racket2.color.red=50;
+  racket2.color.green=50;
+  racket2.color.blue=60;
 
   // Create and setup [middle1] object
   pObject middle1=pObjectCreate(10, 600);
   middle1.x=385;
   middle1.y=0;
-  middle1.color.r=255;
-  middle1.color.g=125;
-  middle1.color.b=125;
+  middle1.color.red=255;
+  middle1.color.green=125;
+  middle1.color.blue=125;
 
   // Create and setup [middle2] object
   pObject middle2=pObjectCreate(10, 600);
   middle2.x=395;
   middle2.y=0;
-  middle2.color.r=125;
-  middle2.color.g=255;
-  middle2.color.b=125;
+  middle2.color.red=125;
+  middle2.color.green=255;
+  middle2.color.blue=125;
 
   // Create and setup [middle3] object
   pObject middle3=pObjectCreate(10, 600);
   middle3.x=405;
   middle3.y=0;
-  middle3.color.r=125;
-  middle3.color.g=125;
-  middle3.color.b=255;
+  middle3.color.red=125;
+  middle3.color.green=125;
+  middle3.color.blue=255;
 
   // Create and setup [ball] object
   pObject ball=pObjectCreate(20, 20);
   ball.x=390;
   ball.y=290;
-  ball.color.r=0;
-  ball.color.g=0;
-  ball.color.b=0;
+  ball.color.red=50;
+  ball.color.green=50;
+  ball.color.blue=60;
 
   // Create some more variables
   bool start=false;
@@ -73,13 +68,13 @@ int main(void){
 
   while(window.active){
     // Close [window] if `ESC` is being pressed
-    if(event.key[pKey("ESC")]==1){
+    if(event.key[pKey(L"ESC")]==1){
       pWindowClose(&window);
       break;
     }
 
     // Start the game if `SPACE` is being pressed
-    if(event.key[pKey("SPACE")]==1){
+    if(event.key[pKey(L"SPACE")]==1){
       start=true;
       timer=0;
     }
@@ -91,18 +86,14 @@ int main(void){
     }
     else{
       // Move [racket1] and [racket2] up if `W` or `UARROW` is being hold
-      if(event.key[pKey("W")]>=1 || event.key[pKey("UARROW")]>=1){
-        if(racket1.y>0 && racket2.y>0){
-          racket1.y-=7;
-          racket2.y-=7;
-        }
+      if(event.key[pKey(L"W")]>=1 || event.key[pKey(L"UARROW")]>=1){
+        if(racket1.y>0){ racket1.y-=7; }
+        if(racket2.y<400){ racket2.y+=7; }
       }
       // Move [racket1] and [racket2] down if `S` or `DARROW` is being hold
-      if(event.key[pKey("S")]>=1 || event.key[pKey("DARROW")]>=1){
-        if(racket1.y<400 && racket2.y<400){
-          racket1.y+=7;
-          racket2.y+=7;
-        }
+      if(event.key[pKey(L"S")]>=1 || event.key[pKey(L"DARROW")]>=1){
+        if(racket1.y<400){ racket1.y+=7; }
+        if(racket2.y>0){ racket2.y-=7; }
       }
 
       // Change [ball] position
@@ -112,10 +103,10 @@ int main(void){
       else{ ball.y=przecinek.cursor.y-window.y; }
 
       // Check for collisions
-      if(pObjectCollision(racket1, ball)==true){ direction=10; }
-      else if(pObjectCollision(racket2, ball)==true){ direction=-10; }
+      if(pObjectCollision(&racket1, &ball)==true){ direction=10; }
+      else if(pObjectCollision(&racket2, &ball)==true){ direction=-10; }
 
-      // Reset game
+      // Reset variables
       else if(ball.x+ball.width>800 || ball.x<0){
         start=false;
         direction=10;
@@ -134,7 +125,7 @@ int main(void){
     // Clear [window]
     pWindowClear(&window);
 
-    // Draw objects
+    // Draw objects on [window]
     pWindowDrawObject(&window, &middle1);
     pWindowDrawObject(&window, &middle2);
     pWindowDrawObject(&window, &middle3);
