@@ -1,44 +1,59 @@
-/* Orginal {,} Made By Ciupaga
- * https://github.com/CiupagaPL/Przecinek
- * Make Sure to Read the License!
- *         |\_____/|
- *         |       |
+/****************************************************************
+ *         |\_____/|  Orginal {,} made by Ciupaga
+ *         |       |  Copyright 2025-2026
  *  ___    | >   < |
- * /   \  _\ = , = /
- * \__  \/        |
+ * /   \  _\ = , = /  https://github.com/CiupagaPL/Przecinek
+ * \__  \/        |   Make sure to read the License and Manual!
  *    \_         /
- *      \ \ \--\ \
+ *      \ \----\ \
  *      {,{,} {,},}
- */
+ ****************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <locale.h>
+#include <wchar.h>
 
 #include <windows.h>
+#include <gdiplus.h>
 
-/* |\____/| Define Default Values
- * |  o o |
- */
+/********************************
+ *  ,______,  Define default
+ *  |      |  values
+ *  |______|
+ * (--------)
+ ********************************/
 #define WINDOW_MAX 16
-#define WINDOW_X_DEF 64
-#define WINDOW_Y_DEF 64
-#define WINDOW_POS_MAX 32768
-#define WINDOW_POS_CHANGE 65536
+#define WINDOW_X_DEF 128
+#define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
 #define WINDOW_HEIGHT_MIN 256
 #define WINDOW_WIDTH_MAX 7680
 #define WINDOW_HEIGHT_MAX 4320
+#define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
+#define WINDOW_POS_CHANGE 65536
 
 #define TITLE_DEF "{,}"
-#define TITLE_MAX 255
-#define KEY_MAX 255
-#define FRAME_DEF 24
-#define FRAME_MAX 1024
+#define TITLE_MAX 256
 
-/* |\____/| Define [pKey] Values
- * |  o o |
- */
+#define KEY_MAX 256
+#define FRAME_MIN 10
+#define FRAME_MAX 640
+
+#define FONT_MAX 64
+#define FONT_SIZE_MIN 4
+#define FONT_SIZE_MAX 512
+#define FONT_NAME_MAX 256
+#define TEXT_MAX 8192
+
+/********************************
+ *  ,______,  Define [pKey]
+ *  |      |  values [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
 #define VK_1 0x31
 #define VK_2 0x32
 #define VK_3 0x33
@@ -86,16 +101,22 @@
 #define VK_OEM_SEMICOLON 0xBA
 #define VK_OEM_QUOTE 0xDE
 
-/* |\____/| [pSize], [pPosition], [pColor] Structure
- * |  o o |
- */
+/********************************
+ *  ,______,  Define [pSize],
+ *  |      |  [pPosition],
+ *  |______|  [pColor] structures
+ * (--------)
+ ********************************/
 typedef struct{ unsigned short int width, height; } pSize;
 typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int r, g, b; } pColor;
+typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
 
-/* |\____/| [pPrzecinek] Structure and Variable
- * |  o o |
- */
+/********************************
+ *  ,______,  Define [pPrzecinek]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
 typedef struct{
   bool debug;
   unsigned short int windowCount, frameLimit;
@@ -104,28 +125,12 @@ typedef struct{
   pPosition cursor;
 } pPrzecinek;
 
-pPrzecinek przecinek={ false, 0, FRAME_DEF };
-
-/* |\____/| [pWindow] Structure
- * |  o o |
- */
-typedef struct{
-  unsigned short int ID;
-  bool active;
-
-  int x, y;
-  unsigned short int width, height;
-  unsigned short int widthMin, heightMin, widthMax, heightMax;
-
-  bool resize;
-  char title[TITLE_MAX];
-  unsigned short int border;
-  bool fullScreen;
-} pWindow;
-
-/* |\____/| [pBuildWin], [pWindowPointer] Structure and Variables
- * |  o o |
- */
+/********************************
+ *  ,______,  Define [pBuildWIN],
+ *  |      |  [pWindowPointWIN]
+ *  |______|  structure [DEBUG]
+ * (--------)
+ ********************************/
 typedef struct{
   int x, y;
   int xBac, yBac;
@@ -135,7 +140,7 @@ typedef struct{
   unsigned short int widthBac, heightBac, widthFix, heightFix;
 
   bool resize;
-  char title[TITLE_MAX];
+  wchar_t title[TITLE_MAX];
   unsigned short int border;
   bool fullScreen;
 
@@ -143,11 +148,12 @@ typedef struct{
   HDC hdc;
   HDC hMemDC;
   HINSTANCE hInstance;
-  WNDCLASS wClass;
+  WNDCLASSW wClass;
   HWND hwnd;
   DWORD style;
+  GpGraphics *graphics;
 
-  char class[8];
+  wchar_t class[8];
 
   bool DESTROY, FOCUSIN, FOCUSOUT;
  
@@ -159,31 +165,59 @@ typedef struct{
 
   DWORD frameStart;
   unsigned short int frameCount;
-} pBuildWin;
-
-unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
-unsigned short int winCount=0;
-
-pBuildWin build[WINDOW_MAX];
-MSG message;
-POINT cursor;
-RECT rectangle, fix;
-PAINTSTRUCT paintStruct;
-HBRUSH brush;
+} pBuildWIN;
 
 typedef struct{
   unsigned short int ID;
 
   HWND hwnd;
-} pWindowPointer;
+} pWindowPointWIN;
 
-pWindowPointer *windowPointer, *newWindowPointer;
-RECT *dpi;
-WINDOWPOS *limit;
+/********************************
+ *  ,______,  Define [pFontWIN]
+ *  |      |  structure [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  unsigned short int size;
+  wchar_t name[FONT_NAME_MAX];
+  wchar_t directory[FONT_NAME_MAX];
 
-/* |\____/| [pEvent] Structure and Variables
- * |  o o |
- */
+  GpFontFamily *fontFamily;
+  GpFont *base;
+
+  int xFix;
+
+  bool change;
+} pFontWIN;
+
+/********************************
+ *  ,______,  Define [pWindow]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  unsigned short int ID;
+  bool active;
+
+  int x, y;
+  unsigned short int width, height;
+  unsigned short int widthMin, heightMin, widthMax, heightMax;
+
+  bool resize;
+  wchar_t title[TITLE_MAX];
+  unsigned short int border;
+  bool fullScreen;
+} pWindow;
+
+/********************************
+ *  ,______,  Define [pEvent]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
 typedef struct{
   bool focus;
   unsigned short int frameCount;
@@ -192,11 +226,12 @@ typedef struct{
   bool keyCaps;
 } pEvent;
 
-pEvent change;
-
-/* |\____/| [pObject] Structure
- * |  o o |
- */
+/********************************
+ *  ,______,  Define [pObject]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
 typedef struct{
   int x, y;
   unsigned short int width, height;
@@ -204,70 +239,261 @@ typedef struct{
   pColor color;
 } pObject;
 
-/* |\_____/| pSetup() Function
- * |       | Used for initialization of the library
- * | o   o | [debug] (true/false), [frameLimit] (1:MAX)
- * \ = , = / Returns nothing
- */
-void pSetup(bool debug, unsigned short int frameLimit){
-  // Update [przecinek] [debug] value
-  przecinek.debug=debug;
+/********************************
+ *  ,______,  Define [pFont]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  unsigned int ID;
 
-  // Update [przecinek] [frameLimit] value
-  if(frameLimit==0){
-    if(przecinek.debug==true){
-      printf("[pWarning, E001] \"Frame limit value is too low\" (changing from: 0 to: 1),\n");
-      fflush(stdout);
+  unsigned short int size;
+  wchar_t name[FONT_NAME_MAX];
+  wchar_t directory[FONT_NAME_MAX];
+
+  pColor color;
+} pFont;
+
+/********************************
+ *  ,______,  Define [pText]
+ *  |      |  structure
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  int x, y;
+
+  wchar_t value[TEXT_MAX];
+} pText;
+
+// Przecinek
+pPrzecinek przecinek={ true, 0, 0 };
+bool setup=false;
+
+// Window
+unsigned short int activeWinID=0, currentWinID=0, createWinID=0;
+unsigned short int winCount=0;
+
+pBuildWIN build[WINDOW_MAX];
+
+MSG message;
+POINT cursor;
+RECT rectangle, fix;
+RectF figure;
+PAINTSTRUCT paintStruct;
+GpSolidFill *fill;
+ARGB argb;
+HBRUSH brush;
+GpStatus status;
+
+// Window Pointer
+pWindowPointWIN *windowPoint, *newWindowPoint;
+RECT *dpi;
+WINDOWPOS *limit;
+
+// Event
+pEvent change;
+
+// Font
+pFontWIN view[FONT_MAX];
+GpFontCollection *collection;
+
+/****************************************************************
+ * |\_____/| pDebugWindowProc() [DEBUG]
+ * | .     |
+ * |     . | In: HWND [hwnd], UINT, WPARAM, LPARAM
+ * \ = , = / Out: LRESULT
+ *
+ * This function handles all WIN signals.
+ * It manages window creation, window size change,
+ * window focus change, window position change,
+ * and input. [windowPoint] holds [window] [ID].
+ ****************************************************************/
+LRESULT CALLBACK pDebugWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter){
+  // Load current [windowPoint]
+  windowPoint=(pWindowPointWIN *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+  // Manage [window] create signal
+  if(uMessage==WM_CREATE){
+    // Create [newWindowPoint]
+    newWindowPoint=(pWindowPointWIN *)malloc(sizeof(pWindowPointWIN));
+    newWindowPoint->ID=createWinID;
+    newWindowPoint->hwnd=hwnd;
+
+    // Send [newWindowPoint] to memory
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)newWindowPoint);
+  }
+
+  // Manage [window] close signal
+  if(uMessage==WM_DESTROY){
+    // Send kill signal and destroy [hwnd]
+    build[currentWinID-1].DESTROY=true;
+    hwnd=NULL;
+
+    return 0;
+  }
+
+  // Manage [window] size limit change signal
+  if(uMessage==WM_WINDOWPOSCHANGING){
+    limit=(WINDOWPOS*)lParameter;
+
+    if(build[windowPoint->ID-1].resize==true){
+      // Update [window] limits
+      if(limit->cx<build[windowPoint->ID-1].widthMin+build[windowPoint->ID-1].widthFix){
+        limit->cx=build[windowPoint->ID-1].widthMin+build[windowPoint->ID-1].widthFix;
+      }
+      if(limit->cy<build[windowPoint->ID-1].heightMin+build[windowPoint->ID-1].heightFix){
+        limit->cy=build[windowPoint->ID-1].heightMin+build[windowPoint->ID-1].heightFix;
+      }
+
+      if(limit->cx>build[windowPoint->ID-1].widthMax){ limit->cx=build[windowPoint->ID-1].widthMax; }
+      if(limit->cy>build[windowPoint->ID-1].heightMax){ limit->cy=build[windowPoint->ID-1].heightMax; }
     }
-
-    frameLimit=1;
   }
-  else if(frameLimit>FRAME_MAX){
-    if(przecinek.debug==true){
-printf(
-  "[pWarning, E002] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
-  frameLimit, FRAME_MAX
-);
-      fflush(stdout);
+
+  // Manage [window] focus change signal
+  if(uMessage==WM_ACTIVATE){
+    if(wParameter==WA_ACTIVE || wParameter==WA_CLICKACTIVE){
+      build[windowPoint->ID-1].FOCUSIN=true;
     }
-
-    frameLimit=FRAME_MAX;
+    else{ build[windowPoint->ID-1].FOCUSOUT=false; }
   }
-  przecinek.frameLimit=frameLimit;
 
-  // Update [przecinek] [display] values
-  przecinek.display.width=GetSystemMetrics(SM_CXSCREEN);
-  przecinek.display.height=GetSystemMetrics(SM_CYSCREEN);
+  // Manage [window] position change signal
+  if(uMessage==WM_MOVE){
+    build[windowPoint->ID-1].MOVE.x=LOWORD(lParameter);
+    build[windowPoint->ID-1].MOVE.y=HIWORD(lParameter);
 
-  // Update [przecinek] [cursor] values
-  if(GetCursorPos(&cursor)){
-    przecinek.cursor.x=cursor.x;
-    przecinek.cursor.y=cursor.y;
+    // Correct [MOVE] values
+    if(build[windowPoint->ID-1].MOVE.x>32768){ build[windowPoint->ID-1].MOVE.x-=65536; }
+    if(build[windowPoint->ID-1].MOVE.y>32768){ build[windowPoint->ID-1].MOVE.y-=65536; }
   }
-  else{
-    przecinek.cursor.x=0;
-    przecinek.cursor.y=0;
+
+  // Manage [window] size change signal
+  if(uMessage==WM_SIZE){
+    // Configure shape
+    rectangle.left=0;
+    rectangle.top=0;
+    rectangle.right=LOWORD(lParameter);
+    rectangle.bottom=HIWORD(lParameter);
+
+    // Set [brush] color
+    brush=CreateSolidBrush(RGB(255, 255, 255));
+    SelectObject(build[windowPoint->ID-1].hMemDC, brush);
+
+    // Draw on [build] buffer
+    FillRect(build[windowPoint->ID-1].hMemDC, &rectangle, brush);
+
+    InvalidateRect(hwnd, NULL, TRUE);
+    build[windowPoint->ID-1].hdc=BeginPaint(hwnd, &paintStruct);
+
+    // Switch [window] buffer
+    BitBlt(
+      build[windowPoint->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
+      build[windowPoint->ID-1].hMemDC, 0, 0, SRCCOPY
+    );
+
+    // Set [brush] color
+    brush=CreateSolidBrush(RGB(255, 255, 255));
+    SelectObject(build[windowPoint->ID-1].hdc, brush);
+
+    // Draw on [window]
+    FillRect(build[windowPoint->ID-1].hdc, &rectangle, brush);
+    EndPaint(hwnd, &paintStruct);
+
+    // Clear [brush]
+    DeleteObject(brush);
+
+    // Refresh [window]
+    InvalidateRect(hwnd, NULL, TRUE);
+    UpdateWindow(hwnd);
+
+    build[windowPoint->ID-1].SIZE.width=LOWORD(lParameter);
+    build[windowPoint->ID-1].SIZE.height=HIWORD(lParameter);
   }
+
+  // Manage [window] dpi change signal
+  if(uMessage==WM_DPICHANGED){
+    dpi=(RECT*)lParameter;
+
+    build[windowPoint->ID-1].SIZE.width=dpi->right-dpi->left;
+    build[windowPoint->ID-1].SIZE.height=dpi->bottom-dpi->top;
+  }
+
+  // Manage [window] key down signal
+  if(uMessage==WM_KEYDOWN){
+    build[windowPoint->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=1;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Manage [window] key up signal
+  if(uMessage==WM_KEYUP){
+    build[windowPoint->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=2;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Manage [window] `lmouse` key down
+  if(uMessage==WM_LBUTTONDOWN){
+    build[windowPoint->ID-1].KEY[VK_LBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+  // Manage [window] `lmouse` key up
+  if(uMessage==WM_LBUTTONUP){
+    build[windowPoint->ID-1].KEY[VK_LBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Manage [window] `rmouse` key down
+  if(uMessage==WM_RBUTTONDOWN){
+    build[windowPoint->ID-1].KEY[VK_RBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+  // Manage [window] `rmouse` key up
+  if(uMessage==WM_RBUTTONUP){
+    build[windowPoint->ID-1].KEY[VK_RBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Manage [window] `mmouse` key down
+  if(uMessage==WM_MBUTTONDOWN){
+    build[windowPoint->ID-1].KEY[VK_MBUTTON]=1;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+  // Manage [window] `mmouse` key up
+  if(uMessage==WM_MBUTTONUP){
+    build[windowPoint->ID-1].KEY[VK_MBUTTON]=2;
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Manage [window] `back` and `forward` key down
+  if(uMessage==WM_XBUTTONDOWN){
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=1; }
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=1; }
+    build[windowPoint->ID-1].KEYON=true;
+  }
+  // Manage [window] `back` and `forward` key up
+  if(uMessage==WM_XBUTTONUP){
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=2; }
+    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=2; }
+    build[windowPoint->ID-1].KEYON=true;
+  }
+
+  // Return current [hwnd] values
+  return DefWindowProcW(hwnd, uMessage, wParameter, lParameter);
 }
 
-/* |\_____/| pClear() Function
- * |       | Used for clearing console
- * | o   o | None
- * \ = , = / Returns nothing
- */
-void pClear(){
-  // Clear console
-  system("cls");
-
-  return;
-}
-
-/* |\_____/| pWindowReset() Function
- * |       | Used for resetting window
- * | o   o | [window]
- * \ = , = / Returns nothing
- */
-void pWindowReset(pWindow *window){
+/****************************************************************
+ * |\_____/| pDebugWindowReset() [DEBUG]
+ * | .     |
+ * |     . | In: pWindow* [window]
+ * \ = , = / Out:
+ *
+ * This function resets [window] and [build] values.
+ * Cleared variables depend on [window] [ID].
+ * It also changes [winCount] by `-1`.
+ ****************************************************************/
+void pDebugWindowReset(pWindow *window){
   // Reset [window] values
   window->active=false;
 
@@ -283,8 +509,7 @@ void pWindowReset(pWindow *window){
   window->heightMax=0;
 
   window->resize=false;
-  strncpy(window->title, "", sizeof(window->title)-1);
-  window->title[sizeof(window->title)-1]='\0';
+  memset(window->title, 0, sizeof(window->title));
   window->border=0;
   window->fullScreen=false;
 
@@ -309,8 +534,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].heightFix=0;
 
   build[window->ID-1].resize=false;
-  strncpy(build[window->ID-1].title, "", sizeof(build[window->ID-1].title)-1);
-  build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
+  memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
   build[window->ID-1].border=0;
   build[window->ID-1].fullScreen=false;
 
@@ -320,9 +544,9 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].hInstance=NULL;
   build[window->ID-1].hwnd=NULL;
   build[window->ID-1].style=0;
+  build[window->ID-1].graphics=NULL;
 
-  strncpy(build[window->ID-1].class, "", sizeof(build[window->ID-1].class)-1);
-  build[window->ID-1].class[sizeof(build[window->ID-1].class)-1]='\0';
+  memset(build[window->ID-1].class, 0, sizeof(build[window->ID-1].class));
 
   build[window->ID-1].DESTROY=false;
   build[window->ID-1].FOCUSIN=false;
@@ -334,7 +558,7 @@ void pWindowReset(pWindow *window){
   build[window->ID-1].MOVE.y=0;
 
   build[window->ID-1].KEYON=false;
-  for(unsigned short int current=0; current<KEY_MAX; current++){
+  for(unsigned short int current=0; current<KEY_MAX; current+=1){
     build[window->ID-1].KEY[current]=0;
   }
 
@@ -347,193 +571,149 @@ void pWindowReset(pWindow *window){
   return;
 }
 
-/* |\_____/| pWindowProc() Function
- * |       | Used for managing WIN windows
- * | o   o | [hwnd], [uMessage], [wParameter], [lParameter]
- * \ = , = / Returns `0`
- */
-LRESULT CALLBACK pWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, LPARAM lParameter){
-  // Load current [windowPointer]
-  windowPointer=(pWindowPointer*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+/****************************************************************
+ * |\_____/| pDebugFontReset() [DEBUG]
+ * | .     |
+ * |     . | In: pFont* [font]
+ * \ = , = / Out:
+ *
+ * This function resets all [font] and [view] values.
+ * Cleared variables depend on [font] [ID].
+ ****************************************************************/
+void pDebugFontReset(pFont *font){
+  // Reset [font] values
+  font->size=0;
+  memset(font->name, 0, sizeof(font->name));
+  memset(font->directory, 0, sizeof(font->directory));
 
-  // Manage [window] create signal
-  if(uMessage==WM_CREATE){
-    // Create [newWindowPointer]
-    newWindowPointer=(pWindowPointer*)malloc(sizeof(pWindowPointer));
-    newWindowPointer->ID=createWinID;
-    newWindowPointer->hwnd=hwnd;
+  font->color.red=0;
+  font->color.green=0;
+  font->color.blue=0;
+  font->color.alpha=100;
 
-    // Send [newWindowPointer] to memory
-    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)newWindowPointer);
-  }
+  // Reset [view] values
+  view[font->ID-1].size=0;
 
-  // Manage [window] close signal
-  if(uMessage==WM_DESTROY){
-    // Send kill signal and destroy [hwnd]
-    build[currentWinID-1].DESTROY=true;
-    hwnd=NULL;
+  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
+  memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
 
-    return 0;
-  }
+  view[font->ID-1].fontFamily=NULL;
+  view[font->ID-1].base=NULL;
 
-  // Manage [window] size limit change signal
-  if(uMessage==WM_WINDOWPOSCHANGING){
-    limit=(WINDOWPOS*)lParameter;
+  view[font->ID-1].xFix=0;
 
-    if(build[windowPointer->ID-1].resize==true){
-      // Update [window] limits
-      if(limit->cx<build[windowPointer->ID-1].widthMin+build[windowPointer->ID-1].widthFix){
-        limit->cx=build[windowPointer->ID-1].widthMin+build[windowPointer->ID-1].widthFix;
-      }
-      if(limit->cy<build[windowPointer->ID-1].heightMin+build[windowPointer->ID-1].heightFix){
-        limit->cy=build[windowPointer->ID-1].heightMin+build[windowPointer->ID-1].heightFix;
-      }
+  view[font->ID-1].change=false;
 
-      if(limit->cx>build[windowPointer->ID-1].widthMax){
-        limit->cx=build[windowPointer->ID-1].widthMax;
-      }
-      if(limit->cy>build[windowPointer->ID-1].heightMax){
-        limit->cy=build[windowPointer->ID-1].heightMax;
-      }
-    }
-  }
-
-  // Manage [window] focus change signal
-  if(uMessage==WM_ACTIVATE){
-    if(wParameter==WA_ACTIVE || wParameter==WA_CLICKACTIVE){
-      build[windowPointer->ID-1].FOCUSIN=true;
-    }
-    else{ build[windowPointer->ID-1].FOCUSOUT=false; }
-  }
-
-  // Manage [window] position change signal
-  if(uMessage==WM_MOVE){
-    build[windowPointer->ID-1].MOVE.x=LOWORD(lParameter);
-    build[windowPointer->ID-1].MOVE.y=HIWORD(lParameter);
-
-    // Correct [MOVE] values
-    if(build[windowPointer->ID-1].MOVE.x>32768){ build[windowPointer->ID-1].MOVE.x-=65536; }
-    if(build[windowPointer->ID-1].MOVE.y>32768){ build[windowPointer->ID-1].MOVE.y-=65536; }
-  }
-
-  // Manage [window] size change signal
-  if(uMessage==WM_SIZE){
-    // Configure shape
-    rectangle.left=0;
-    rectangle.top=0;
-    rectangle.right=LOWORD(lParameter);
-    rectangle.bottom=HIWORD(lParameter);
-
-    // Set [brush] color
-    brush=CreateSolidBrush(RGB(255, 255, 255));
-    SelectObject(build[windowPointer->ID-1].hMemDC, brush);
-
-    // Draw on [build] buffer
-    FillRect(build[windowPointer->ID-1].hMemDC, &rectangle, brush);
-
-    InvalidateRect(hwnd, NULL, TRUE);
-    build[windowPointer->ID-1].hdc=BeginPaint(hwnd, &paintStruct);
-
-    // Switch [window] buffer
-    BitBlt(
-      build[windowPointer->ID-1].hdc, 0, 0, LOWORD(lParameter), HIWORD(lParameter),
-      build[windowPointer->ID-1].hMemDC, 0, 0, SRCCOPY
-    );
-
-    // Set [brush] color
-    brush=CreateSolidBrush(RGB(255, 255, 255));
-    SelectObject(build[windowPointer->ID-1].hdc, brush);
-
-    // Draw on [window]
-    FillRect(build[windowPointer->ID-1].hdc, &rectangle, brush);
-    EndPaint(hwnd, &paintStruct);
-
-    // Clear [brush]
-    DeleteObject(brush);
-
-    // Refresh [window]
-    InvalidateRect(hwnd, NULL, TRUE);
-    UpdateWindow(hwnd);
-
-    build[windowPointer->ID-1].SIZE.width=LOWORD(lParameter);
-    build[windowPointer->ID-1].SIZE.height=HIWORD(lParameter);
-  }
-
-  // Manage [window] dpi change signal
-  if(uMessage==WM_DPICHANGED){
-    dpi=(RECT*)lParameter;
-
-    build[windowPointer->ID-1].SIZE.width=dpi->right-dpi->left;
-    build[windowPointer->ID-1].SIZE.height=dpi->bottom-dpi->top;
-  }
-
-  // Manage [window] key down signal
-  if(uMessage==WM_KEYDOWN){
-    build[windowPointer->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=1;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Manage [window] key up signal
-  if(uMessage==WM_KEYUP){
-    build[windowPointer->ID-1].KEY[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]=2;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Manage [window] `lmouse` key down
-  if(uMessage==WM_LBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_LBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-  // Manage [window] `lmouse` key up
-  if(uMessage==WM_LBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_LBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Manage [window] `rmouse` key down
-  if(uMessage==WM_RBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_RBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-  // Manage [window] `rmouse` key up
-  if(uMessage==WM_RBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_RBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Manage [window] `mmouse` key down
-  if(uMessage==WM_MBUTTONDOWN){
-    build[windowPointer->ID-1].KEY[VK_MBUTTON]=1;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-  // Manage [window] `mmouse` key up
-  if(uMessage==WM_MBUTTONUP){
-    build[windowPointer->ID-1].KEY[VK_MBUTTON]=2;
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Manage [window] `back` and `forward` key down
-  if(uMessage==WM_XBUTTONDOWN){
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPointer->ID-1].KEY[VK_XBUTTON1]=1; }
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPointer->ID-1].KEY[VK_XBUTTON2]=1; }
-    build[windowPointer->ID-1].KEYON=true;
-  }
-  // Manage [window] `back` and `forward` key up
-  if(uMessage==WM_XBUTTONUP){
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPointer->ID-1].KEY[VK_XBUTTON1]=2; }
-    if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPointer->ID-1].KEY[VK_XBUTTON2]=2; }
-    build[windowPointer->ID-1].KEYON=true;
-  }
-
-  // Return current [hwnd] values
-  return DefWindowProc(hwnd, uMessage, wParameter, lParameter);
+  return;
 }
 
-/* |\_____/| pWindowCreate() Function
- * |       | Used for creating windows
- * | o   o | [width], [height] (MIN:MAX), [resize] (true/false)
- * \ = , = / Returns [window]
- */
+/****************************************************************
+ * |\_____/| pSetup()
+ * | .     |
+ * |     . | In: bool [debug], us_int [frameLimit]
+ * \ = , = / Out:
+ *
+ * This function initializes Przecinek library.
+ * It sets global [debug] and [frameLimit] values.
+ * It setups locale and libraries used later.
+ * It checks current mouse position and display size.
+ * It also sets [setup] to `true`.
+ ****************************************************************/
+void pSetup(bool debug, unsigned short int frameLimit){
+  // Initialize GDI+
+  ULONG_PTR gdiplusToken;
+  GdiplusStartupInput gdiplusStartupInput;
+
+  // Initialize locale
+  setlocale(LC_ALL, "");
+
+  gdiplusStartupInput.GdiplusVersion=1;
+  gdiplusStartupInput.DebugEventCallback=NULL;
+  gdiplusStartupInput.SuppressBackgroundThread=FALSE;
+  gdiplusStartupInput.SuppressExternalCodecs=FALSE;
+  GpStatus status=GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+  // Initialize font [colleciton]
+  GdipNewPrivateFontCollection(&collection);
+
+  // Update [przecinek] [debug] value
+  przecinek.debug=debug;
+
+  // Update [przecinek] [frameLimit] value
+  if(frameLimit<FRAME_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWG01] \"Frame limit value is too low\" (changing from: %i to: %i),\n",
+  frameLimit, FRAME_MIN
+);
+      fflush(stdout);
+    }
+
+    frameLimit=FRAME_MIN;
+  }
+  else if(frameLimit>FRAME_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWG02] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
+  frameLimit, FRAME_MAX
+);
+      fflush(stdout);
+    }
+
+    frameLimit=FRAME_MAX;
+  }
+  przecinek.frameLimit=frameLimit;
+
+  // Update [przecinek] [display] values
+  przecinek.display.width=GetSystemMetrics(SM_CXSCREEN);
+  przecinek.display.height=GetSystemMetrics(SM_CYSCREEN);
+
+  // Update [przecinek] [cursor] values
+  if(GetCursorPos(&cursor)){
+    przecinek.cursor.x=cursor.x;
+    przecinek.cursor.y=cursor.y;
+  }
+  else{
+    przecinek.cursor.x=0;
+    przecinek.cursor.y=0;
+  }
+
+  setup=true;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pClear()
+ * | .     |
+ * |     . | In:
+ * \ = , = / Out:
+ *
+ * This function clears debug console.
+ * It uses `cls` or `clear` depending on the OS.
+ ****************************************************************/
+void pClear(){
+  // Clear console
+  system("cls");
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pWindowCreate()
+ * | .     |
+ * |     . | In: us_int [width], [height], bool [resize]
+ * \ = , = / Out: pWindow
+ *
+ * This function creates Przecinek window.
+ * It adds `1` to [winCount]. It sets [ID] for local [window].
+ * It checks if all given parameters are valid.
+ * It fills all necessary values for [window] and [build].
+ * It sets [window] [title] to default value.
+ * It setups [window] buffer for later use.
+ * It also saves time when [window] was created,
+ * to later calculate frame count.
+ ****************************************************************/
 pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize){
   // Manage console
   if(GetConsoleWindow()==NULL && przecinek.debug==true){
@@ -546,38 +726,50 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
   pWindow window;
 
   // Change [winCount]
-  winCount++;
+  winCount+=1;
 
-  for(unsigned short int current=0; current<WINDOW_MAX; current++){
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
     if(build[current].width==0 && build[current].height==0){
       // Set [window] [ID] and reset [window]
       window.ID=current+1;
-      pWindowReset(&window);
+      pDebugWindowReset(&window);
 
       // Change [winCount]
-      winCount++;
+      winCount+=1;
       break;
     }
     else if(current==WINDOW_MAX-1){
       if(przecinek.debug==true){
 printf(
-  "[pError, W001] \"Too many windows were created\" (limit: %i),\n",
+  "[pEB01] \"Too many windows were created\" (limit: %i),\n",
   WINDOW_MAX
 );
         fflush(stdout);
       }
 
       // Reset and return [window]
-      pWindowReset(&window);
+      pDebugWindowReset(&window);
       return window;
     }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+printf(
+  "[pEG01] \"Could not create window\" (Przecinek is not initialized),\n"
+);
+    fflush(stdout);
+
+    // Reset and return [window]
+    pDebugWindowReset(&window);
+    return window;
   }
 
   // Check [width] value
   if(width<WINDOW_WIDTH_MIN){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, W001] \"Window width value is too low\" (changing from: %i to %i),\n",
+  "[pWB01] \"Window width value is too low\" (changing from: %i to %i),\n",
   width, WINDOW_WIDTH_MIN
 );
       fflush(stdout);
@@ -589,7 +781,7 @@ printf(
   if(width>WINDOW_WIDTH_MAX){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, W002] \"Window width value is too big\" (changing from: %i to %i),\n",
+  "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
   width, WINDOW_WIDTH_MAX
 );
       fflush(stdout);
@@ -603,7 +795,7 @@ printf(
   if(height<WINDOW_HEIGHT_MIN){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, W003] \"Window height value is too low\" (changing from: %i to %i),\n",
+  "[pWB003] \"Window height value is too low\" (changing from: %i to %i),\n",
   height, WINDOW_HEIGHT_MIN
 );
       fflush(stdout);
@@ -615,7 +807,7 @@ printf(
   if(height>WINDOW_HEIGHT_MAX){
     if(przecinek.debug==true){
 printf(
-  "[pWarning, W004] \"Window height value is too big\" (changing from: %i to %i),\n",
+  "[pWB004] \"Window height value is too big\" (changing from: %i to %i),\n",
   height, WINDOW_HEIGHT_MAX
 );
       fflush(stdout);
@@ -666,31 +858,31 @@ printf(
 
   // Setup [build] [hInstance] and [class]
   build[window.ID-1].hInstance=GetModuleHandle(NULL);
-  sprintf(build[window.ID-1].class, "pClass%i", window.ID);
+  swprintf(build[window.ID-1].class, sizeof(build[window.ID-1].class), L"pClass%i", window.ID);
 
   // Create [build] [wClass]
-  build[window.ID-1].wClass.lpfnWndProc=pWindowProc;
+  build[window.ID-1].wClass.lpfnWndProc=pDebugWindowProc;
   build[window.ID-1].wClass.hInstance=build[window.ID-1].hInstance;
 
   // Check if [class] already exists
-  if(GetClassInfo(build[window.ID-1].hInstance, build[window.ID-1].class, &build[window.ID-1].wClass)){
-    sprintf(build[window.ID-1].class, "pClass%i", window.ID+WINDOW_MAX);
+  if(GetClassInfoW(build[window.ID-1].hInstance, build[window.ID-1].class, &build[window.ID-1].wClass)){
+    swprintf(build[window.ID-1].class, sizeof(build[window.ID-1].class), L"pClass%i", window.ID+WINDOW_MAX);
   }
 
   // Setup [build] [wClass]
   build[window.ID-1].wClass.lpszClassName=build[window.ID-1].class;
   build[window.ID-1].wClass.hCursor=LoadCursor(NULL, IDC_ARROW);
-  if(!RegisterClass(&build[window.ID-1].wClass)){
+  if(!RegisterClassW(&build[window.ID-1].wClass)){
     if(przecinek.debug==true){
 printf(
-  "[pError, W101] \"Could not register WIN class\" (tried: %s),\n",
+  "[pEBw1] \"Could not register WIN class\" (tried: %s),\n",
   build[window.ID-1].class
 );
       fflush(stdout);
     }
 
     // Reset and return [window]
-    pWindowReset(&window);
+    pDebugWindowReset(&window);
     return window;
   }
 
@@ -709,28 +901,28 @@ printf(
   rectangle.bottom=height;
   AdjustWindowRectEx(&rectangle, build[window.ID-1].style, FALSE, 0);
 
+  // Set [title] value
+  mbstowcs(window.title, TITLE_DEF, TITLE_MAX);
+  mbstowcs(build[window.ID-1].title, TITLE_DEF, TITLE_MAX);
+
   // Create [hwnd] for [build]
-  build[window.ID-1].hwnd=CreateWindowEx(
-    0, build[window.ID-1].class, TITLE_DEF, build[window.ID-1].style,
+  build[window.ID-1].hwnd=CreateWindowExW(
+    0, build[window.ID-1].class, window.title, build[window.ID-1].style,
     CW_USEDEFAULT, CW_USEDEFAULT, rectangle.right-rectangle.left, rectangle.bottom-rectangle.top,
     NULL, NULL, build[window.ID-1].hInstance, NULL
   );
   if(build[window.ID-1].hwnd==NULL){
     if(przecinek.debug==true){
-      printf("[pError, W102] \"Could not create WIN hwnd\",\n");
+printf(
+  "[pEBw2] \"Could not create WIN hwnd\",\n"
+);
       fflush(stdout);
     }
 
     // Reset and return [window]
-    pWindowReset(&window);
+    pDebugWindowReset(&window);
     return window;
   }
-
-  // Set [title] value
-  strncpy(window.title, TITLE_DEF, sizeof(window.title)-1);
-  window.title[sizeof(window.title)-1]='\0';
-  strncpy(build[window.ID-1].title, TITLE_DEF, sizeof(build[window.ID-1].title)-1);
-  build[window.ID-1].title[sizeof(build[window.ID-1].title)-1]='\0';
 
   // Calculate [window] offset
   GetWindowRect(build[window.ID-1].hwnd, &rectangle);
@@ -744,7 +936,6 @@ printf(
   build[window.ID-1].widthFix=(rectangle.right-rectangle.left)-(fix.right-fix.left);
   build[window.ID-1].heightFix=(rectangle.bottom-rectangle.top)-(fix.bottom-fix.top);
 
-  // Create [build] buffer
   build[window.ID-1].hMemDC=CreateCompatibleDC(build[window.ID-1].hdc);
   build[window.ID-1].hBitmap=CreateCompatibleBitmap(
     build[window.ID-1].hdc, rectangle.right-rectangle.left, rectangle.bottom-rectangle.top
@@ -771,42 +962,314 @@ printf(
   return window;
 }
 
-/* |\_____/| pWindowDrawObject() Function
- * |       | Used for drawing objects on window
- * | o   o | [window], [object]
- * \ = , = / Returns nothing
- */
+/****************************************************************
+ * |\_____/| pWindowDrawObject()
+ * | .     |
+ * |     . | In: pWindow* [window], pObject* [object]
+ * \ = , = / Out:
+ *
+ * This function draws [object] on [window] buffer.
+ * It checks if [object] [color] values are valid.
+ * Then it does all the rendering stuff.
+ ****************************************************************/
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
-    // Set [brush] color
-    brush=CreateSolidBrush(RGB(object->color.r, object->color.g, object->color.b));
-    SelectObject(build[window->ID-1].hMemDC, brush);
+    // Check [object] [color] values
+    if(object->color.red>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWO01] \"Object red color value is too big\" (changing from: %i to 255),\n",
+  object->color.red
+);
+        fflush(stdout);
+      }
 
-    // Configure shape
-    rectangle.left=object->x;
-    rectangle.top=object->y;
-    rectangle.right=object->x+object->width;
-    rectangle.bottom=object->y+object->height;
+      // Correct [object] [color] [red] value
+      object->color.red=255;
+    }
+    if(object->color.green>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWO02] \"Object green color value is too big\" (changing from: %i to 255),\n",
+  object->color.green
+);
+        fflush(stdout);
+      }
 
-    // Draw on [build] buffer
-    FillRect(build[window->ID-1].hMemDC, &rectangle, brush);
+      // Correct [object] [color] [green] value
+      object->color.green=255;
+    }
+    if(object->color.blue>255){
+      if(przecinek.debug==true){
+printf(
+  "[pWO03] \"Object blue color value is too big\" (changing from: %i to 255),\n",
+  object->color.blue
+);
+        fflush(stdout);
+      }
 
-    // Clear [brush]
-    DeleteObject(brush);
+      // Correct [object] [color] [blue] value
+      object->color.blue=255;
+    }
+    if(object->color.alpha>100){
+      if(przecinek.debug==true){
+printf(
+  "[pWO04] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
+  object->color.alpha
+);
+        fflush(stdout);
+      }
+
+      // Correct [object] [color] [alpha] value
+      object->color.alpha=100;
+    }
+
+    // Set [argb] value
+    argb=(ARGB)(
+      ((int)((float)object->color.alpha*2.55)<<24) |
+      (object->color.red<<16) | (object->color.green<<8) | object->color.blue
+    );
+
+    // Create [build] [graphics]
+    GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
+
+    // Draw on [build] [hMemDC]
+    GdipCreateSolidFill(argb, &fill);
+    GdipFillRectangle(
+      build[window->ID-1].graphics, fill,
+      object->x, object->y, object->width, object->height
+    );
+
+    // Clean [build] [fill] and [graphics]
+    GdipDeleteBrush(fill);
+    GdipDeleteGraphics(build[window->ID-1].graphics);
+    build[window->ID-1].graphics=NULL;
   }
   else if(przecinek.debug==true){
-    printf("[pError, W301] \"Could not draw object\" (window is closed),\n");
+printf(
+  "[pEG02] \"Could not draw object\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
   return;
 }
 
-/* |\_____/| WindowClear() Function
- * |       | Used for clearing window
- * | o   o | [window]
- * \ = , = / Returns nothing
- */
+/****************************************************************
+ * |\_____/| pWindowDrawText()
+ * | .     |
+ * |     . | In: pWindow* [window], pFont* [font], pText* [text]
+ * \ = , = / Out:
+ *
+ * This function draws [text] in [font] style on [window] buffer.
+ * It checks if [font] [color] values are valid.
+ * It checks for any changes in [font] values.
+ * Then it does all the rendering stuff.
+ ****************************************************************/
+void pWindowDrawText(pWindow *window, pFont *font, pText *text){
+  if(window->active==true){
+    if(font->ID!=0){
+      // Check [font] [color] values
+      if(font->color.red>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWF03] \"Font red color value is too big\" (changing from: %i to 255),\n",
+  font->color.red
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [red] value
+        font->color.red=255;
+      }
+      if(font->color.green>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWF04] \"Font green color value is too big\" (changing from: %i to 255),\n",
+  font->color.green
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [green] value
+        font->color.green=255;
+      }
+      if(font->color.blue>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWF05] \"Font blue color value is too big\" (changing from: %i to 255),\n",
+  font->color.blue
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [blue] value
+        font->color.blue=255;
+      }
+      if(font->color.alpha>100){
+        if(przecinek.debug==true){
+printf(
+  "[pWF06] \"Font alpha color value is too big\" (changing from: %i to 100),\n",
+  font->color.alpha
+);
+          fflush(stdout);
+        }
+
+        // Correct [font] [color] [alpha] value
+        font->color.alpha=100;
+      }
+
+      // Update [view] [size]
+      if(font->size!=view[font->ID-1].size){
+        // Check [font] [size] value
+        if(font->size<FONT_SIZE_MIN){
+          if(przecinek.debug==true){
+printf(
+  "[pWF01] \"Font size value is too low\" (changing from: %i to %i),\n",
+  font->size, FONT_SIZE_MIN
+);
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=FONT_SIZE_MIN;
+        }
+        if(font->size>FONT_SIZE_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
+  font->size, FONT_SIZE_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [size] value
+          font->size=FONT_SIZE_MAX;
+        }
+
+        // Refresh [view] values
+        view[font->ID-1].size=font->size;
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [name]
+      if(wcscmp(font->name, view[font->ID-1].name)!=0){
+        wcscpy(view[font->ID-1].name, font->name);
+
+        view[font->ID-1].change=true;
+      }
+
+      // Update [view] [directory]
+      if(wcscmp(font->directory, view[font->ID-1].directory)!=0){
+        wcscpy(view[font->ID-1].directory, font->directory);
+
+        view[font->ID-1].change=true;
+      }
+
+      if(view[font->ID-1].change==true){
+        // Setup [collection] and check if [directory] exists
+        status=GdipPrivateAddFontFile(collection, view[font->ID-1].directory);
+        if(status!=Ok){
+          if(przecinek.debug==true){
+printf(
+  "[pEF02] \"Could not load font\",\n"
+);
+printf(
+  "[pEG03] \"Could not draw text\" (font is closed),\n"
+);
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pDebugFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+
+        // Initialize [view] [base]
+        status=GdipCreateFontFamilyFromName(view[font->ID-1].name, collection, &view[font->ID-1].fontFamily);
+        if(status!=Ok){
+          if(przecinek.debug==true){
+printf(
+  "[pEFw1] \"Could not create WIN font\",\n"
+);
+printf(
+  "[pEG03] \"Could not draw text\" (font is closed),\n"
+);
+            fflush(stdout);
+          }
+
+          // Reset [font]
+          pDebugFontReset(font);
+          font->ID=0;
+
+          return;
+        }
+
+        // Create [view] [base]
+        GdipCreateFont(
+          view[font->ID-1].fontFamily, font->size, FontStyleRegular,
+          UnitPixel, &view[font->ID-1].base
+        );
+
+        view[font->ID-1].change=false;
+      }
+
+      // Set [argb] value
+      argb=(ARGB)(
+        ((int)((float)font->color.alpha*2.55)<<24) |
+        (font->color.red<<16) | (font->color.green<<8) | font->color.blue
+      );
+
+      // Update [view] [xFix] value
+      view[font->ID-1].xFix=(int)((float)((view[font->ID-1].size*(-18))/72));
+
+      // Change [figure] values
+      figure.X=text->x+view[font->ID-1].xFix;
+      figure.Y=text->y;
+
+      // Create [build] [graphics]
+      GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
+
+      // Fill [build] [graphics]
+      GdipCreateSolidFill(argb, &fill);
+      GdipDrawString(
+        build[window->ID-1].graphics, text->value, wcslen(text->value),
+        view[font->ID-1].base, &figure, NULL, fill
+      );
+
+      // Clean [build] [fill] and [graphics]
+      GdipDeleteBrush(fill);
+      GdipDeleteGraphics(build[window->ID-1].graphics);
+      build[window->ID-1].graphics=NULL;
+    }
+    else if(przecinek.debug==true){
+printf(
+  "[pEG03] \"Could not draw text\" (font is closed),\n"
+);
+      fflush(stdout);
+    }
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pEG02] \"Could not draw text\" (window is closed),\n"
+);
+    fflush(stdout);
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pWindowClear()
+ * | .     |
+ * |     . | In: pWindow* [window]
+ * \ = , = / Out:
+ *
+ * This function fills [window] buffer with white color.
+ * There isn't too much to say about it c.c
+ ****************************************************************/
 void pWindowClear(pWindow* window){
   if(window->active==true){
     // Set [brush] color
@@ -826,36 +1289,48 @@ void pWindowClear(pWindow* window){
     DeleteObject(brush);
   }
   else if(przecinek.debug==true){
-    printf("[pError, W302] \"Could not clear screen\" (window is closed),\n");
+printf(
+  "[pEG02] \"Could not clear screen\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
   return;
 }
 
-/* |\_____/| WindowClose() Function
- * |       | Used for closing window
- * | o   o | [window]
- * \ = , = / Returns nothing
- */
+/****************************************************************
+ * |\_____/| pWindowClose()
+ * | .     |
+ * |     . | In: pWindow* [window]
+ * \ = , = / Out:
+ *
+ * This function closes given [window].
+ * It sends signal, which's supossed to destroy [window].
+ ****************************************************************/
 void pWindowClose(pWindow* window){
   if(window->active==true){
     // Send kill event
     PostMessage(build[window->ID-1].hwnd, WM_CLOSE, 0, 0);
   }
   else if(przecinek.debug==true){
-    printf("[pWarning, W101] \"Window is already closed\",\n");
+printf(
+  "[pWG03] \"Window is already closed\",\n"
+);
     fflush(stdout);
   }
 
   return;
 }
 
-/* |\_____/| pEventCreate() Function
- * |       | Used for creating events
- * | o   o | None
- * \ = , = / Returns [event]
- */
+/****************************************************************
+ * |\_____/| pEventCreate()
+ * | .     |
+ * |     . | In:
+ * \ = , = / Out: pEvent
+ *
+ * This function creates [event] object.
+ * It fills all [event] variables.
+ ****************************************************************/
 pEvent pEventCreate(){
   // Create local [event]
   pEvent event;
@@ -864,7 +1339,7 @@ pEvent pEventCreate(){
   event.focus=false;
   event.frameCount=0;
 
-  for(unsigned short int current=0; current<KEY_MAX; current++){
+  for(unsigned short int current=0; current<KEY_MAX; current+=1){
     event.key[current]=0;
   }
   event.keyCaps=false;
@@ -873,11 +1348,20 @@ pEvent pEventCreate(){
   return event;
 }
 
-/* |\_____/| pEventHandle() Function
- * |       | Used for handling window events
- * | o   o | [window] [event]
- * \ = , = / Returns nothing
- */
+/****************************************************************
+ * |\_____/| pEventHandle()
+ * | .     |
+ * |     . | In: pWindow* [window], pEvent* [event]
+ * \ = , = / Out:
+ *
+ * This function handles every global action.
+ * It checks for any [window] messages. It switches buffers.
+ * It updates [key] values. It updates mouse position,
+ * display size and window count for [event]. It updates
+ * many [window] values. It checks if [window] is fullscreen,
+ * if it changed its size or position, focus or title, etc.
+ * It also updates frame count.
+ ****************************************************************/
 void pEventHandle(pWindow *window, pEvent *event){
   if(window->active==true){
     // Manage console
@@ -899,8 +1383,8 @@ void pEventHandle(pWindow *window, pEvent *event){
     );
     EndPaint(build[window->ID-1].hwnd, &paintStruct);
 
-    // Change [event] [key] values from 1 to 2
-    for(unsigned short int current=0; current<KEY_MAX; current++){
+    // Change [event] [key] values from `1` to `2`
+    for(unsigned short int current=0; current<KEY_MAX; current+=1){
       if(event->key[current]==1){ event->key[current]=2; }
     }
 
@@ -945,7 +1429,7 @@ void pEventHandle(pWindow *window, pEvent *event){
     // Manage close [message]
     if(build[window->ID-1].DESTROY==true){
       // Reset [window]
-      pWindowReset(window);
+      pDebugWindowReset(window);
 
       return;
     }
@@ -1041,7 +1525,7 @@ void pEventHandle(pWindow *window, pEvent *event){
         if(window->x<-WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W006] \"Window x value is too low\" (changing from: %i to %i),\n",
+  "[pWB05] \"Window x value is too low\" (changing from: %i to %i),\n",
   window->x, -WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1053,7 +1537,7 @@ printf(
         if(window->x>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W007] \"Window x value is too big\" (changing from: %i to %i),\n",
+  "[pWB06] \"Window x value is too big\" (changing from: %i to %i),\n",
   window->x, WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1067,7 +1551,7 @@ printf(
         if(window->y<-WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W008] \"Window y value is too low\" (changing from: %i to %i),\n",
+  "[pWB07] \"Window y value is too low\" (changing from: %i to %i),\n",
   window->y, -WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1079,7 +1563,7 @@ printf(
         if(window->y>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W009] \"Window y value is too big\" (changing from: %i to %i),\n",
+  "[pWB08] \"Window y value is too big\" (changing from: %i to %i),\n",
   window->y, WINDOW_POS_MAX
 );
             fflush(stdout);
@@ -1093,8 +1577,8 @@ printf(
         build[window->ID-1].x=window->x;
         build[window->ID-1].y=window->y;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1119,8 +1603,8 @@ printf(
         build[window->ID-1].x=build[window->ID-1].MOVE.x;
         build[window->ID-1].y=build[window->ID-1].MOVE.y;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1134,10 +1618,10 @@ printf(
           // Check [window] [width] value
           if(window->width<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
-  printf(
-    "[pWarning, W001] \"Window width value is too low\" (changing from: %i to %i),\n",
-    window->width, WINDOW_WIDTH_MIN
-  );
+printf(
+  "[pWB01] \"Window width value is too low\" (changing from: %i to %i),\n",
+  window->width, WINDOW_WIDTH_MIN
+);
             fflush(stdout);
           }
 
@@ -1146,10 +1630,10 @@ printf(
         }
         if(window->width>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W002] \"Window width value is too big\" (changing from: %i to %i),\n",
-    window->width, WINDOW_WIDTH_MAX
-  );
+printf(
+  "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
+  window->width, WINDOW_WIDTH_MAX
+);
             fflush(stdout);
           }
 
@@ -1160,10 +1644,10 @@ printf(
         // Check [window] [height] value
         if(window->height<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W003] \"Window height value is too low\" (changing from: %i to %i),\n",
-    window->height, WINDOW_HEIGHT_MIN
-  );
+printf(
+  "[pWB03] \"Window height value is too low\" (changing from: %i to %i),\n",
+  window->height, WINDOW_HEIGHT_MIN
+);
             fflush(stdout);
           }
 
@@ -1172,10 +1656,10 @@ printf(
         }
         if(window->height>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
-  printf(
-    "[pWarning, W004] \"Window height value is too big\" (changing from: %i to %i),\n",
-    window->height, WINDOW_HEIGHT_MAX
-  );
+printf(
+  "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
+  window->height, WINDOW_HEIGHT_MAX
+);
             fflush(stdout);
           }
 
@@ -1193,8 +1677,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1217,8 +1701,8 @@ printf(
         build[window->ID-1].width=window->width;
         build[window->ID-1].height=window->height;
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1237,7 +1721,7 @@ printf(
     }
 
     if(build[window->ID-1].KEYON==true){
-      for(unsigned short int current=0; current<KEY_MAX; current++){
+      for(unsigned short int current=0; current<KEY_MAX; current+=1){
         // Manage key press [message]
         if(build[window->ID-1].KEY[current]==1){
           if(event->key[current]==0){ event->key[current]=1; }
@@ -1266,8 +1750,8 @@ printf(
       activeWinID=0;
       event->focus=false;
 
-      // Change [event] [key] values to 0
-      for(unsigned short int current=0; current<KEY_MAX; current++){
+      // Change [event] [key] values to `0`
+      for(unsigned short int current=0; current<KEY_MAX; current+=1){
         event->key[current]=0;
       }
 
@@ -1275,29 +1759,13 @@ printf(
       build[window->ID-1].FOCUSOUT=false;
     }
 
-    // Update [window] [title]
-    if(window->title!=build[window->ID-1].title){
-      if(strlen(window->title)>TITLE_MAX){
-        // Reset [window] [title]
-        strncpy(window->title, build[window->ID-1].title, sizeof(window->title)-1);
-        window->title[sizeof(window->title)-1]='\0';
+    // Update [window] [title] value
+    if(wcscmp(window->title, build[window->ID-1].title)!=0){
+      // Change [build] [title] and [titleWide] value
+      wcscpy(build[window->ID-1].title, window->title);
 
-        if(przecinek.debug==true){
-printf(
-  "[pWarning, W005] \"Window title is too long\" (changing back to: %s),\n",
-  build[window->ID-1].title
-);
-          fflush(stdout);
-        }
-      }
-      else{
-        // Update [build] [title]
-        strncpy(build[window->ID-1].title, window->title, sizeof(build[window->ID-1].title)-1);
-        build[window->ID-1].title[sizeof(build[window->ID-1].title)-1]='\0';
-
-        // Change [window] [title]
-        SetWindowText(build[window->ID-1].hwnd, window->title);
-      }
+      // Change [window] [title]
+      SetWindowTextW(build[window->ID-1].hwnd, window->title);
     }
 
     if(window->resize==true){
@@ -1306,7 +1774,7 @@ printf(
         if(window->widthMin<WINDOW_WIDTH_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W010] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
+  "[pWB09] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MIN
 );
             fflush(stdout);
@@ -1318,7 +1786,7 @@ printf(
         else if(window->widthMin>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W011] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
+  "[pWB10] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
   window->widthMin, WINDOW_WIDTH_MAX
 );
             fflush(stdout);
@@ -1337,7 +1805,7 @@ printf(
         if(window->heightMin<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W012] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
+  "[pWB11] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MIN
 );
             fflush(stdout);
@@ -1349,7 +1817,7 @@ printf(
         else if(window->heightMin>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W013] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
+  "[pWB12] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
   window->heightMin, WINDOW_HEIGHT_MAX
 );
             fflush(stdout);
@@ -1368,7 +1836,7 @@ printf(
         if(window->widthMax<WINDOW_WIDTH_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W014] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
+  "[pWB13] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MIN
 );
             fflush(stdout);
@@ -1380,7 +1848,7 @@ printf(
         else if(window->widthMax>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W015] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
+  "[pWB14] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
   window->widthMax, WINDOW_WIDTH_MAX
 );
             fflush(stdout);
@@ -1399,7 +1867,7 @@ printf(
         if(window->heightMax<WINDOW_HEIGHT_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W016] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
+  "[pWB15] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MIN
 );
             fflush(stdout);
@@ -1411,7 +1879,7 @@ printf(
         else if(window->heightMax>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWarning, W017] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
+  "[pWB16] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
   window->heightMax, WINDOW_HEIGHT_MAX
 );
             fflush(stdout);
@@ -1429,7 +1897,7 @@ printf(
       if(build[window->ID-1].widthMin>build[window->ID-1].widthMax){
         if(przecinek.debug==true){
 printf(
-  "[pWarning, W018] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
+  "[pWB17] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
   window->widthMin, window->widthMax
 );
           fflush(stdout);
@@ -1444,7 +1912,7 @@ printf(
       if(build[window->ID-1].heightMin>build[window->ID-1].heightMax){
         if(przecinek.debug==true){
 printf(
-  "[pWarning, W019] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
+  "[pWB18] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
   window->heightMin, window->heightMax
 );
           fflush(stdout);
@@ -1455,9 +1923,7 @@ printf(
         build[window->ID-1].heightMin=build[window->ID-1].heightMax;
       }
 
-      /* |\____/| Correct [window] Width
-       * |  o o |
-       */
+      // Correct [window] [width]
       if(build[window->ID-1].widthMin==build[window->ID-1].widthMax &&
           build[window->ID-1].width!=build[window->ID-1].widthMin){
         window->width=build[window->ID-1].widthMin;
@@ -1469,8 +1935,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1483,9 +1949,7 @@ printf(
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
       }
 
-      /* |\____/| Correct [window] Height
-       * |  o o |
-       */
+      // Correct [window] [height]
       if(build[window->ID-1].heightMin==build[window->ID-1].heightMax &&
           build[window->ID-1].height!=build[window->ID-1].heightMin){
         window->height=build[window->ID-1].heightMin;
@@ -1497,8 +1961,8 @@ printf(
           window->width, window->height, SWP_NOZORDER | SWP_NOMOVE
         );
 
-        // Change [event] [key] values to 0
-        for(unsigned short int current=0; current<KEY_MAX; current++){
+        // Change [event] [key] values to `0`
+        for(unsigned short int current=0; current<KEY_MAX; current+=1){
           event->key[current]=0;
         }
 
@@ -1519,8 +1983,8 @@ printf(
     }
 
     // Update [frameCount] and sleep
-    build[window->ID-1].frameCount++;
-    Sleep((1000/winCount)/przecinek.frameLimit);
+    build[window->ID-1].frameCount+=1;
+    Sleep((1000/winCount)/(przecinek.frameLimit+1));
 
     // Calculate current time
     if(GetTickCount()-build[window->ID-1].frameStart>=1000){
@@ -1532,18 +1996,24 @@ printf(
     }
   }
   else if(przecinek.debug==true){
-    printf("[pError, E001] \"Could not handle event\" (window is closed),\n");
+printf(
+  "[pEG02] \"Could not handle event\" (window is closed),\n"
+);
     fflush(stdout);
   }
 
   return;
 }
 
-/* |\_____/| pObjectCreate() Function
- * |       | Used for creating objects
- * | o   o | [width], [height] (0:8bit)
- * \ = , = / Returns [object]
- */
+/****************************************************************
+ * |\_____/| pObjectCreate()
+ * | .     |
+ * |     . | In: us_int [width], [height]
+ * \ = , = / Out: pObject
+ *
+ * This function creates [object].
+ * It fills all [object] variables.
+ ****************************************************************/
 pObject pObjectCreate(unsigned short int width, unsigned short int height){
   // Create local [object]
   pObject object;
@@ -1555,199 +2025,338 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
   object.width=width;
   object.height=height;
 
-  object.color.r=0;
-  object.color.g=0;
-  object.color.b=0;
+  object.color.red=0;
+  object.color.green=0;
+  object.color.blue=0;
+  object.color.alpha=100;
 
   // Return local [object]
   return object;
 }
 
-/* |\_____/| pObjectCollision() Function
- * |       | Used for checking collisions between objects
- * | o   o | [object1], [object2]
- * \ = , = / Returns (true/false)
- */
-bool pObjectCollision(pObject object1, pObject object2){
-  return (object1.x<object2.x+object2.width &&
-    object1.x+object1.width>object2.x &&
-    object1.y<object2.y+object2.height &&
-    object1.y+object1.height>object2.y
+/****************************************************************
+ * |\_____/| pObjectCollision()
+ * | .     |
+ * |     . | In: pObject* [object1], [object2]
+ * \ = , = / Out: bool
+ *
+ * This function checks if two [object] collides.
+ * Its abilities will be extended in the future.
+ ****************************************************************/
+bool pObjectCollision(pObject *object1, pObject *object2){
+  // Return collision
+  return(
+    object1->x<object2->x+object2->width &&
+    object1->x+object1->width>object2->x &&
+    object1->y<object2->y+object2->height &&
+    object1->y+object1->height>object2->y
   );
 }
 
-/* |\_____/| pKey() Function
- * |       | Used for converting key names into codes
- * | o   o | [key]
- * \ = , = / Returns (0:255)
- */
-unsigned short int pKey(const char *key){
-  if(strcmp(key, "LMOUSE")==0 || strcmp(key, "LMouse")==0 || strcmp(key, "lmouse")==0){
-    return VK_LBUTTON;
-  }
-  if(strcmp(key, "MMOUSE")==0 || strcmp(key, "MMouse")==0 || strcmp(key, "mmouse")==0){
-    return VK_MBUTTON;
-  }
-  if(strcmp(key, "RMOUSE")==0 || strcmp(key, "RMouse")==0 || strcmp(key, "rmouse")==0){
-    return VK_RBUTTON;
-  }
-  if(strcmp(key, "BACK")==0 || strcmp(key, "Back")==0 || strcmp(key, "back")==0){
-    return VK_XBUTTON1;
-  }
-  if(strcmp(key, "FORWARD")==0 || strcmp(key, "Forward")==0 || strcmp(key, "forward")==0){
-    return VK_XBUTTON2;
+/****************************************************************
+ * |\_____/| pFontCreate()
+ * | .     |
+ * |     . | In: wchar_t* [name], [directory], us_int [size]
+ * \ = , = / Out: pFont
+ *
+ * This function creates [font] object. It checks
+ * if [size] value is valid. It checks if [directory] exists.
+ * It loads [font] and save it to memory.
+ ****************************************************************/
+pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
+  // Create local [font]
+  pFont font;
+
+  for(unsigned short int current=0; current<FONT_MAX; current+=1){
+    if(view[current].size==0){
+      // Set [font] [ID] and reset [font]
+      font.ID=current+1;
+      pDebugFontReset(&font);
+
+      break;
+    }
+    else if(current==FONT_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pEF01] \"Too many fonts were created\" (limit: %i),\n",
+  FONT_MAX
+);
+        fflush(stdout);
+      }
+
+      // Reset and return [font]
+      pDebugFontReset(&font);
+      font.ID=0;
+
+      return font;
+    }
   }
 
-  if(strcmp(key, "ESC")==0 || strcmp(key, "esc")==0 || strcmp(key, "Esc")==0){
-    return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "TAB")==0 || strcmp(key, "tab")==0 || strcmp(key, "Tab")==0){
-    return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "CAPS")==0 || strcmp(key, "caps")==0 || strcmp(key, "Caps")==0){
-    return MapVirtualKey(VK_CAPITAL, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "LSHIFT")==0 || strcmp(key, "lshift")==0 || strcmp(key, "LShift")==0){
-    return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "LCTRL")==0 || strcmp(key, "lctrl")==0 || strcmp(key, "LCtrl")==0){
-    return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "LMOD")==0 || strcmp(key, "lmod")==0 || strcmp(key, "LMod")==0){
-    return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "LALT")==0 || strcmp(key, "lalt")==0 || strcmp(key, "LAlt")==0){
-    return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "SPACE")==0 || strcmp(key, "space")==0 || strcmp(key, "Space")==0){
-    return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC);
+  // Check if Przecinek is initialized
+  if(setup==false){
+printf(
+  "[pEG01] \"Could not create font\" (Przecinek is not initialized),\n"
+);
+    fflush(stdout);
+
+    // Reset and return [font]
+    pDebugFontReset(&font);
+    return font;
   }
 
-  else if(strcmp(key, "F1")==0 || strcmp(key, "f1")==0){ return MapVirtualKey(VK_F1, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F2")==0 || strcmp(key, "f2")==0){ return MapVirtualKey(VK_F2, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F3")==0 || strcmp(key, "f3")==0){ return MapVirtualKey(VK_F3, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F4")==0 || strcmp(key, "f4")==0){ return MapVirtualKey(VK_F4, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F5")==0 || strcmp(key, "f5")==0){ return MapVirtualKey(VK_F5, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F6")==0 || strcmp(key, "f6")==0){ return MapVirtualKey(VK_F6, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F7")==0 || strcmp(key, "f7")==0){ return MapVirtualKey(VK_F7, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F8")==0 || strcmp(key, "f8")==0){ return MapVirtualKey(VK_F8, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F9")==0 || strcmp(key, "f9")==0){ return MapVirtualKey(VK_F9, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F10")==0 || strcmp(key, "f10")==0){ return MapVirtualKey(VK_F10, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F11")==0 || strcmp(key, "f11")==0){ return MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F12")==0 || strcmp(key, "f12")==0){ return MapVirtualKey(VK_F12, MAPVK_VK_TO_VSC); }
+  // Check [size] value
+  if(size<FONT_SIZE_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWF01] \"Font size value is too low\" (changing from: %i to %i),\n",
+  size, FONT_SIZE_MIN
+);
+      fflush(stdout);
+    }
 
-  else if(strcmp(key, "RALT")==0 || strcmp(key, "ralt")==0 || strcmp(key, "RAlt")==0){
-    return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC);
+    // Change [size] value
+    size=FONT_SIZE_MIN;
   }
-  else if(strcmp(key, "RWIN")==0 || strcmp(key, "rwin")==0 || strcmp(key, "RWin")==0){
-    return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "MENU")==0 || strcmp(key, "menu")==0 || strcmp(key, "Menu")==0){
-    return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "RCTRL")==0 || strcmp(key, "rctrl")==0 || strcmp(key, "RCtrl")==0){
-    return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "RSHIFT")==0 || strcmp(key, "rshift")==0 || strcmp(key, "RShift")==0){
-    return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "ENTER")==0 || strcmp(key, "enter")==0 || strcmp(key, "Enter")==0){
-    return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "BACKSPACE")==0 || strcmp(key, "backspace")==0 || strcmp(key, "Backspace")==0){
-    return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC);
+  if(size>FONT_SIZE_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
+  size, FONT_SIZE_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [size] value
+    size=FONT_SIZE_MAX;
   }
 
-  else if(strcmp(key, "LARROW")==0 || strcmp(key, "larrow")==0 || strcmp(key, "LArrow")==0){
-    return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "DARROW")==0 || strcmp(key, "darrow")==0 || strcmp(key, "DArrow")==0){
-    return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "RARROW")==0 || strcmp(key, "rarrow")==0 || strcmp(key, "RArrow")==0){
-    return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "UARROW")==0 || strcmp(key, "uarrow")==0 || strcmp(key, "UArrow")==0){
-    return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC);
+  // Set [font] values
+  wcscpy(font.name, name);
+  wcscpy(font.directory, directory);
+  font.size=size;
+
+  // Set [view] values
+  wcscpy(view[font.ID-1].name, name);
+  wcscpy(view[font.ID-1].directory, directory);
+  view[font.ID-1].size=size;
+
+  // Setup [collection] and check if [directory] exists
+  status=GdipPrivateAddFontFile(collection, directory);
+  if(status!=Ok){
+    if(przecinek.debug==true){
+printf(
+  "[pEF02] \"Could not load font\",\n"
+);
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pDebugFontReset(&font);
+    font.ID=0;
+
+    return font;
   }
 
-  else if(strcmp(key, "PRINTSCRN")==0 || strcmp(key, "printscrn")==0 || strcmp(key, "PrintScrn")==0){
-    return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "SCROLLLOCK")==0 || strcmp(key, "scrolllock")==0 || strcmp(key, "ScrollLock")==0){
-    return MapVirtualKey(VK_SCROLL, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "PAUSEBREAK")==0 || strcmp(key, "pausebreak")==0 || strcmp(key, "PauseBreak")==0){
-    return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "INS")==0 || strcmp(key, "ins")==0 || strcmp(key, "Ins")==0){
-    return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "HOME")==0 || strcmp(key, "home")==0 || strcmp(key, "Home")==0){
-    return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "PAGEU")==0 || strcmp(key, "pageu")==0 || strcmp(key, "PageU")==0){
-    return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "DEL")==0 || strcmp(key, "del")==0 || strcmp(key, "Del")==0){
-    return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "END")==0 || strcmp(key, "end")==0 || strcmp(key, "End")==0){
-    return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC);
-  }
-  else if(strcmp(key, "PAGED")==0 || strcmp(key, "paged")==0 || strcmp(key, "PageD")==0){
-    return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC);
-  }
+  // Initialize [view] [base]
+  status=GdipCreateFontFamilyFromName(name, collection, &view[font.ID-1].fontFamily);
+  if(status!=Ok){
+    if(przecinek.debug==true){
+printf(
+  "[pEFw1] \"Could not create WIN font\",\n"
+);
+      fflush(stdout);
+    }
 
-  else if(strcmp(key, "Q")==0 || strcmp(key, "q")==0){ return MapVirtualKey(VK_Q, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "W")==0 || strcmp(key, "w")==0){ return MapVirtualKey(VK_W, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "E")==0 || strcmp(key, "e")==0){ return MapVirtualKey(VK_E, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "R")==0 || strcmp(key, "r")==0){ return MapVirtualKey(VK_R, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "T")==0 || strcmp(key, "t")==0){ return MapVirtualKey(VK_T, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "Y")==0 || strcmp(key, "y")==0){ return MapVirtualKey(VK_Y, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "U")==0 || strcmp(key, "u")==0){ return MapVirtualKey(VK_U, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "I")==0 || strcmp(key, "i")==0){ return MapVirtualKey(VK_I, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "O")==0 || strcmp(key, "o")==0){ return MapVirtualKey(VK_O, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "P")==0 || strcmp(key, "p")==0){ return MapVirtualKey(VK_P, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "A")==0 || strcmp(key, "a")==0){ return MapVirtualKey(VK_A, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "S")==0 || strcmp(key, "s")==0){ return MapVirtualKey(VK_S, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "D")==0 || strcmp(key, "d")==0){ return MapVirtualKey(VK_D, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "F")==0 || strcmp(key, "f")==0){ return MapVirtualKey(VK_F, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "G")==0 || strcmp(key, "g")==0){ return MapVirtualKey(VK_G, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "H")==0 || strcmp(key, "h")==0){ return MapVirtualKey(VK_H, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "J")==0 || strcmp(key, "j")==0){ return MapVirtualKey(VK_J, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "K")==0 || strcmp(key, "k")==0){ return MapVirtualKey(VK_K, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "L")==0 || strcmp(key, "l")==0){ return MapVirtualKey(VK_L, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "Z")==0 || strcmp(key, "z")==0){ return MapVirtualKey(VK_Z, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "X")==0 || strcmp(key, "x")==0){ return MapVirtualKey(VK_X, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "C")==0 || strcmp(key, "c")==0){ return MapVirtualKey(VK_C, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "V")==0 || strcmp(key, "v")==0){ return MapVirtualKey(VK_V, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "B")==0 || strcmp(key, "b")==0){ return MapVirtualKey(VK_B, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "N")==0 || strcmp(key, "n")==0){ return MapVirtualKey(VK_N, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "M")==0 || strcmp(key, "m")==0){ return MapVirtualKey(VK_M, MAPVK_VK_TO_VSC); }
+    // Reset and return [font]
+    pDebugFontReset(&font);
+    font.ID=0;
 
-  else if(strcmp(key, "1")==0){ return MapVirtualKey(VK_1, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "2")==0){ return MapVirtualKey(VK_2, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "3")==0){ return MapVirtualKey(VK_3, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "4")==0){ return MapVirtualKey(VK_4, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "5")==0){ return MapVirtualKey(VK_5, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "6")==0){ return MapVirtualKey(VK_6, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "7")==0){ return MapVirtualKey(VK_7, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "8")==0){ return MapVirtualKey(VK_8, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "9")==0){ return MapVirtualKey(VK_9, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "0")==0){ return MapVirtualKey(VK_0, MAPVK_VK_TO_VSC); }
+    return font;
+  }
+  GdipCreateFont(view[font.ID-1].fontFamily, size, FontStyleRegular, UnitPixel, &view[font.ID-1].base);
 
-  else if(strcmp(key, "`")==0){ return MapVirtualKey(VK_OEM_3, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, ",")==0){ return MapVirtualKey(VK_OEM_COMMA, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, ".")==0){ return MapVirtualKey(VK_OEM_PERIOD, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "/")==0){ return MapVirtualKey(VK_OEM_2, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, ";")==0){ return MapVirtualKey(VK_OEM_SEMICOLON, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "'")==0){ return MapVirtualKey(VK_OEM_QUOTE, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "\\")==0){ return MapVirtualKey(VK_OEM_5, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "[")==0){ return MapVirtualKey(VK_OEM_4, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "]")==0){ return MapVirtualKey(VK_OEM_6, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "-")==0){ return MapVirtualKey(VK_OEM_MINUS, MAPVK_VK_TO_VSC); }
-  else if(strcmp(key, "=")==0){ return MapVirtualKey(VK_OEM_PLUS, MAPVK_VK_TO_VSC); }
+  // Return local [font]
+  return font;
+}
+
+/****************************************************************
+ * |\_____/| pFontClose()
+ * | .     |
+ * |     . | In: pFont* [font]
+ * \ = , = / Out:
+ *
+ * This function resets given [font].
+ * It deletes loaded [font] data from the memory.
+ ****************************************************************/
+void pFontClose(pFont *font){
+  // Fully reset [font]
+  pDebugFontReset(font);
+  font->ID=0;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pTextCreate()
+ * | .     |
+ * |     . | In: wchar_t* [value]
+ * \ = , = / Out: pText
+ *
+ * This function creates [text] object.
+ * It fills all [text] variables.
+ ****************************************************************/
+pText pTextCreate(wchar_t *value){
+  // Create local [text]
+  pText text;
+
+  // Set [text] values
+  text.x=0;
+  text.y=0;
+
+  wcscpy(text.value, value);
+
+  // Return local [text]
+  return text;
+}
+
+/****************************************************************
+ * |\_____/| pKey()
+ * | .     |
+ * |     . | In: wchar_t* [key]
+ * \ = , = / Out: us_int
+ *
+ * This function converts given [key] value into it's id.
+ * Returned [key] id depends on current OS.
+ ****************************************************************/
+unsigned short int pKey(wchar_t *key){
+  if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){ return VK_LBUTTON; }
+  if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){ return VK_MBUTTON; }
+  if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){ return VK_RBUTTON; }
+  if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){ return VK_XBUTTON1; }
+  if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){ return VK_XBUTTON2; }
+
+  if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){
+    return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){
+    return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"CAPS")==0 || wcscmp(key, L"caps")==0 || wcscmp(key, L"Caps")==0){
+    return MapVirtualKey(VK_CAPITAL, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){
+    return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){
+    return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){
+    return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){
+    return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){
+    return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){ return MapVirtualKey(VK_F1, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){ return MapVirtualKey(VK_F2, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F3")==0 || wcscmp(key, L"f3")==0){ return MapVirtualKey(VK_F3, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F4")==0 || wcscmp(key, L"f4")==0){ return MapVirtualKey(VK_F4, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F5")==0 || wcscmp(key, L"f5")==0){ return MapVirtualKey(VK_F5, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F6")==0 || wcscmp(key, L"f6")==0){ return MapVirtualKey(VK_F6, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F7")==0 || wcscmp(key, L"f7")==0){ return MapVirtualKey(VK_F7, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F8")==0 || wcscmp(key, L"f8")==0){ return MapVirtualKey(VK_F8, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F9")==0 || wcscmp(key, L"f9")==0){ return MapVirtualKey(VK_F9, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F10")==0 || wcscmp(key, L"f10")==0){ return MapVirtualKey(VK_F10, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){ return MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){ return MapVirtualKey(VK_F12, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){
+    return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){
+    return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){
+    return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){
+    return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){
+    return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){
+    return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 || wcscmp(key, L"Backspace")==0){
+    return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 || wcscmp(key, L"LArrow")==0){
+    return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 || wcscmp(key, L"DArrow")==0){
+    return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 || wcscmp(key, L"RArrow")==0){
+    return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 || wcscmp(key, L"UArrow")==0){
+    return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 || wcscmp(key, L"PrintScrn")==0){
+    return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"SCROLLLOCK")==0 || wcscmp(key, L"scrolllock")==0 || wcscmp(key, L"ScrollLock")==0){
+    return MapVirtualKey(VK_SCROLL, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 || wcscmp(key, L"PauseBreak")==0){
+    return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){
+    return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){
+    return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){
+    return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){
+    return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){
+    return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){
+    return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){ return MapVirtualKey(VK_Q, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){ return MapVirtualKey(VK_W, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"E")==0 || wcscmp(key, L"e")==0){ return MapVirtualKey(VK_E, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"R")==0 || wcscmp(key, L"r")==0){ return MapVirtualKey(VK_R, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"T")==0 || wcscmp(key, L"t")==0){ return MapVirtualKey(VK_T, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"Y")==0 || wcscmp(key, L"y")==0){ return MapVirtualKey(VK_Y, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"U")==0 || wcscmp(key, L"u")==0){ return MapVirtualKey(VK_U, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"I")==0 || wcscmp(key, L"i")==0){ return MapVirtualKey(VK_I, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"O")==0 || wcscmp(key, L"o")==0){ return MapVirtualKey(VK_O, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"P")==0 || wcscmp(key, L"p")==0){ return MapVirtualKey(VK_P, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"A")==0 || wcscmp(key, L"a")==0){ return MapVirtualKey(VK_A, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"S")==0 || wcscmp(key, L"s")==0){ return MapVirtualKey(VK_S, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"D")==0 || wcscmp(key, L"d")==0){ return MapVirtualKey(VK_D, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"F")==0 || wcscmp(key, L"f")==0){ return MapVirtualKey(VK_F, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"G")==0 || wcscmp(key, L"g")==0){ return MapVirtualKey(VK_G, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"H")==0 || wcscmp(key, L"h")==0){ return MapVirtualKey(VK_H, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"J")==0 || wcscmp(key, L"j")==0){ return MapVirtualKey(VK_J, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"K")==0 || wcscmp(key, L"k")==0){ return MapVirtualKey(VK_K, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"L")==0 || wcscmp(key, L"l")==0){ return MapVirtualKey(VK_L, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"Z")==0 || wcscmp(key, L"z")==0){ return MapVirtualKey(VK_Z, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"X")==0 || wcscmp(key, L"x")==0){ return MapVirtualKey(VK_X, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"C")==0 || wcscmp(key, L"c")==0){ return MapVirtualKey(VK_C, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"V")==0 || wcscmp(key, L"v")==0){ return MapVirtualKey(VK_V, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"B")==0 || wcscmp(key, L"b")==0){ return MapVirtualKey(VK_B, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"N")==0 || wcscmp(key, L"n")==0){ return MapVirtualKey(VK_N, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"M")==0 || wcscmp(key, L"m")==0){ return MapVirtualKey(VK_M, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"1")==0){ return MapVirtualKey(VK_1, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"2")==0){ return MapVirtualKey(VK_2, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"3")==0){ return MapVirtualKey(VK_3, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"4")==0){ return MapVirtualKey(VK_4, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"5")==0){ return MapVirtualKey(VK_5, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"6")==0){ return MapVirtualKey(VK_6, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"7")==0){ return MapVirtualKey(VK_7, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"8")==0){ return MapVirtualKey(VK_8, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"9")==0){ return MapVirtualKey(VK_9, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"0")==0){ return MapVirtualKey(VK_0, MAPVK_VK_TO_VSC); }
+
+  else if(wcscmp(key, L"`")==0){ return MapVirtualKey(VK_OEM_3, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L",")==0){ return MapVirtualKey(VK_OEM_COMMA, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L".")==0){ return MapVirtualKey(VK_OEM_PERIOD, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"/")==0){ return MapVirtualKey(VK_OEM_2, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L";")==0){ return MapVirtualKey(VK_OEM_SEMICOLON, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"'")==0){ return MapVirtualKey(VK_OEM_QUOTE, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"\\")==0){ return MapVirtualKey(VK_OEM_5, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"[")==0){ return MapVirtualKey(VK_OEM_4, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"]")==0){ return MapVirtualKey(VK_OEM_6, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"-")==0){ return MapVirtualKey(VK_OEM_MINUS, MAPVK_VK_TO_VSC); }
+  else if(wcscmp(key, L"=")==0){ return MapVirtualKey(VK_OEM_PLUS, MAPVK_VK_TO_VSC); }
 
   return 0;
 }

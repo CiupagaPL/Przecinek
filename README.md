@@ -1,40 +1,60 @@
-![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek_general.png)
-# {,} Przecinek [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) [[unstable]](https://github.com/CiupagaPL/Przecinek/tree/unstable)
+![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek.png)
+# {,} Przecinek -> [[stable]](https://github.com/CiupagaPL/Przecinek/tree/stable) [[unstable]](https://github.com/CiupagaPL/Przecinek/tree/unstable)
 
-### About Project
-**Przecinek is a minimal multimedia library** being developed in C.
-Its purpose is to make it easier for beginner programmers to create window applications while keeping their projects small in size.
+### General
+
+**Przecinek is a minimal multimedia library** for Windows and Linux being developed in C.
+Its purpose is to make it easier for game/app developers to create window applications while keeping their projects small in size and easy to read.
 Przecinek uses only system-built-in libraries.
 It's under active development.
-> [!NOTE]
-> Don't forget that it's still in early development.
 
-### Features / TODO
-- [X] Creating and managing windows,
-- [X] Limiting and counting frames,
-- [X] Checking global values like mouse position or screen size,
-- [X] Input system,
-- [X] Drawing and clearing windows,
-- [X] Simple objects and collisions,
-- [ ] Creating diffrent shapes, managing them and checking their collisions,
-- [ ] Audio system,
-- [ ] Loading images and rendering textures,
-- [ ] Managing fonts and rendering texts.
+### Stable Features
 
-### About Wiki
-You can find all the information about managing, configuring and setting up this project in the Wiki.
-Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.
-> [!NOTE]
-> It's also in early access.
+| Feature                     | Version    |
+|-----------------------------|------------|
+| Creating Windows            | **[a1,0]** |
+| Managing Windows            | **[a1,0]** |
+| Input System                | **[a1,0]** |
+| Window Event System         | **[a2,0]** |
+| Window Frame Control        | **[a3,0]** |
+| Basic Render System         | **[a3,0]** |
+| Creating Basic Objects      | **[a3,0]** |
+| Checking Basic Collisions   | **[a3,0]** |
+
+### Unstable Features / TODO
+
+| Feature                     | WIN | X11 |
+|-----------------------------|-----|-----|
+| Supporting non-ASCII chars  | ✅  | ✅  |
+| Supporting color alpha      | ✅  | ❔* |
+| Loading Fonts               | ✅  | ✅  |
+| Managing Fonts              | ✅  | ✅  |
+| Rendering Fonts             | ✅  | ❔* |
+| Creating Diffrent Shapes    | ❌  | ❌  |
+| Checking Shapes Collisions  | ❌  | ❌  |
+| Loading Images              | ❌  | ❌  |
+| Rendering Images            | ❌  | ❌  |
+| Loading Audio               | ❌  | ❌  |
+| Managing Audio              | ❌  | ❌  |
+| Playing Audio               | ❌  | ❌  |
+
+`*` > Unfinished Features
+
+### External
+
+You can find all the information about managing, configuring and setting up this project in the **Wiki**.
+Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.<br>
 
 ### Version
-> Newest Version (Alpha): **[a3,1]**;<br>
-> Newest Version (Unstable): **[u,8]**;<br>
-> Last Updated: **21-10-2025**;
+
+> Newest Version (Alpha): **[a4,0]**;<br>
+> Newest Version (Unstable): **[u,12]**;<br>
+> Last Updated: **06-01-2026**;
 
 ### LICENSE
+
 ```
-Copyright(C) 2025 Ciupaga
+Copyright(C) 2025-2026 Ciupaga
 {,} PRZECINEK
 Custom License
 
@@ -55,3 +75,4 @@ b) "Comments" refer to any messages in the source code.
 
 This software is provided "as-is" without any warranties. The author
 is not liable for any damages arising from its use.
+```
