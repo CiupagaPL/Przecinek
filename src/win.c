@@ -1209,7 +1209,7 @@ printf(
 
         // Create [view] [base]
         GdipCreateFont(
-          view[font->ID-1].fontFamily, font->size, FontStyleRegular,
+          view[font->ID-1].fontFamily, font->size, FontStyleBold,
           UnitPixel, &view[font->ID-1].base
         );
 
@@ -1232,12 +1232,23 @@ printf(
       // Create [build] [graphics]
       GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
 
+      // Correct [text] [value]
+      if(wcscmp(text->value, L"")==0){ wcscpy(text->value, L" "); }
+
       // Fill [build] [graphics]
       GdipCreateSolidFill(argb, &fill);
-      GdipDrawString(
-        build[window->ID-1].graphics, text->value, wcslen(text->value),
-        view[font->ID-1].base, &figure, NULL, fill
-      );
+      if(text->value[0]==L' '){
+        GdipDrawString(
+          build[window->ID-1].graphics, text->value+1, wcslen(text->value)-1,
+          view[font->ID-1].base, &figure, NULL, fill
+        );
+      }
+      else{
+        GdipDrawString(
+          build[window->ID-1].graphics, text->value, wcslen(text->value),
+          view[font->ID-1].base, &figure, NULL, fill
+        );
+      }
 
       // Clean [build] [fill] and [graphics]
       GdipDeleteBrush(fill);
@@ -2173,7 +2184,7 @@ printf(
 
     return font;
   }
-  GdipCreateFont(view[font.ID-1].fontFamily, size, FontStyleRegular, UnitPixel, &view[font.ID-1].base);
+  GdipCreateFont(view[font.ID-1].fontFamily, size, FontStyleBold, UnitPixel, &view[font.ID-1].base);
 
   // Return local [font]
   return font;

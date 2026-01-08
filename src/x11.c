@@ -147,6 +147,7 @@ typedef struct{
 
   int x, y;
   int yFix;
+  bool space;
 
   FcPattern *pattern;
   FcObjectSet *objectSet;
@@ -378,6 +379,7 @@ void pDebugFontReset(pFont *font){
   view[font->ID-1].x=0;
   view[font->ID-1].y=0;
   view[font->ID-1].yFix=0;
+  view[font->ID-1].space=false;
 
   view[font->ID-1].pattern=NULL;
   view[font->ID-1].objectSet=NULL;
@@ -948,7 +950,7 @@ printf(
         }
 
         // Update [face] size
-        FT_Set_Pixel_Sizes(face, 0, font->size);
+        FT_Set_Pixel_Sizes(face, 0, (unsigned short int)(float)(font->size*1.5));
 
         // Refresh [view] values
         view[font->ID-1].size=font->size;
@@ -1033,7 +1035,22 @@ printf(
         build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
       );
 
-      for(wchar_t *current=text->value; *current; current+=1){
+      // Correct [text] [value]
+      if(wcscmp(text->value, L"")==0){ wcscpy(text->value, L" "); }
+
+      // Check for space at the start of [text] [value]
+      if(text->value[0]==L' '){ view[font->ID-1].space=true; }
+      else{ view[font->ID-1].space=false; }
+
+      for(wchar_t *current=text->value+(unsigned short int)view[font->ID-1].space; *current; current+=1){
+        // Check for `\n` and make new line
+        if(*current==L'\n'){
+          view[font->ID-1].y+=face->size->metrics.height>>6;
+          view[font->ID-1].x=text->x;
+
+          continue;
+        }
+
         // Load [current] character
         if(FT_Load_Char(face, *current, FT_LOAD_RENDER)){ continue; }
 
@@ -2022,7 +2039,7 @@ printf(
   }
 
   // Set [face] size
-  FT_Set_Pixel_Sizes(face, 0, font.size);
+  FT_Set_Pixel_Sizes(face, 0, (unsigned short int)(float)(font.size*1.5));
 
   // Return local [font]
   return font;

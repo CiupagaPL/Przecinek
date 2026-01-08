@@ -47,9 +47,9 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 
 ### Version
 
-> Newest Version (Alpha): **[a4,0]**;<br>
-> Newest Version (Unstable): **[u,12]**;<br>
-> Last Updated: **06-01-2026**;
+> Newest Version (Alpha): **[a4,1]**;<br>
+> Newest Version (Unstable): **[u,13]**;<br>
+> Last Updated: **08-01-2026**;
 
 ### LICENSE
 
