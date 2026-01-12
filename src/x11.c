@@ -15,6 +15,7 @@
 #include <string.h>
 #include <locale.h>
 #include <wchar.h>
+#include <math.h>
 
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -34,7 +35,7 @@
  *  |______|
  * (--------)
  ********************************/
-#define WINDOW_MAX 16
+#define WINDOW_MAX 4
 #define WINDOW_X_DEF 128
 #define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
@@ -51,7 +52,19 @@
 #define FRAME_MIN 10
 #define FRAME_MAX 640
 
-#define FONT_MAX 64
+#define SHAPE_MAX 512
+#define SHAPE_ANGLE_MIN 3
+#define SHAPE_ANGLE_MAX 300
+#define SHAPE_ROTATION_MAX 360
+
+#define IMAGE_MAX 512
+
+#define OBJECT_WIDTH_MIN 4
+#define OBJECT_HEIGHT_MIN 4
+#define OBJECT_WIDTH_MAX 7680
+#define OBJECT_HEIGHT_MAX 4320
+
+#define FONT_MAX 128
 #define FONT_SIZE_MIN 4
 #define FONT_SIZE_MAX 512
 #define FONT_NAME_MAX 256
@@ -157,6 +170,23 @@ typedef struct{
 } pFontX11;
 
 /********************************
+ *  ,______,  Define [pFigureX11]
+ *  |      |  structure [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  int x, y;
+  unsigned short int width, height;
+  unsigned short int angle, rotation;
+
+  XPoint point[SHAPE_ANGLE_MAX];
+  unsigned short int rotationFix;
+
+  bool change;
+} pFigureX11;
+
+/********************************
  *  ,______,  Define [pWindow]
  *  |      |  structure
  *  |______|
@@ -191,17 +221,20 @@ typedef struct{
 } pEvent;
 
 /********************************
- *  ,______,  Define [pObject]
+ *  ,______,  Define [pShape]
  *  |      |  structure
  *  |______|
  * (--------)
  ********************************/
 typedef struct{
+  unsigned short int ID;
+
   int x, y;
   unsigned short int width, height;
+  unsigned short int angle, rotation;
 
   pColor color;
-} pObject;
+} pShape;
 
 /********************************
  *  ,______,  Define [pFont]
@@ -210,7 +243,7 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
-  unsigned int ID;
+  unsigned short int ID;
 
   unsigned short int size;
   wchar_t name[FONT_NAME_MAX];
@@ -259,6 +292,9 @@ pEvent change;
 FT_Error FTError;
 pFontX11 view[FONT_MAX];
 struct stat status;
+
+// Shape
+pFigureX11 figure[SHAPE_MAX];
 
 /****************************************************************
  * |\_____/| pDebugWindowReset() [DEBUG]
@@ -341,7 +377,7 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].frameMax=0;
 
   // Change [winCount]
-  winCount--;
+  winCount-=1;
 
   return;
 }
@@ -364,7 +400,7 @@ void pDebugFontReset(pFont *font){
   font->color.red=0;
   font->color.green=0;
   font->color.blue=0;
-  font->color.alpha=100;
+  font->color.alpha=0;
 
   // Reset [view] values
   view[font->ID-1].size=0;
@@ -386,6 +422,50 @@ void pDebugFontReset(pFont *font){
   view[font->ID-1].fontSet=NULL;
 
   view[font->ID-1].change=false;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugShapeReset() [DEBUG]
+ * | .     |
+ * |     . | In: pShape* [shape]
+ * \ = , = / Out:
+ *
+ * This function resets all [shape] and [figure] values.
+ * Cleared variables depend on [shape] [ID].
+ ****************************************************************/
+void pDebugShapeReset(pShape *shape){
+  // Reset [shape] values
+  shape->x=0;
+  shape->y=0;
+  shape->width=0;
+  shape->height=0;
+
+  shape->angle=0;
+  shape->rotation=0;
+
+  shape->color.red=0;
+  shape->color.green=0;
+  shape->color.blue=0;
+  shape->color.alpha=0;
+
+  // Reset [figure] values
+  figure[shape->ID-1].x=0;
+  figure[shape->ID-1].y=0;
+  figure[shape->ID-1].width=0;
+  figure[shape->ID-1].height=0;
+
+  figure[shape->ID-1].angle=0;
+  figure[shape->ID-1].rotation=0;
+
+  for(unsigned short int current=0; current<SHAPE_ANGLE_MAX; current+=1){
+    figure[shape->ID-1].point[current].x=0;
+    figure[shape->ID-1].point[current].y=0;
+  }
+  figure[shape->ID-1].rotationFix=0;
+
+  figure[shape->ID-1].change=false;
 
   return;
 }
@@ -567,7 +647,7 @@ printf(
     // Change [width] value
     width=WINDOW_WIDTH_MIN;
   }
-  if(width>WINDOW_WIDTH_MAX){
+  else if(width>WINDOW_WIDTH_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
@@ -593,7 +673,7 @@ printf(
     // Change [height] value
     height=WINDOW_HEIGHT_MIN;
   }
-  if(height>WINDOW_HEIGHT_MAX){
+  else if(height>WINDOW_HEIGHT_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
@@ -766,90 +846,326 @@ printf(
 }
 
 /****************************************************************
- * |\_____/| pWindowDrawObject()
+ * |\_____/| pWindowDrawShape()
  * | .     |
- * |     . | In: pWindow* [window], pObject* [object]
+ * |     . | In: pWindow* [window], pShape* [shape]
  * \ = , = / Out:
  *
- * This function draws [object] on [window] buffer.
- * It checks if [object] [color] values are valid.
+ * This function draws [shape] on [window] buffer.
+ * It checks if [shape] [color] values are valid.
  * Then it does all the rendering stuff.
  ****************************************************************/
-void pWindowDrawObject(pWindow *window, pObject *object){
+void pWindowDrawShape(pWindow *window, pShape *shape){
   if(window->active==true){
-    // Check [object] [color] values
-    if(object->color.red>255){
-      if(przecinek.debug==true){
+    if(shape->ID!=0){
+      // Check [shape] [color] values
+      if(shape->color.red>255){
+        if(przecinek.debug==true){
 printf(
-  "[pWO01] \"Object red color value is too big\" (changing from: %i to 255),\n",
-  object->color.red
+  "[pWS12] \"Shape red color value is too big\" (changing from: %i to 255),\n",
+  shape->color.red
 );
-        fflush(stdout);
+          fflush(stdout);
+        }
+
+        // Correct [shape] [color] [red] value
+        shape->color.red=255;
+      }
+      if(shape->color.green>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWS13] \"Shape green color value is too big\" (changing from: %i to 255),\n",
+  shape->color.green
+);
+          fflush(stdout);
+        }
+
+        // Correct [shape] [color] [green] value
+        shape->color.green=255;
+      }
+      if(shape->color.blue>255){
+        if(przecinek.debug==true){
+printf(
+  "[pWS14] \"Shape blue color value is too big\" (changing from: %i to 255),\n",
+  shape->color.blue
+);
+          fflush(stdout);
+        }
+
+        // Correct [shape] [color] [blue] value
+        shape->color.blue=255;
+      }
+      if(shape->color.alpha>100){
+        if(przecinek.debug==true){
+printf(
+  "[pWS15] \"Shape alpha color value is too big\" (changing from: %i to 100),\n",
+  shape->color.alpha
+);
+          fflush(stdout);
+        }
+
+        // Correct [shape] [color] [alpha] value
+        shape->color.alpha=100;
       }
 
-      // Correct [object] [color] [red] value
-      object->color.red=255;
-    }
-    if(object->color.green>255){
-      if(przecinek.debug==true){
+      // Update [figure] [angle]
+      if(shape->angle!=figure[shape->ID-1].angle){
+        // Check [shape] [angle] value
+        if(shape->angle<SHAPE_ANGLE_MIN){
+          if(przecinek.debug==true){
 printf(
-  "[pWO02] \"Object green color value is too big\" (changing from: %i to 255),\n",
-  object->color.green
+  "[pWS01] \"Shape angle value is too low\" (changing from: %i to %i),\n",
+  shape->angle, SHAPE_ANGLE_MIN
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [shape] [angle] value
+          shape->angle=SHAPE_ANGLE_MIN;
+        }
+        else if(shape->angle>SHAPE_ANGLE_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS02] \"Shape angle value is too big\" (changing from: %i to %i),\n",
+  shape->angle, SHAPE_ANGLE_MIN
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [angle] value
+          shape->angle=SHAPE_ANGLE_MAX;
+
+          figure[shape->ID-1].change=true;
+        }
+
+        // Update [figure] [angle]
+        figure[shape->ID-1].angle=shape->angle;
       }
 
-      // Correct [object] [color] [green] value
-      object->color.green=255;
-    }
-    if(object->color.blue>255){
-      if(przecinek.debug==true){
+      // Update [figure] [width]
+      if(shape->width!=figure[shape->ID-1].width){
+        // Check [shape] [width] value
+        if(shape->width<OBJECT_WIDTH_MIN){
+          if(przecinek.debug==true){
 printf(
-  "[pWO03] \"Object blue color value is too big\" (changing from: %i to 255),\n",
-  object->color.blue
+  "[pWS03] \"Shape width value is too low\" (changing from: %i to %i),\n",
+  shape->width, OBJECT_WIDTH_MIN
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [shape] [width] value
+          shape->width=OBJECT_WIDTH_MIN;
+        }
+        else if(shape->width>OBJECT_WIDTH_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS04] \"Shape width value is too big\" (changing from: %i to %i),\n",
+  shape->width, OBJECT_WIDTH_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [width] value
+          shape->width=OBJECT_WIDTH_MAX;
+        }
+
+        // Update [figure] [width]
+        figure[shape->ID-1].width=shape->width;
+
+        figure[shape->ID-1].change=true;
       }
 
-      // Correct [object] [color] [blue] value
-      object->color.blue=255;
-    }
-    if(object->color.alpha>100){
-      if(przecinek.debug==true){
+      // Update [figure] [height]
+      if(shape->height!=figure[shape->ID-1].height){
+        // Check [shape] [height] value
+        if(shape->height<OBJECT_HEIGHT_MIN){
+          if(przecinek.debug==true){
 printf(
-  "[pWO04] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
-  object->color.alpha
+  "[pWS05] \"Shape height value is too low\" (changing from: %i to %i),\n",
+  shape->height, OBJECT_HEIGHT_MIN
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [shape] [height] value
+          shape->height=OBJECT_HEIGHT_MIN;
+        }
+        else if(shape->height>OBJECT_HEIGHT_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS06] \"Shape height value is too big\" (changing from: %i to %i),\n",
+  shape->height, OBJECT_HEIGHT_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [height] value
+          shape->height=OBJECT_HEIGHT_MAX;
+        }
+
+        // Update [figure] [height]
+        figure[shape->ID-1].height=shape->height;
+
+        figure[shape->ID-1].change=true;
       }
 
-      // Correct [object] [color] [alpha] value
-      object->color.alpha=100;
+      // Update [figure] [x]
+      if(shape->x!=figure[shape->ID-1].x){
+        // Check [shape] [x] value
+        if(shape->x<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
+printf(
+  "[pWS07] \"Shape x value is too low\" (changing from: %i to %i),\n",
+  shape->x, (-WINDOW_POS_MAX)
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [x] value
+          shape->x=(-WINDOW_POS_MAX);
+        }
+        else if(shape->x>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS08] \"Shape x value is too big\" (changing from: %i to %i),\n",
+  shape->x, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [x] value
+          shape->x=WINDOW_POS_MAX;
+        }
+
+        // Update [figure] [x]
+        figure[shape->ID-1].x=shape->x;
+
+        figure[shape->ID-1].change=true;
+      }
+
+      // Update [figure] [y]
+      if(shape->y!=figure[shape->ID-1].y){
+        // Check [shape] [y] value
+        if(shape->y<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
+printf(
+  "[pWS09] \"Shape y value is too low\" (changing from: %i to %i),\n",
+  shape->y, (-WINDOW_POS_MAX)
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [y] value
+          shape->y=(-WINDOW_POS_MAX);
+        }
+        else if(shape->y>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS10] \"Shape y value is too big\" (changing from: %i to %i),\n",
+  shape->y, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [y] value
+          shape->y=WINDOW_POS_MAX;
+        }
+
+        // Update [figure] [y]
+        figure[shape->ID-1].y=shape->y;
+
+        figure[shape->ID-1].change=true;
+      }
+
+      // Update [figure] [rotation]
+      if(shape->rotation!=figure[shape->ID-1].rotation){
+        // Check [shape] [rotation] value
+        if(shape->rotation>SHAPE_ROTATION_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWS11] \"Shape rotation value is too big\" (changing from: %i to %i),\n",
+  shape->rotation, SHAPE_ROTATION_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [shape] [rotation] value
+          shape->rotation=SHAPE_ROTATION_MAX;
+        }
+
+        // Update [figure] [rotation]
+        figure[shape->ID-1].rotation=shape->rotation;
+
+        figure[shape->ID-1].change=true;
+      }
+
+      // Update [figure] [point]
+      if(figure[shape->ID-1].change==true){
+        if(figure[shape->ID-1].angle==4){ figure[shape->ID-1].rotationFix=45; }
+        else if(figure[shape->ID-1].angle%2!=0){ figure[shape->ID-1].rotationFix=270; }
+        else{ figure[shape->ID-1].rotationFix=0; }
+
+        // Calculate [figure] [point] based on [angle] count
+        for(unsigned short int current=0; current<figure[shape->ID-1].angle; current+=1){
+          if(shape->width<=shape->height){
+            // Calculate [figure] [point] [x]
+            figure[shape->ID-1].point[current].x=(unsigned short int)(shape->x+(float)(shape->width/2)+
+              ((float)sqrt(pow(shape->width, 2)*2)/2)*cos(((float)((current*360)/figure[shape->ID-1].angle)+
+              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
+
+            // Calculate [figure] [point] [y]
+            figure[shape->ID-1].point[current].y=(unsigned short int)(shape->y+(float)(shape->height/2)+
+              ((float)(sqrt(pow(shape->width, 2)*2)/2)*(float)(shape->height/shape->width))*
+              sin(((float)((current*360)/figure[shape->ID-1].angle)+
+              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
+          }
+          else{
+            // Calculate [figure] [point] [x]
+            figure[shape->ID-1].point[current].x=(unsigned short int)(shape->x+(float)(shape->width/2)+
+              ((float)(sqrt(pow(shape->height, 2)*2)/2)*(float)(shape->width/shape->height))*
+              cos(((float)((current*360)/figure[shape->ID-1].angle)+
+              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
+
+            // Calculate [figure] [point] [y]
+            figure[shape->ID-1].point[current].y=(unsigned short int)(shape->y+(float)(shape->height/2)+
+              ((float)sqrt(pow(shape->height, 2)*2)/2)*sin(((float)((current*360)/figure[shape->ID-1].angle)+
+              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
+          }
+        }
+
+        figure[shape->ID-1].change=false;
+      }
+
+      // Set [build] [color] values
+      build[window->ID-1].color.red=(unsigned char)shape->color.red*256;
+      build[window->ID-1].color.green=(unsigned char)shape->color.green*256;
+      build[window->ID-1].color.blue=(unsigned char)shape->color.blue*256;
+      build[window->ID-1].color.alpha=(unsigned char)shape->color.alpha*655;
+
+      // Setup [build] [format] and [picture]
+      build[window->ID-1].format=XRenderFindVisualFormat(
+        build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
+      );
+      build[window->ID-1].picture=XRenderCreatePicture(
+        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
+      );
+
+      // Draw on [build] [buffer]
+      XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics, 0xFF0000); //!
+      XFillPolygon(build[window->ID-1].display, build[window->ID-1].buffer,
+          build[window->ID-1].graphics, figure[shape->ID-1].point, figure[shape->ID-1].angle, Convex, CoordModeOrigin); //!
     }
-
-    // Set [build] [color] values
-    build[window->ID-1].color.red=(unsigned char)object->color.red*256;
-    build[window->ID-1].color.green=(unsigned char)object->color.green*256;
-    build[window->ID-1].color.blue=(unsigned char)object->color.blue*256;
-    build[window->ID-1].color.alpha=(unsigned char)object->color.alpha*655;
-
-    // Setup [build] [format] and [picture]
-    build[window->ID-1].format=XRenderFindVisualFormat(
-      build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
-    );
-    build[window->ID-1].picture=XRenderCreatePicture(
-      build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
-    );
-
-    // Draw on [build] [buffer]
-    XRenderFillRectangle(
-      build[window->ID-1].display, PictOpOver, build[window->ID-1].picture,
-      &build[window->ID-1].color, object->x, object->y, object->width, object->height
-    );
+    else if(przecinek.debug==true){
+printf(
+  "[pEG03] \"Could not draw shape\" (shape is closed),\n"
+);
+      fflush(stdout);
+    }
   }
   else if(przecinek.debug==true){
 printf(
-  "[pEG02] \"Could not draw object\" (window is closed),\n"
+  "[pEG02] \"Could not draw shape\" (window is closed),\n"
 );
     fflush(stdout);
   }
@@ -921,6 +1237,58 @@ printf(
         font->color.alpha=100;
       }
 
+      // Check [text] [x] value
+      if(text->x<(-WINDOW_POS_MAX)){
+        if(przecinek.debug==true){
+printf(
+  "[pWT01] \"Text x value is too low\" (changing from: %i to %i),\n",
+  text->x, (-WINDOW_POS_MAX)
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [x] value
+        text->x=(-WINDOW_POS_MAX);
+      }
+      else if(text->x>WINDOW_POS_MAX){
+        if(przecinek.debug==true){
+printf(
+  "[pWT02] \"Text x value is too big\" (changing from: %i to %i),\n",
+  text->x, WINDOW_POS_MAX
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [x] value
+        text->x=WINDOW_POS_MAX;
+      }
+
+      // Check [text] [y] value
+      if(text->y<(-WINDOW_POS_MAX)){
+        if(przecinek.debug==true){
+printf(
+  "[pWT03] \"Text y value is too low\" (changing from: %i to %i),\n",
+  text->y, (-WINDOW_POS_MAX)
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [y] value
+        text->y=(-WINDOW_POS_MAX);
+      }
+      else if(text->y>WINDOW_POS_MAX){
+        if(przecinek.debug==true){
+printf(
+  "[pWT04] \"Text y value is too big\" (changing from: %i to %i),\n",
+  text->y, WINDOW_POS_MAX
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [y] value
+        text->y=WINDOW_POS_MAX;
+      }
+
       // Update [view] [size]
       if(font->size!=view[font->ID-1].size){
         // Check [font] [size] value
@@ -933,10 +1301,10 @@ printf(
             fflush(stdout);
           }
 
-          // Change [size] value
+          // Change [font] [size] value
           font->size=FONT_SIZE_MIN;
         }
-        if(font->size>FONT_SIZE_MAX){
+        else if(font->size>FONT_SIZE_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
@@ -945,7 +1313,7 @@ printf(
             fflush(stdout);
           }
 
-          // Change [size] value
+          // Change [font] [size] value
           font->size=FONT_SIZE_MAX;
         }
 
@@ -980,7 +1348,7 @@ printf(
   "[pEF02] \"Could not load font\",\n"
 );
 printf(
-  "[pEG03] \"Could not draw text\" (font is closed),\n"
+  "[pEG04] \"Could not draw text\" (font is closed),\n"
 );
             fflush(stdout);
           }
@@ -999,7 +1367,7 @@ printf(
   "[pEFx1] \"Could not create X11 font\",\n"
 );
 printf(
-  "[pEG03] \"Could not draw text\" (font is closed),\n"
+  "[pEG04] \"Could not draw text\" (font is closed),\n"
 );
             fflush(stdout);
           }
@@ -1074,7 +1442,7 @@ printf(
     }
     else if(przecinek.debug==true){
 printf(
-  "[pEG03] \"Could not draw text\" (font is closed),\n"
+  "[pEG04] \"Could not draw text\" (font is closed),\n"
 );
       fflush(stdout);
     }
@@ -1335,19 +1703,19 @@ void pEventHandle(pWindow *window, pEvent *event){
         // Manage position change [currentEvent]
         if(build[window->ID-1].x!=window->x || build[window->ID-1].y!=window->y){
           // Check [window] [x] value
-          if(window->x<-WINDOW_POS_MAX){
+          if(window->x<(-WINDOW_POS_MAX)){
             if(przecinek.debug==true){
 printf(
   "[pWB05] \"Window x value is too low\" (changing from: %i to %i),\n",
-  window->x, -WINDOW_POS_MAX
+  window->x, (-WINDOW_POS_MAX)
 );
               fflush(stdout);
             }
 
             // Change [window] [x] value
-            window->x=-WINDOW_POS_MAX;
+            window->x=(-WINDOW_POS_MAX);
           }
-          if(window->x>WINDOW_POS_MAX){
+          else if(window->x>WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
   "[pWB06] \"Window x value is too big\" (changing from: %i to %i),\n",
@@ -1361,19 +1729,19 @@ printf(
           }
 
           // Check [window] [y] value
-          if(window->y<-WINDOW_POS_MAX){
+          if(window->y<(-WINDOW_POS_MAX)){
             if(przecinek.debug==true){
 printf(
   "[pWB07] \"Window y value is too low\" (changing from: %i to %i),\n",
-  window->y, -WINDOW_POS_MAX
+  window->y, (-WINDOW_POS_MAX)
 );
               fflush(stdout);
             }
 
             // Change [window] [y] value
-            window->y=-WINDOW_POS_MAX;
+            window->y=(-WINDOW_POS_MAX);
           }
-          if(window->y>WINDOW_POS_MAX){
+          else if(window->y>WINDOW_POS_MAX){
             if(przecinek.debug==true){
 printf(
   "[pWB08] \"Window y value is too big\" (changing from: %i to %i),\n",
@@ -1426,7 +1794,7 @@ printf(
             // Change [window] [width] value
             window->width=WINDOW_WIDTH_MIN;
           }
-          if(window->width>WINDOW_WIDTH_MAX){
+          else if(window->width>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
 printf(
   "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
@@ -1452,7 +1820,7 @@ printf(
             // Change [window] [height] value
             window->height=WINDOW_HEIGHT_MIN;
           }
-          if(window->height>WINDOW_HEIGHT_MAX){
+          else if(window->height>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
 printf(
   "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
@@ -1869,50 +2237,193 @@ printf(
 }
 
 /****************************************************************
- * |\_____/| pObjectCreate()
+ * |\_____/| pShapeCreate()
  * | .     |
- * |     . | In: us_int [width], [height]
- * \ = , = / Out: pObject
+ * |     . | In: us_int [angle], [width], [height]
+ * \ = , = / Out: pShape
  *
- * This function creates [object].
- * It fills all [object] variables.
+ * This function creates [shape].
+ * It fills all [shape] variables.
+ * Created [shape] depends on [angle] count.
  ****************************************************************/
-pObject pObjectCreate(unsigned short int width, unsigned short int height){
-  // Create local [object]
-  pObject object;
+pShape pShapeCreate(unsigned short int angle, unsigned short int width, unsigned short int height){
+  // Create local [shape]
+  pShape shape;
 
-  // Set [object] values
-  object.x=0;
-  object.y=0;
+  for(unsigned short int current=0; current<FONT_MAX; current+=1){
+    if(figure[current].width==0){
+      // Set [shape] [ID] and reset [shape]
+      shape.ID=current+1;
+      pDebugShapeReset(&shape);
 
-  object.width=width;
-  object.height=height;
+      break;
+    }
+    else if(current==SHAPE_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pES01] \"Too many shapes were created\" (limit: %i),\n",
+  SHAPE_MAX
+);
+        fflush(stdout);
+      }
 
-  object.color.red=0;
-  object.color.green=0;
-  object.color.blue=0;
-  object.color.alpha=100;
+      // Reset and return [shape]
+      pDebugShapeReset(&shape);
+      shape.ID=0;
 
-  // Return local [object]
-  return object;
+      return shape;
+    }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+printf(
+  "[pEG01] \"Could not create font\" (Przecinek is not initialized),\n"
+);
+    fflush(stdout);
+
+    // Reset and return [shape]
+    pDebugShapeReset(&shape);
+    shape.ID=0;
+
+    return shape;
+  }
+
+  // Check [angle] value
+  if(angle<SHAPE_ANGLE_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWS01] \"Shape angle value is too low\" (changing from: %i to %i),\n",
+  angle, SHAPE_ANGLE_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [angle] value
+    angle=SHAPE_ANGLE_MIN;
+  }
+  else if(angle>SHAPE_ANGLE_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWS02] \"Shape angle value is too big\" (changing from: %i to %i),\n",
+  angle, SHAPE_ANGLE_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [angle] value
+    angle=SHAPE_ANGLE_MAX;
+  }
+
+  // Check [width] value
+  if(width<OBJECT_WIDTH_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWS03] \"Shape width value is too low\" (changing from: %i to %i),\n",
+  width, OBJECT_WIDTH_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [width] value
+    width=OBJECT_WIDTH_MIN;
+  }
+  else if(width>OBJECT_WIDTH_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWS04] \"Shape width value is too big\" (changing from: %i to %i),\n",
+  width, OBJECT_WIDTH_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [width] value
+    width=OBJECT_WIDTH_MAX;
+  }
+
+  // Check [height] value
+  if(height<OBJECT_HEIGHT_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWS05] \"Shape height value is too low\" (changing from: %i to %i),\n",
+  height, OBJECT_HEIGHT_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [height] value
+    height=OBJECT_HEIGHT_MIN;
+  }
+  else if(height>OBJECT_HEIGHT_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWS06] \"Shape height value is too big\" (changing from: %i to %i),\n",
+  height, OBJECT_HEIGHT_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [height] value
+    height=OBJECT_HEIGHT_MAX;
+  }
+
+  // Set [shape] values
+  shape.width=width;
+  shape.height=height;
+  shape.angle=angle;
+  shape.color.alpha=100;
+
+  // Set [figure] values
+  figure[shape.ID-1].width=width;
+  figure[shape.ID-1].height=height;
+  figure[shape.ID-1].angle=angle;
+
+  // Calculate [figure] [point] based on [angle] count
+  for(unsigned short int current=0; current<figure[shape.ID-1].angle; current+=1){
+    if(shape.width<=shape.height){
+      // Calculate [figure] [point] [x]
+      figure[shape.ID-1].point[current].x=(unsigned short int)(shape.x+(float)(shape.width/2)+
+        ((float)sqrt(pow(shape.width, 2)*2)/2)*cos(((float)((current*360)/figure[shape.ID-1].angle))
+        *(float)(M_PI/180)));
+
+      // Calculate [figure] [point] [y]
+      figure[shape.ID-1].point[current].y=(unsigned short int)(shape.y+(float)(shape.height/2)+
+        ((float)(sqrt(pow(shape.width, 2)*2)/2)*(float)(shape.height/shape.width))*
+        sin(((float)((current*360)/figure[shape.ID-1].angle))*(float)(M_PI/180)));
+    }
+    else{
+      // Calculate [figure] [point] [x]
+      figure[shape.ID-1].point[current].x=(unsigned short int)(shape.x+(float)(shape.width/2)+
+        ((float)(sqrt(pow(shape.height, 2)*2)/2)*(float)(shape.width/shape.height))*
+        cos(((float)((current*360)/figure[shape.ID-1].angle))*(float)(M_PI/180)));
+
+      // Calculate [figure] [point] [y]
+      figure[shape.ID-1].point[current].y=(unsigned short int)(shape.y+(float)(shape.height/2)+
+        ((float)sqrt(pow(shape.height, 2)*2)/2)*sin(((float)((current*360)/figure[shape.ID-1].angle))
+        *(float)(M_PI/180)));
+    }
+  }
+
+  // Return local [shape]
+  return shape;
 }
 
 /****************************************************************
- * |\_____/| pObjectCollision()
+ * |\_____/| pShapeCollision()
  * | .     |
- * |     . | In: pObject* [object1], [object2]
+ * |     . | In: pShape* [shape1], [shape2]
  * \ = , = / Out: bool
  *
- * This function checks if two [object] collides.
- * Its abilities will be extended in the future.
+ * This function checks if two [shape] objects collides.
+ * Returned value depends on all [shape] angles.
  ****************************************************************/
-bool pObjectCollision(pObject *object1, pObject *object2){
+bool pShapeCollision(pShape *shape1, pShape *shape2){
   // Return collision
   return(
-    object1->x<object2->x+object2->width &&
-    object1->x+object1->width>object2->x &&
-    object1->y<object2->y+object2->height &&
-    object1->y+object1->height>object2->y
+    shape1->x<shape2->x+shape2->width &&
+    shape1->x+shape1->width>shape2->x &&
+    shape1->y<shape2->y+shape2->height &&
+    shape1->y+shape1->height>shape2->y
   );
 }
 
@@ -1922,9 +2433,10 @@ bool pObjectCollision(pObject *object1, pObject *object2){
  * |     . | In: wchar_t* [name], [directory], us_int [size]
  * \ = , = / Out: pFont
  *
- * This function creates [font] object. It checks
- * if [size] value is valid. It checks if [directory] exists.
- * It loads [font] and save it to memory.
+ * This function creates [font] object. It sets [ID]
+ * for local [font]. It checks if [size] value is valid.
+ * It checks if [directory] exists.
+ * It loads [font] and saves it to memory.
  ****************************************************************/
 pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
   // Create local [font]
@@ -1964,6 +2476,8 @@ printf(
 
     // Reset and return [font]
     pDebugFontReset(&font);
+    font.ID=0;
+
     return font;
   }
 
@@ -1980,7 +2494,7 @@ printf(
     // Change [size] value
     size=FONT_SIZE_MIN;
   }
-  if(size>FONT_SIZE_MAX){
+  else if(size>FONT_SIZE_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
@@ -1997,6 +2511,7 @@ printf(
   wcscpy(font.name, name);
   wcscpy(font.directory, directory);
   font.size=size;
+  font.color.alpha=100;
 
   // Set [view] values
   view[font.ID-1].size=size;

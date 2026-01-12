@@ -26,7 +26,7 @@ if(X11)
 
   # Set target libraries
   include_directories(${X11_INCLUDE_DIR} ${FREETYPE_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES} Xft Xrender ${FREETYPE_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME} m ${X11_LIBRARIES} Xft Xrender ${FREETYPE_LIBRARIES})
 else()
   # Set WIN location
   add_executable(${PROJECT_NAME} WIN32 ${CODE} "src/win.c" ${HEADERS})

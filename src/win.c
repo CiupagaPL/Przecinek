@@ -246,7 +246,7 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
-  unsigned int ID;
+  unsigned short int ID;
 
   unsigned short int size;
   wchar_t name[FONT_NAME_MAX];
@@ -566,7 +566,7 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].frameCount=0;
 
   // Change [winCount]
-  winCount--;
+  winCount-=1;
 
   return;
 }
@@ -589,7 +589,7 @@ void pDebugFontReset(pFont *font){
   font->color.red=0;
   font->color.green=0;
   font->color.blue=0;
-  font->color.alpha=100;
+  font->color.alpha=0;
 
   // Reset [view] values
   view[font->ID-1].size=0;
@@ -778,7 +778,7 @@ printf(
     // Change [width] value
     width=WINDOW_WIDTH_MIN;
   }
-  if(width>WINDOW_WIDTH_MAX){
+  else if(width>WINDOW_WIDTH_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
@@ -804,7 +804,7 @@ printf(
     // Change [height] value
     height=WINDOW_HEIGHT_MIN;
   }
-  if(height>WINDOW_HEIGHT_MAX){
+  else if(height>WINDOW_HEIGHT_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWB004] \"Window height value is too big\" (changing from: %i to %i),\n",
@@ -1131,10 +1131,10 @@ printf(
             fflush(stdout);
           }
 
-          // Change [size] value
+          // Change [font] [size] value
           font->size=FONT_SIZE_MIN;
         }
-        if(font->size>FONT_SIZE_MAX){
+        else if(font->size>FONT_SIZE_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
@@ -1143,7 +1143,7 @@ printf(
             fflush(stdout);
           }
 
-          // Change [size] value
+          // Change [font] [size] value
           font->size=FONT_SIZE_MAX;
         }
 
@@ -1533,19 +1533,19 @@ void pEventHandle(pWindow *window, pEvent *event){
       // Manage position change [message]
       if(window->x!=build[window->ID-1].x || window->y!=build[window->ID-1].y){
         // Check [window] [x] value
-        if(window->x<-WINDOW_POS_MAX){
+        if(window->x<(-WINDOW_POS_MAX)){
           if(przecinek.debug==true){
 printf(
   "[pWB05] \"Window x value is too low\" (changing from: %i to %i),\n",
-  window->x, -WINDOW_POS_MAX
+  window->x, (-WINDOW_POS_MAX)
 );
             fflush(stdout);
           }
 
           // Change [window] [x] value
-          window->x=-WINDOW_POS_MAX;
+          window->x=-(WINDOW_POS_MAX);
         }
-        if(window->x>WINDOW_POS_MAX){
+        else if(window->x>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWB06] \"Window x value is too big\" (changing from: %i to %i),\n",
@@ -1559,19 +1559,19 @@ printf(
         }
 
         // Check [window] [y] value
-        if(window->y<-WINDOW_POS_MAX){
+        if(window->y<(-WINDOW_POS_MAX)){
           if(przecinek.debug==true){
 printf(
   "[pWB07] \"Window y value is too low\" (changing from: %i to %i),\n",
-  window->y, -WINDOW_POS_MAX
+  window->y, (-WINDOW_POS_MAX)
 );
             fflush(stdout);
           }
 
           // Change [window] [y] value
-          window->y=-WINDOW_POS_MAX;
+          window->y=(-WINDOW_POS_MAX);
         }
-        if(window->y>WINDOW_POS_MAX){
+        else if(window->y>WINDOW_POS_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWB08] \"Window y value is too big\" (changing from: %i to %i),\n",
@@ -1626,20 +1626,20 @@ printf(
 
       // Manage size change [message]
       if(window->width!=build[window->ID-1].width || window->height!=build[window->ID-1].height){
-          // Check [window] [width] value
-          if(window->width<WINDOW_WIDTH_MIN){
-            if(przecinek.debug==true){
+        // Check [window] [width] value
+        if(window->width<WINDOW_WIDTH_MIN){
+          if(przecinek.debug==true){
 printf(
   "[pWB01] \"Window width value is too low\" (changing from: %i to %i),\n",
   window->width, WINDOW_WIDTH_MIN
 );
-            fflush(stdout);
-          }
+          fflush(stdout);
+        }
 
           // Change [window] [width] value
           window->width=WINDOW_WIDTH_MIN;
         }
-        if(window->width>WINDOW_WIDTH_MAX){
+        else if(window->width>WINDOW_WIDTH_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
@@ -1665,7 +1665,7 @@ printf(
           // Change [window] [height] value
           window->height=WINDOW_HEIGHT_MIN;
         }
-        if(window->height>WINDOW_HEIGHT_MAX){
+        else if(window->height>WINDOW_HEIGHT_MAX){
           if(przecinek.debug==true){
 printf(
   "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
@@ -2070,9 +2070,10 @@ bool pObjectCollision(pObject *object1, pObject *object2){
  * |     . | In: wchar_t* [name], [directory], us_int [size]
  * \ = , = / Out: pFont
  *
- * This function creates [font] object. It checks
- * if [size] value is valid. It checks if [directory] exists.
- * It loads [font] and save it to memory.
+ * This function creates [font] object. It sets [ID]
+ * for local [font]. It checks if [size] value is valid.
+ * It checks if [directory] exists.
+ * It loads [font] and saves it to memory.
  ****************************************************************/
 pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
   // Create local [font]
@@ -2112,6 +2113,8 @@ printf(
 
     // Reset and return [font]
     pDebugFontReset(&font);
+    font.ID=0;
+
     return font;
   }
 
@@ -2128,7 +2131,7 @@ printf(
     // Change [size] value
     size=FONT_SIZE_MIN;
   }
-  if(size>FONT_SIZE_MAX){
+  else if(size>FONT_SIZE_MAX){
     if(przecinek.debug==true){
 printf(
   "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
@@ -2145,6 +2148,7 @@ printf(
   wcscpy(font.name, name);
   wcscpy(font.directory, directory);
   font.size=size;
+  font.color.alpha=100;
 
   // Set [view] values
   wcscpy(view[font.ID-1].name, name);

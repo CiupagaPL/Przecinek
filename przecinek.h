@@ -27,7 +27,7 @@ extern "C"{
    *  |______|
    * (--------)
    ********************************/
-  #define WINDOW_MAX 16
+  #define WINDOW_MAX 4
   #define WINDOW_X_DEF 128
   #define WINDOW_Y_DEF 128
   #define WINDOW_WIDTH_MIN 256
@@ -44,7 +44,19 @@ extern "C"{
   #define FRAME_MIN 10
   #define FRAME_MAX 640
 
-  #define FONT_MAX 64
+  #define SHAPE_MAX 512
+  #define SHAPE_ANGLE_MIN 3
+  #define SHAPE_ANGLE_MAX 300
+  #define SHAPE_ROTATION_MAX 360
+
+  #define IMAGE_MAX 512
+
+  #define OBJECT_WIDTH_MIN 4
+  #define OBJECT_HEIGHT_MIN 4
+  #define OBJECT_WIDTH_MAX 7680
+  #define OBJECT_HEIGHT_MAX 4320
+
+  #define FONT_MAX 128
   #define FONT_SIZE_MIN 4
   #define FONT_SIZE_MAX 512
   #define FONT_NAME_MAX 256
@@ -111,17 +123,20 @@ extern "C"{
   } pEvent;
 
   /********************************
-   *  ,______,  Define [pObject]
+   *  ,______,  Define [pShape]
    *  |      |  structure
    *  |______|
    * (--------)
    ********************************/
   typedef struct{
+    unsigned short int ID;
+
     int x, y;
     unsigned short int width, height;
+    unsigned short int angle, rotation;
 
     pColor color;
-  } pObject;
+  } pShape;
 
   /********************************
    *  ,______,  Define [pFont]
@@ -130,7 +145,7 @@ extern "C"{
    * (--------)
    ********************************/
   typedef struct{
-    unsigned int ID;
+    unsigned short int ID;
 
     unsigned short int size;
     wchar_t name[FONT_NAME_MAX];
@@ -197,16 +212,16 @@ extern "C"{
   pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
 
   /****************************************************************
-   * |\_____/| pWindowDrawObject()
+   * |\_____/| pWindowDrawShape()
    * | .     |
-   * |     . | In: pWindow* [window], pObject* [object]
+   * |     . | In: pWindow* [window], pShape* [shape]
    * \ = , = / Out:
    *
-   * This function draws [object] on [window] buffer.
-   * It checks if [object] [color] values are valid.
+   * This function draws [shape] on [window] buffer.
+   * It checks if [shape] [color] values are valid.
    * Then it does all the rendering stuff.
    ****************************************************************/
-  void pWindowDrawObject(pWindow *window, pObject *object);
+  void pWindowDrawShape(pWindow *window, pShape *shape);
 
   /****************************************************************
    * |\_____/| pWindowDrawText()
@@ -271,26 +286,27 @@ extern "C"{
   void pEventHandle(pWindow *window, pEvent *event);
 
   /****************************************************************
-   * |\_____/| pObjectCreate()
+   * |\_____/| pShapeCreate()
    * | .     |
-   * |     . | In: us_int [width], [height]
-   * \ = , = / Out: pObject
+   * |     . | In: us_int [angle], [width], [height]
+   * \ = , = / Out: pShape
    *
-   * This function creates [object].
-   * It fills all [object] variables.
+   * This function creates [shape].
+   * It fills all [shape] variables.
+   * Created [shape] depends on [angle] count.
    ****************************************************************/
-  pObject pObjectCreate(unsigned short int width, unsigned short int height);
+  pShape pShapeCreate(unsigned short int angle, unsigned short int width, unsigned short int height);
 
   /****************************************************************
-   * |\_____/| pObjectCollision()
+   * |\_____/| pShapeCollision()
    * | .     |
-   * |     . | In: pObject* [object1], [object2]
+   * |     . | In: pShape* [shape1], [shape2]
    * \ = , = / Out: bool
    *
-   * This function checks if two [object] collides.
-   * Its abilities will be extended in the future.
+   * This function checks if two [shape] objects collides.
+   * Returned value depends on all [shape] angles.
    ****************************************************************/
-  bool pObjectCollision(pObject *object1, pObject *object2);
+  bool pShapeCollision(pShape *shape1, pShape *shape2);
 
   /****************************************************************
    * |\_____/| pFontCreate()
@@ -298,9 +314,10 @@ extern "C"{
    * |     . | In: wchar_t* [name], [directory], us_int [size]
    * \ = , = / Out: pFont
    *
-   * This function creates [font] object. It checks
-   * if [size] value is valid. It checks if [directory] exists.
-   * It loads [font] and save it to memory.
+   * This function creates [font] object. It sets [ID]
+   * for local [font]. It checks if [size] value is valid.
+   * It checks if [directory] exists.
+   * It loads [font] and saves it to memory.
    ****************************************************************/
   pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size);
 
