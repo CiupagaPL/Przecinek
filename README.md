@@ -26,12 +26,12 @@ It's under active development.
 | Feature                     | WIN | X11 |
 |-----------------------------|-----|-----|
 | Supporting non-ASCII chars  | ✅  | ✅  |
-| Supporting color alpha      | ✅  | ❔* |
+| Supporting RGBA color       | ✅  | ❔* |
 | Loading Fonts               | ✅  | ✅  |
 | Managing Fonts              | ✅  | ✅  |
 | Rendering Fonts             | ✅  | ❔* |
-| Creating Diffrent Shapes    | ❌  | ❔* |
-| Checking Shapes Collisions  | ❌  | ❌  |
+| Creating Diffrent Shapes    | ❌  | ✅  |
+| Checking Shapes Collisions  | ❌  | ✅  |
 | Loading Images              | ❌  | ❌  |
 | Rendering Images            | ❌  | ❌  |
 | Loading Audio               | ❌  | ❌  |
@@ -48,8 +48,8 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 ### Version
 
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,14]**;<br>
-> Last Updated: **12-01-2026**;
+> Newest Version (Unstable): **[u,15]**;<br>
+> Last Updated: **24-01-2026**;
 
 ### LICENSE
 

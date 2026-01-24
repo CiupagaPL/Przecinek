@@ -2148,6 +2148,9 @@ printf(
   wcscpy(font.name, name);
   wcscpy(font.directory, directory);
   font.size=size;
+  font.color.red=0;
+  font.color.green=0;
+  font.color.blue=0;
   font.color.alpha=100;
 
   // Set [view] values

@@ -53,9 +53,10 @@
 #define FRAME_MAX 640
 
 #define SHAPE_MAX 512
-#define SHAPE_ANGLE_MIN 3
-#define SHAPE_ANGLE_MAX 300
+#define SHAPE_VERTICE_MIN 3
+#define SHAPE_VERTICE_MAX 300
 #define SHAPE_ROTATION_MAX 360
+#define SHAPE_TRIANGLE 1000000
 
 #define IMAGE_MAX 512
 
@@ -178,11 +179,13 @@ typedef struct{
 typedef struct{
   int x, y;
   unsigned short int width, height;
-  unsigned short int angle, rotation;
+  unsigned short int vertice, rotation;
 
-  XPoint point[SHAPE_ANGLE_MAX];
+  XPoint point[SHAPE_VERTICE_MAX];
+  pPosition center;
   unsigned short int rotationFix;
 
+  int position;
   bool change;
 } pFigureX11;
 
@@ -231,7 +234,7 @@ typedef struct{
 
   int x, y;
   unsigned short int width, height;
-  unsigned short int angle, rotation;
+  unsigned short int vertice, rotation;
 
   pColor color;
 } pShape;
@@ -295,6 +298,13 @@ struct stat status;
 
 // Shape
 pFigureX11 figure[SHAPE_MAX];
+pPosition distanceMin, distanceMax;
+float widthScale, heightScale;
+float ratio;
+pPosition edge, projection;
+int pointA[5], pointB[5];
+pPosition centerA, centerB;
+int distance;
 
 /****************************************************************
  * |\_____/| pDebugWindowReset() [DEBUG]
@@ -304,7 +314,6 @@ pFigureX11 figure[SHAPE_MAX];
  *
  * This function resets [window] and [build] values.
  * Cleared variables depend on [window] [ID].
- * It also changes [winCount] by `-1`.
  ****************************************************************/
 void pDebugWindowReset(pWindow *window){
   // Reset [window] values
@@ -442,7 +451,7 @@ void pDebugShapeReset(pShape *shape){
   shape->width=0;
   shape->height=0;
 
-  shape->angle=0;
+  shape->vertice=0;
   shape->rotation=0;
 
   shape->color.red=0;
@@ -456,18 +465,167 @@ void pDebugShapeReset(pShape *shape){
   figure[shape->ID-1].width=0;
   figure[shape->ID-1].height=0;
 
-  figure[shape->ID-1].angle=0;
+  figure[shape->ID-1].vertice=0;
   figure[shape->ID-1].rotation=0;
 
-  for(unsigned short int current=0; current<SHAPE_ANGLE_MAX; current+=1){
+  for(unsigned short int current=0; current<SHAPE_VERTICE_MAX; current+=1){
     figure[shape->ID-1].point[current].x=0;
     figure[shape->ID-1].point[current].y=0;
   }
+  figure[shape->ID-1].center.x=0;
+  figure[shape->ID-1].center.y=0;
   figure[shape->ID-1].rotationFix=0;
 
+  figure[shape->ID-1].position=0;
   figure[shape->ID-1].change=false;
 
   return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugShapeCalculate() [DEBUG]
+ * | .     |
+ * |     . | In: pShape* [shape]
+ * \ = , = / Out:
+ *
+ * This function calculates all [shape] vertices.
+ * It firstly calculates [ratio] with `100`x`100` size.
+ * Then based on calculated scale and other variables
+ * it sets all [figure] [point] values.
+ ****************************************************************/
+void pDebugShapeCalculate(pShape *shape){
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+
+  for(unsigned short int current=0; current<figure[shape->ID-1].vertice; current+=1){
+    // Calculate base [ratio]
+    ratio=((current*360/figure[shape->ID-1].vertice)+
+      figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(M_PI/180);
+
+    // Calculate [figure] [point] [x]
+    figure[shape->ID-1].point[current].x=50+(sqrt(pow(100, 2)*2)/2)*cos(ratio);
+
+    // Calculate [figure] [point] [y]
+    figure[shape->ID-1].point[current].y=50+(sqrt(pow(100, 2)*2)/2)*sin(ratio);
+
+    // Check for [distanceMin] [x] and [y] values
+    if(figure[shape->ID-1].point[current].x<distanceMin.x){
+      distanceMin.x=figure[shape->ID-1].point[current].x;
+    }
+    if(figure[shape->ID-1].point[current].y<distanceMin.y){
+      distanceMin.y=figure[shape->ID-1].point[current].y;
+    }
+
+    // Check for [distanceMax] [x] and [y] values
+    if(figure[shape->ID-1].point[current].x>distanceMax.x){
+      distanceMax.x=figure[shape->ID-1].point[current].x;
+    }
+    if(figure[shape->ID-1].point[current].y>distanceMax.y){
+      distanceMax.y=figure[shape->ID-1].point[current].y;
+    }
+  }
+
+  // Calculate [widthScale] and [heightScale] values
+  widthScale=(float)(distanceMax.x-distanceMin.x)/100;
+  heightScale=(float)(distanceMax.y-distanceMin.y)/100;
+
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+
+  for(unsigned short int current=0; current<figure[shape->ID-1].vertice; current+=1){
+    // Calculate base ratio
+    ratio=((current*360/figure[shape->ID-1].vertice)+
+      figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(M_PI/180);
+
+    // Calculate [figure] [point] [x]
+    figure[shape->ID-1].point[current].x=
+      (figure[shape->ID-1].width/2)+
+      (sqrt(pow((float)figure[shape->ID-1].width/widthScale, 2)*2)/2)*
+      cos(ratio);
+
+    // Calculate [figure] [point] [y]
+    figure[shape->ID-1].point[current].y=
+      (figure[shape->ID-1].height/2)+
+      (sqrt(pow((float)figure[shape->ID-1].height/heightScale, 2)*2)/2)*
+      sin(ratio);
+
+    // Check for [distanceMin] [x] and [y] values
+    if(figure[shape->ID-1].point[current].x<distanceMin.x){
+      distanceMin.x=figure[shape->ID-1].point[current].x;
+    }
+    if(figure[shape->ID-1].point[current].y<distanceMin.y){
+      distanceMin.y=figure[shape->ID-1].point[current].y;
+    }
+  }
+
+  for(unsigned short int current=0; current<figure[shape->ID-1].vertice; current+=1){
+    // Correct [figure] [point] position
+    figure[shape->ID-1].point[current].x-=distanceMin.x-figure[shape->ID-1].x;
+    figure[shape->ID-1].point[current].y-=distanceMin.y-figure[shape->ID-1].y;
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugShapeTriangle() [DEBUG]
+ * | .     |
+ * |     . | In: pShape* [shape]
+ * \ = , = / Out: bool
+ *
+ * This function checks collision between two triangles.
+ * It simulates two diffrent triangle objects.
+ * Then it checks and returns collision between them.
+ ****************************************************************/
+bool pDebugShapeTriangle(
+    pPosition v1A, pPosition v2A, pPosition v3A,
+    pPosition v1B, pPosition v2B, pPosition v3B){
+
+  // Simulate [triangleA] and [triangleB] objects
+  pPosition triangleA[3]={ v1A, v2A, v3A };
+  pPosition triangleB[3]={ v1B, v2B, v3B };
+
+  for(unsigned short int current=0; current<6; current+=1){
+    // Calculate [edge] values
+    if(current<3){
+      edge.x=triangleA[(current+1)%3].x-triangleA[current].x;
+      edge.y=triangleA[(current+1)%3].y-triangleA[current].y;
+    }
+    else{
+      edge.x=triangleB[(current-2)%3].x-triangleB[current-3].x;
+      edge.y=triangleB[(current-2)%3].y-triangleB[current-3].y;
+    }
+
+    // Reset some variables
+    distanceMin.x=SHAPE_TRIANGLE;
+    distanceMin.y=SHAPE_TRIANGLE;
+    distanceMax.x=(-SHAPE_TRIANGLE);
+    distanceMax.y=(-SHAPE_TRIANGLE);
+
+    for(unsigned short int loop=0; loop<3; loop+=1){
+      // Caululate [projection] values
+      projection.x = (triangleA[loop].x*(-edge.y))+(triangleA[loop].y*edge.x);
+      projection.y = (triangleB[loop].x*(-edge.y))+(triangleB[loop].y*edge.x);
+
+      // Check for collision
+      if(projection.x<distanceMin.x){ distanceMin.x=projection.x; }
+      if(projection.x>distanceMax.x){ distanceMax.x=projection.x; }
+      if(projection.y<distanceMin.y){ distanceMin.y=projection.y; }
+      if(projection.y>distanceMax.y){ distanceMax.y=projection.y; }
+    }
+
+    if(distanceMax.x<distanceMin.y || distanceMax.y<distanceMin.x){
+      // Return `false`, collision undetected
+      return false;
+    }
+  }
+
+  // Return `true`, collision detected
+  return true;
 }
 
 /****************************************************************
@@ -480,7 +638,6 @@ void pDebugShapeReset(pShape *shape){
  * It sets global [debug] and [frameLimit] values.
  * It setups locale and libraries used later.
  * It checks current mouse position and display size.
- * It also sets [setup] to `true`.
  ****************************************************************/
 void pSetup(bool debug, unsigned short int frameLimit){
   // Initialize FreeType
@@ -544,6 +701,7 @@ printf(
   if(XQueryPointer(
       display, root, &root, &root, &cursorMain.x, &cursorMain.y,
       &cursorLocal.x, &cursorLocal.y, &mask)){
+
     przecinek.cursor.x=cursorMain.x;
     przecinek.cursor.y=cursorMain.y;
   }
@@ -580,7 +738,7 @@ void pClear(){
  * \ = , = / Out: pWindow
  *
  * This function creates Przecinek window.
- * It adds `1` to [winCount]. It sets [ID] for local [window].
+ * It sets [ID] for local [window].
  * It checks if all given parameters are valid.
  * It fills all necessary values for [window] and [build].
  * It sets [window] [title] to default value.
@@ -908,38 +1066,38 @@ printf(
         shape->color.alpha=100;
       }
 
-      // Update [figure] [angle]
-      if(shape->angle!=figure[shape->ID-1].angle){
-        // Check [shape] [angle] value
-        if(shape->angle<SHAPE_ANGLE_MIN){
+      // Update [figure] [vertice]
+      if(shape->vertice!=figure[shape->ID-1].vertice){
+        // Check [shape] [vertice] value
+        if(shape->vertice<SHAPE_VERTICE_MIN){
           if(przecinek.debug==true){
 printf(
-  "[pWS01] \"Shape angle value is too low\" (changing from: %i to %i),\n",
-  shape->angle, SHAPE_ANGLE_MIN
+  "[pWS01] \"Shape vertice value is too low\" (changing from: %i to %i),\n",
+  shape->vertice, SHAPE_VERTICE_MIN
 );
             fflush(stdout);
           }
 
-          // Change [shape] [angle] value
-          shape->angle=SHAPE_ANGLE_MIN;
+          // Change [shape] [vertice] value
+          shape->vertice=SHAPE_VERTICE_MIN;
         }
-        else if(shape->angle>SHAPE_ANGLE_MAX){
+        else if(shape->vertice>SHAPE_VERTICE_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWS02] \"Shape angle value is too big\" (changing from: %i to %i),\n",
-  shape->angle, SHAPE_ANGLE_MIN
+  "[pWS02] \"Shape vertice value is too big\" (changing from: %i to %i),\n",
+  shape->vertice, SHAPE_VERTICE_MIN
 );
             fflush(stdout);
           }
 
-          // Change [shape] [angle] value
-          shape->angle=SHAPE_ANGLE_MAX;
+          // Change [shape] [vertice] value
+          shape->vertice=SHAPE_VERTICE_MAX;
 
           figure[shape->ID-1].change=true;
         }
 
-        // Update [figure] [angle]
-        figure[shape->ID-1].angle=shape->angle;
+        // Update [figure] [vertice]
+        figure[shape->ID-1].vertice=shape->vertice;
       }
 
       // Update [figure] [width]
@@ -1038,10 +1196,17 @@ printf(
           shape->x=WINDOW_POS_MAX;
         }
 
+        // Calculate [figure] [point] [x] position
+        if(figure[shape->ID-1].change==false){
+          figure[shape->ID-1].position=shape->x-figure[shape->ID-1].x;
+
+          for(unsigned int current=0; current<figure[shape->ID-1].vertice; current+=1){
+            figure[shape->ID-1].point[current].x+=figure[shape->ID-1].position;
+          }
+        }
+
         // Update [figure] [x]
         figure[shape->ID-1].x=shape->x;
-
-        figure[shape->ID-1].change=true;
       }
 
       // Update [figure] [y]
@@ -1072,10 +1237,17 @@ printf(
           shape->y=WINDOW_POS_MAX;
         }
 
+        // Calculate [figure] [point] [y] position
+        if(figure[shape->ID-1].change==false){
+          figure[shape->ID-1].position=shape->y-figure[shape->ID-1].y;
+
+          for(unsigned int current=0; current<figure[shape->ID-1].vertice; current+=1){
+            figure[shape->ID-1].point[current].y+=figure[shape->ID-1].position;
+          }
+        }
+
         // Update [figure] [y]
         figure[shape->ID-1].y=shape->y;
-
-        figure[shape->ID-1].change=true;
       }
 
       // Update [figure] [rotation]
@@ -1102,37 +1274,12 @@ printf(
 
       // Update [figure] [point]
       if(figure[shape->ID-1].change==true){
-        if(figure[shape->ID-1].angle==4){ figure[shape->ID-1].rotationFix=45; }
-        else if(figure[shape->ID-1].angle%2!=0){ figure[shape->ID-1].rotationFix=270; }
+        if(figure[shape->ID-1].vertice==4){ figure[shape->ID-1].rotationFix=45; }
+        else if(figure[shape->ID-1].vertice%2!=0){ figure[shape->ID-1].rotationFix=270; }
         else{ figure[shape->ID-1].rotationFix=0; }
 
-        // Calculate [figure] [point] based on [angle] count
-        for(unsigned short int current=0; current<figure[shape->ID-1].angle; current+=1){
-          if(shape->width<=shape->height){
-            // Calculate [figure] [point] [x]
-            figure[shape->ID-1].point[current].x=(unsigned short int)(shape->x+(float)(shape->width/2)+
-              ((float)sqrt(pow(shape->width, 2)*2)/2)*cos(((float)((current*360)/figure[shape->ID-1].angle)+
-              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
-
-            // Calculate [figure] [point] [y]
-            figure[shape->ID-1].point[current].y=(unsigned short int)(shape->y+(float)(shape->height/2)+
-              ((float)(sqrt(pow(shape->width, 2)*2)/2)*(float)(shape->height/shape->width))*
-              sin(((float)((current*360)/figure[shape->ID-1].angle)+
-              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
-          }
-          else{
-            // Calculate [figure] [point] [x]
-            figure[shape->ID-1].point[current].x=(unsigned short int)(shape->x+(float)(shape->width/2)+
-              ((float)(sqrt(pow(shape->height, 2)*2)/2)*(float)(shape->width/shape->height))*
-              cos(((float)((current*360)/figure[shape->ID-1].angle)+
-              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
-
-            // Calculate [figure] [point] [y]
-            figure[shape->ID-1].point[current].y=(unsigned short int)(shape->y+(float)(shape->height/2)+
-              ((float)sqrt(pow(shape->height, 2)*2)/2)*sin(((float)((current*360)/figure[shape->ID-1].angle)+
-              figure[shape->ID-1].rotation+figure[shape->ID-1].rotationFix)*(float)(M_PI/180)));
-          }
-        }
+        // Calculate all [figure] values
+        pDebugShapeCalculate(shape);
 
         figure[shape->ID-1].change=false;
       }
@@ -1152,9 +1299,10 @@ printf(
       );
 
       // Draw on [build] [buffer]
-      XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics, 0xFF0000); //!
+      // TODO
+      XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics, 0xFF0000);
       XFillPolygon(build[window->ID-1].display, build[window->ID-1].buffer,
-          build[window->ID-1].graphics, figure[shape->ID-1].point, figure[shape->ID-1].angle, Convex, CoordModeOrigin); //!
+          build[window->ID-1].graphics, figure[shape->ID-1].point, figure[shape->ID-1].vertice, Convex, CoordModeOrigin);
     }
     else if(przecinek.debug==true){
 printf(
@@ -1318,7 +1466,7 @@ printf(
         }
 
         // Update [face] size
-        FT_Set_Pixel_Sizes(face, 0, (unsigned short int)(float)(font->size*1.5));
+        FT_Set_Pixel_Sizes(face, 0, font->size*1.5);
 
         // Refresh [view] values
         view[font->ID-1].size=font->size;
@@ -1612,6 +1760,7 @@ void pEventHandle(pWindow *window, pEvent *event){
       // Manage close [currentEvent]
       if(currentEvent.type==ClientMessage &&
           (Atom)currentEvent.xclient.data.l[0]==build[window->ID-1].delete){
+
         // Clean [buffer] and [graphics]
         XFreePixmap(build[window->ID-1].display, build[window->ID-1].buffer);
         XFreeGC(build[window->ID-1].display, build[window->ID-1].graphics);
@@ -1910,6 +2059,7 @@ printf(
           if(currentReport.type==KeyPress &&
               currentReport.xkey.time==currentEvent.xkey.time &&
               currentReport.xkey.keycode==currentEvent.xkey.keycode){
+
             // Fully released key
             event->key[currentEvent.xkey.keycode]=2;
 
@@ -1931,6 +2081,7 @@ printf(
           if(currentReport.type==ButtonPress &&
               currentReport.xbutton.time==currentEvent.xbutton.time &&
               currentReport.xbutton.button==currentEvent.xbutton.button){
+
             // Fully released key
             event->key[currentEvent.xbutton.button]=2;
 
@@ -2137,6 +2288,7 @@ printf(
         // Correct [window] and [build] [width] value
         if(build[window->ID-1].widthMin==build[window->ID-1].widthMax &&
             build[window->ID-1].width!=build[window->ID-1].widthMin){
+
           window->width=build[window->ID-1].widthMin;
           build[window->ID-1].width=build[window->ID-1].widthMin;
 
@@ -2159,6 +2311,7 @@ printf(
         // Correct [window] and [build] [height] value
         if(build[window->ID-1].heightMin==build[window->ID-1].heightMax &&
             build[window->ID-1].height!=build[window->ID-1].heightMin){
+
           window->height=build[window->ID-1].heightMin;
           build[window->ID-1].height=build[window->ID-1].heightMin;
 
@@ -2239,14 +2392,14 @@ printf(
 /****************************************************************
  * |\_____/| pShapeCreate()
  * | .     |
- * |     . | In: us_int [angle], [width], [height]
+ * |     . | In: us_int [vertice], [width], [height]
  * \ = , = / Out: pShape
  *
  * This function creates [shape].
  * It fills all [shape] variables.
- * Created [shape] depends on [angle] count.
+ * Created [shape] depends on [vertice] count.
  ****************************************************************/
-pShape pShapeCreate(unsigned short int angle, unsigned short int width, unsigned short int height){
+pShape pShapeCreate(unsigned short int vertice, unsigned short int width, unsigned short int height){
   // Create local [shape]
   pShape shape;
 
@@ -2278,7 +2431,7 @@ printf(
   // Check if Przecinek is initialized
   if(setup==false){
 printf(
-  "[pEG01] \"Could not create font\" (Przecinek is not initialized),\n"
+  "[pEG01] \"Could not create shape\" (Przecinek is not initialized),\n"
 );
     fflush(stdout);
 
@@ -2289,30 +2442,30 @@ printf(
     return shape;
   }
 
-  // Check [angle] value
-  if(angle<SHAPE_ANGLE_MIN){
+  // Check [vertice] value
+  if(vertice<SHAPE_VERTICE_MIN){
     if(przecinek.debug==true){
 printf(
-  "[pWS01] \"Shape angle value is too low\" (changing from: %i to %i),\n",
-  angle, SHAPE_ANGLE_MIN
+  "[pWS01] \"Shape vertice value is too low\" (changing from: %i to %i),\n",
+  vertice, SHAPE_VERTICE_MIN
 );
       fflush(stdout);
     }
 
-    // Change [angle] value
-    angle=SHAPE_ANGLE_MIN;
+    // Change [vertice] value
+    vertice=SHAPE_VERTICE_MIN;
   }
-  else if(angle>SHAPE_ANGLE_MAX){
+  else if(vertice>SHAPE_VERTICE_MAX){
     if(przecinek.debug==true){
 printf(
-  "[pWS02] \"Shape angle value is too big\" (changing from: %i to %i),\n",
-  angle, SHAPE_ANGLE_MIN
+  "[pWS02] \"Shape vertice value is too big\" (changing from: %i to %i),\n",
+  vertice, SHAPE_VERTICE_MIN
 );
       fflush(stdout);
     }
 
-    // Change [angle] value
-    angle=SHAPE_ANGLE_MAX;
+    // Change [vertice] value
+    vertice=SHAPE_VERTICE_MAX;
   }
 
   // Check [width] value
@@ -2370,39 +2523,25 @@ printf(
   // Set [shape] values
   shape.width=width;
   shape.height=height;
-  shape.angle=angle;
+  shape.vertice=vertice;
+  shape.rotation=0;
+  shape.color.red=0;
+  shape.color.green=0;
+  shape.color.blue=0;
   shape.color.alpha=100;
 
   // Set [figure] values
   figure[shape.ID-1].width=width;
   figure[shape.ID-1].height=height;
-  figure[shape.ID-1].angle=angle;
+  figure[shape.ID-1].vertice=vertice;
 
-  // Calculate [figure] [point] based on [angle] count
-  for(unsigned short int current=0; current<figure[shape.ID-1].angle; current+=1){
-    if(shape.width<=shape.height){
-      // Calculate [figure] [point] [x]
-      figure[shape.ID-1].point[current].x=(unsigned short int)(shape.x+(float)(shape.width/2)+
-        ((float)sqrt(pow(shape.width, 2)*2)/2)*cos(((float)((current*360)/figure[shape.ID-1].angle))
-        *(float)(M_PI/180)));
+  // Set [figure] [rotationFix] value
+  if(vertice==4){ figure[shape.ID-1].rotationFix=45; }
+  else if(vertice%2!=0){ figure[shape.ID-1].rotationFix=270; }
+  else{ figure[shape.ID-1].rotationFix=0; }
 
-      // Calculate [figure] [point] [y]
-      figure[shape.ID-1].point[current].y=(unsigned short int)(shape.y+(float)(shape.height/2)+
-        ((float)(sqrt(pow(shape.width, 2)*2)/2)*(float)(shape.height/shape.width))*
-        sin(((float)((current*360)/figure[shape.ID-1].angle))*(float)(M_PI/180)));
-    }
-    else{
-      // Calculate [figure] [point] [x]
-      figure[shape.ID-1].point[current].x=(unsigned short int)(shape.x+(float)(shape.width/2)+
-        ((float)(sqrt(pow(shape.height, 2)*2)/2)*(float)(shape.width/shape.height))*
-        cos(((float)((current*360)/figure[shape.ID-1].angle))*(float)(M_PI/180)));
-
-      // Calculate [figure] [point] [y]
-      figure[shape.ID-1].point[current].y=(unsigned short int)(shape.y+(float)(shape.height/2)+
-        ((float)sqrt(pow(shape.height, 2)*2)/2)*sin(((float)((current*360)/figure[shape.ID-1].angle))
-        *(float)(M_PI/180)));
-    }
-  }
+  // Calculate all [figure] values
+  pDebugShapeCalculate(&shape);
 
   // Return local [shape]
   return shape;
@@ -2415,16 +2554,291 @@ printf(
  * \ = , = / Out: bool
  *
  * This function checks if two [shape] objects collides.
- * Returned value depends on all [shape] angles.
+ * It simulates triangular collisions between several points.
+ * Then it returns value based on earlier calculations.
  ****************************************************************/
 bool pShapeCollision(pShape *shape1, pShape *shape2){
-  // Return collision
-  return(
-    shape1->x<shape2->x+shape2->width &&
-    shape1->x+shape1->width>shape2->x &&
-    shape1->y<shape2->y+shape2->height &&
-    shape1->y+shape1->height>shape2->y
-  );
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+  distance=SHAPE_TRIANGLE;
+
+  // Calculate [shape1] [centerA]
+  centerA.x=figure[shape1->ID-1].x+(figure[shape1->ID-1].width/2);
+  centerA.y=figure[shape1->ID-1].y+(figure[shape1->ID-1].height/2);
+
+  // Calculate [shape2] [centerB]
+  centerB.x=figure[shape2->ID-1].x+(figure[shape2->ID-1].width/2);
+  centerB.y=figure[shape2->ID-1].y+(figure[shape2->ID-1].height/2);
+
+  for(unsigned short int current=0; current<figure[shape1->ID-1].vertice; current+=1){
+    // Calculate [distanceMin] values
+    if(distanceMin.x>figure[shape1->ID-1].point[current].x){
+      distanceMin.x=figure[shape1->ID-1].point[current].x;
+    }
+    if(distanceMin.y>figure[shape1->ID-1].point[current].y){
+      distanceMin.y=figure[shape1->ID-1].point[current].y;
+    }
+
+    // Calculate [distanceMax] values
+    if(distanceMax.x<figure[shape1->ID-1].point[current].x){
+      distanceMax.x=figure[shape1->ID-1].point[current].x;
+    }
+    if(distanceMin.y<figure[shape1->ID-1].point[current].y){
+      distanceMax.y=figure[shape1->ID-1].point[current].y;
+    }
+
+    // Calculate [ratio] value
+    ratio=sqrt(pow((centerB.x-figure[shape1->ID-1].point[current].x), 2)+
+      pow((centerB.y-figure[shape1->ID-1].point[current].y), 2));
+
+    // Update [distance] value
+    if(ratio<distance){
+      distance=ratio;
+      pointA[0]=current;
+    }
+  }
+
+  // Calculate [ratio] value
+  ratio=(figure[shape1->ID-1].vertice/15)+1;
+
+  // Calculate [pointA] `1` and `2`
+  pointA[1]=pointA[0]-ratio;
+  pointA[2]=pointA[0]+ratio;
+
+  if(pointA[1]<0){ pointA[1]+=figure[shape1->ID-1].vertice; }
+  if(pointA[1]>figure[shape1->ID-1].vertice-1){ pointA[1]-=figure[shape1->ID-1].vertice; }
+
+  if(pointA[2]<0){ pointA[2]+=figure[shape1->ID-1].vertice; }
+  if(pointA[2]>figure[shape1->ID-1].vertice-1){ pointA[2]-=figure[shape1->ID-1].vertice; }
+
+  // Calculate [pointA] `3` and `4`
+  if(figure[shape1->ID-1].vertice>=10){
+    pointA[3]=pointA[0]-(2*ratio);
+    pointA[4]=pointA[0]+(2*ratio);
+
+    if(pointA[3]<0){ pointA[3]+=figure[shape1->ID-1].vertice; }
+    if(pointA[3]>figure[shape1->ID-1].vertice-1){ pointA[3]-=figure[shape1->ID-1].vertice; }
+
+    if(pointA[4]<0){ pointA[4]+=figure[shape1->ID-1].vertice; }
+    if(pointA[4]>figure[shape1->ID-1].vertice-1){ pointA[4]-=figure[shape1->ID-1].vertice; }
+  }
+
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+  distance=SHAPE_TRIANGLE;
+
+  for(unsigned short int current=0; current<figure[shape2->ID-1].vertice; current+=1){
+    // Calculate [distanceMin] values
+    if(distanceMin.x>figure[shape2->ID-1].point[current].x){
+      distanceMin.x=figure[shape2->ID-1].point[current].x;
+    }
+    if(distanceMin.y>figure[shape2->ID-1].point[current].y){
+      distanceMin.y=figure[shape2->ID-1].point[current].y;
+    }
+
+    // Calculate [distanceMax] values
+    if(distanceMax.x<figure[shape2->ID-1].point[current].x){
+      distanceMax.x=figure[shape2->ID-1].point[current].x;
+    }
+    if(distanceMax.y<figure[shape2->ID-1].point[current].y){
+      distanceMax.y=figure[shape2->ID-1].point[current].y;
+    }
+
+    // Calculate [ratio] value
+    ratio=sqrt(pow((centerA.x-figure[shape2->ID-1].point[current].x), 2)+
+      pow((centerA.y-figure[shape2->ID-1].point[current].y), 2));
+
+    // Update [distance] value
+    if(ratio<distance){
+      distance=ratio;
+      pointB[0]=current;
+    }
+  }
+
+  // Calculate [ratio] value
+  ratio=(figure[shape2->ID-1].vertice/15)+1;
+
+  // Calculate [pointB] `1` and `2`
+  pointB[1]=pointB[0]-ratio;
+  pointB[2]=pointB[0]+ratio;
+
+  if(pointB[1]<0){ pointB[1]+=figure[shape2->ID-1].vertice; }
+  if(pointB[1]>shape2->vertice-1){ pointB[1]-=figure[shape2->ID-1].vertice; }
+
+  if(pointB[2]<0){ pointB[2]+=figure[shape2->ID-1].vertice; }
+  if(pointB[2]>figure[shape2->ID-1].vertice-1){ pointB[2]-=figure[shape2->ID-1].vertice; }
+
+  // Calculate [pointB] `3` and `4`
+  if(figure[shape2->ID-1].vertice>=10){
+    pointB[3]=pointB[0]-(2*ratio);
+    pointB[4]=pointB[0]+(2*ratio);
+
+    if(pointB[3]<0){ pointB[3]+=figure[shape2->ID-1].vertice; }
+    if(pointB[3]>figure[shape2->ID-1].vertice-1){ pointB[3]-=figure[shape2->ID-1].vertice; }
+
+    if(pointB[4]<0){ pointB[4]+=figure[shape2->ID-1].vertice; }
+    if(pointB[4]>figure[shape2->ID-1].vertice-1){ pointB[4]-=figure[shape2->ID-1].vertice; }
+  }
+
+  // Check for collision X.X
+  if((shape1->x<shape2->x+shape2->width) &&
+      (shape1->x+shape1->width>shape2->x) &&
+      (shape1->y<shape2->y+shape2->height) &&
+      (shape1->y+shape1->height>shape2->y)==true){
+    if(
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  centerB)==false &&
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  centerB)==false &&
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  centerB)==false &&
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  centerB)==false
+    ){
+
+      if(figure[shape2->ID-1].vertice>=10){
+        if(
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[3]].x, figure[shape2->ID-1].point[pointB[3]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[4]].x, figure[shape2->ID-1].point[pointB[4]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[3]].x, figure[shape2->ID-1].point[pointB[3]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[0]].x, figure[shape1->ID-1].point[pointA[0]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[4]].x, figure[shape2->ID-1].point[pointB[4]].y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+      if(figure[shape1->ID-1].vertice>=10){
+        if(
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[3]].x, figure[shape1->ID-1].point[pointA[3]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[3]].x, figure[shape1->ID-1].point[pointA[3]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[4]].x, figure[shape1->ID-1].point[pointA[4]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[4]].x, figure[shape1->ID-1].point[pointA[4]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[0]].x, figure[shape2->ID-1].point[pointB[0]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+      if(figure[shape1->ID-1].vertice>=10 && figure[shape2->ID-1].vertice>=10){
+        if(
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[3]].x, figure[shape1->ID-1].point[pointA[3]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[3]].x, figure[shape2->ID-1].point[pointB[3]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[1]].x, figure[shape1->ID-1].point[pointA[1]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[3]].x, figure[shape1->ID-1].point[pointA[3]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[4]].x, figure[shape2->ID-1].point[pointB[4]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[4]].x, figure[shape1->ID-1].point[pointA[4]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[1]].x, figure[shape2->ID-1].point[pointB[1]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[3]].x, figure[shape2->ID-1].point[pointB[3]].y },
+  centerB)==true ||
+pDebugShapeTriangle(
+  (pPosition){ figure[shape1->ID-1].point[pointA[2]].x, figure[shape1->ID-1].point[pointA[2]].y },
+  (pPosition){ figure[shape1->ID-1].point[pointA[4]].x, figure[shape1->ID-1].point[pointA[4]].y },
+  centerA,
+  (pPosition){ figure[shape2->ID-1].point[pointB[2]].x, figure[shape2->ID-1].point[pointB[2]].y },
+  (pPosition){ figure[shape2->ID-1].point[pointB[4]].x, figure[shape2->ID-1].point[pointB[4]].y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+    }
+    else{
+      // Collision found, return `true`
+      return true;
+    }
+  }
+
+  // There is no collision, return `false`
+  return false;
 }
 
 /****************************************************************
@@ -2511,6 +2925,9 @@ printf(
   wcscpy(font.name, name);
   wcscpy(font.directory, directory);
   font.size=size;
+  font.color.red=0;
+  font.color.green=0;
+  font.color.blue=0;
   font.color.alpha=100;
 
   // Set [view] values
@@ -2554,7 +2971,7 @@ printf(
   }
 
   // Set [face] size
-  FT_Set_Pixel_Sizes(face, 0, (unsigned short int)(float)(font.size*1.5));
+  FT_Set_Pixel_Sizes(face, 0, font.size*1.5);
 
   // Return local [font]
   return font;

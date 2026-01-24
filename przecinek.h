@@ -45,9 +45,10 @@ extern "C"{
   #define FRAME_MAX 640
 
   #define SHAPE_MAX 512
-  #define SHAPE_ANGLE_MIN 3
-  #define SHAPE_ANGLE_MAX 300
+  #define SHAPE_VERTICE_MIN 3
+  #define SHAPE_VERTICE_MAX 300
   #define SHAPE_ROTATION_MAX 360
+  #define SHAPE_TRIANGLE 1000000
 
   #define IMAGE_MAX 512
 
@@ -133,7 +134,7 @@ extern "C"{
 
     int x, y;
     unsigned short int width, height;
-    unsigned short int angle, rotation;
+    unsigned short int vertice, rotation;
 
     pColor color;
   } pShape;
@@ -179,7 +180,6 @@ extern "C"{
    * It sets global [debug] and [frameLimit] values.
    * It setups locale and libraries used later.
    * It checks current mouse position and display size.
-   * It also sets [setup] to `true`.
    ****************************************************************/
   void pSetup(bool debug, unsigned short int frameLimit);
 
@@ -201,7 +201,7 @@ extern "C"{
    * \ = , = / Out: pWindow
    *
    * This function creates Przecinek window.
-   * It adds `1` to [winCount]. It sets [ID] for local [window].
+   * It sets [ID] for local [window].
    * It checks if all given parameters are valid.
    * It fills all necessary values for [window] and [build].
    * It sets [window] [title] to default value.
@@ -288,14 +288,14 @@ extern "C"{
   /****************************************************************
    * |\_____/| pShapeCreate()
    * | .     |
-   * |     . | In: us_int [angle], [width], [height]
+   * |     . | In: us_int [vertice], [width], [height]
    * \ = , = / Out: pShape
    *
    * This function creates [shape].
    * It fills all [shape] variables.
-   * Created [shape] depends on [angle] count.
+   * Created [shape] depends on [vertice] count.
    ****************************************************************/
-  pShape pShapeCreate(unsigned short int angle, unsigned short int width, unsigned short int height);
+  pShape pShapeCreate(unsigned short int vertice, unsigned short int width, unsigned short int height);
 
   /****************************************************************
    * |\_____/| pShapeCollision()
@@ -304,7 +304,8 @@ extern "C"{
    * \ = , = / Out: bool
    *
    * This function checks if two [shape] objects collides.
-   * Returned value depends on all [shape] angles.
+   * It simulates triangular collisions between several points.
+   * Then it returns value based on earlier calculations.
    ****************************************************************/
   bool pShapeCollision(pShape *shape1, pShape *shape2);
 
