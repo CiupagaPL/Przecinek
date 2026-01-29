@@ -15,6 +15,7 @@
 #include <string.h>
 #include <locale.h>
 #include <wchar.h>
+#include <math.h>
 
 #include <windows.h>
 #include <gdiplus.h>
@@ -25,7 +26,7 @@
  *  |______|
  * (--------)
  ********************************/
-#define WINDOW_MAX 16
+#define WINDOW_MAX 1
 #define WINDOW_X_DEF 128
 #define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
@@ -35,14 +36,24 @@
 #define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
 #define WINDOW_POS_CHANGE 65536
 
-#define TITLE_DEF "{,}"
+#define TITLE_DEF "{,} Window"
 #define TITLE_MAX 256
 
 #define KEY_MAX 256
 #define FRAME_MIN 10
 #define FRAME_MAX 640
 
-#define FONT_MAX 64
+#define OBJECT_MAX 512
+#define OBJECT_WIDTH_MIN 4
+#define OBJECT_HEIGHT_MIN 4
+#define OBJECT_WIDTH_MAX 7680
+#define OBJECT_HEIGHT_MAX 4320
+#define OBJECT_VERTICE_MIN 3
+#define OBJECT_VERTICE_MAX 300
+#define OBJECT_ROTATION_MAX 360
+#define OBJECT_TRIANGLE 1000000
+
+#define FONT_MAX 128
 #define FONT_SIZE_MIN 4
 #define FONT_SIZE_MAX 512
 #define FONT_NAME_MAX 256
@@ -193,6 +204,26 @@ typedef struct{
 } pFontWIN;
 
 /********************************
+ *  ,______,  Define [pFigureWIN]
+ *  |      |  structure [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  int x, y;
+  unsigned short int width, height;
+  unsigned short int vertice, rotation;
+
+  GpPoint point[OBJECT_VERTICE_MAX];
+  BYTE type[OBJECT_VERTICE_MAX];
+  pPosition center;
+  unsigned short int rotationFix;
+
+  int position;
+  bool change;
+} pFigureWIN;
+
+/********************************
  *  ,______,  Define [pWindow]
  *  |      |  structure
  *  |______|
@@ -233,8 +264,11 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
+  unsigned short int ID;
+
   int x, y;
   unsigned short int width, height;
+  unsigned short int vertice, rotation;
 
   pColor color;
 } pObject;
@@ -280,9 +314,10 @@ pBuildWIN build[WINDOW_MAX];
 MSG message;
 POINT cursor;
 RECT rectangle, fix;
-RectF figure;
+RectF shape;
 PAINTSTRUCT paintStruct;
 GpSolidFill *fill;
+GpBrush *broom;
 ARGB argb;
 HBRUSH brush;
 GpStatus status;
@@ -298,6 +333,17 @@ pEvent change;
 // Font
 pFontWIN view[FONT_MAX];
 GpFontCollection *collection;
+
+// Object
+pFigureWIN figure[OBJECT_MAX];
+GpPath *path;
+pPosition distanceMin, distanceMax;
+float widthScale, heightScale;
+float ratio;
+pPosition edge, projection;
+int pointA[5], pointB[5];
+pPosition centerA, centerB;
+int distance;
 
 /****************************************************************
  * |\_____/| pDebugWindowProc() [DEBUG]
@@ -470,12 +516,14 @@ LRESULT CALLBACK pDebugWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, L
   if(uMessage==WM_XBUTTONDOWN){
     if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=1; }
     if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=1; }
+
     build[windowPoint->ID-1].KEYON=true;
   }
   // Manage [window] `back` and `forward` key up
   if(uMessage==WM_XBUTTONUP){
     if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON1){ build[windowPoint->ID-1].KEY[VK_XBUTTON1]=2; }
     if(GET_XBUTTON_WPARAM(wParameter)==XBUTTON2){ build[windowPoint->ID-1].KEY[VK_XBUTTON2]=2; }
+
     build[windowPoint->ID-1].KEYON=true;
   }
 
@@ -491,7 +539,6 @@ LRESULT CALLBACK pDebugWindowProc(HWND hwnd, UINT uMessage, WPARAM wParameter, L
  *
  * This function resets [window] and [build] values.
  * Cleared variables depend on [window] [ID].
- * It also changes [winCount] by `-1`.
  ****************************************************************/
 void pDebugWindowReset(pWindow *window){
   // Reset [window] values
@@ -608,6 +655,208 @@ void pDebugFontReset(pFont *font){
 }
 
 /****************************************************************
+ * |\_____/| pDebugObjectReset() [DEBUG]
+ * | .     |
+ * |     . | In: pObject* [object]
+ * \ = , = / Out:
+ *
+ * This function resets all [object] and [figure] values.
+ * Cleared variables depend on [object] [ID].
+ ****************************************************************/
+void pDebugObjectReset(pObject *object){
+  // Reset [object] values
+  object->x=0;
+  object->y=0;
+  object->width=0;
+  object->height=0;
+
+  object->vertice=0;
+  object->rotation=0;
+
+  object->color.red=0;
+  object->color.green=0;
+  object->color.blue=0;
+  object->color.alpha=0;
+
+  // Reset [figure] values
+  figure[object->ID-1].x=0;
+  figure[object->ID-1].y=0;
+  figure[object->ID-1].width=0;
+  figure[object->ID-1].height=0;
+
+  figure[object->ID-1].vertice=0;
+  figure[object->ID-1].rotation=0;
+
+  for(unsigned short int current=0; current<OBJECT_VERTICE_MAX; current+=1){
+    figure[object->ID-1].point[current].X=0;
+    figure[object->ID-1].point[current].Y=0;
+
+    figure[object->ID-1].type[current]=0;
+  }
+  figure[object->ID-1].center.x=0;
+  figure[object->ID-1].center.y=0;
+  figure[object->ID-1].rotationFix=0;
+
+  figure[object->ID-1].position=0;
+  figure[object->ID-1].change=false;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugObjectCalculate() [DEBUG]
+ * | .     |
+ * |     . | In: pObject* [object]
+ * \ = , = / Out:
+ *
+ * This function calculates all [object] vertices.
+ * It firstly calculates [ratio] with `100`x`100` size.
+ * Then based on calculated scale and other variables
+ * it sets all [figure] [point] values.
+ ****************************************************************/
+void pDebugObjectCalculate(pObject *object){
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+
+  for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+    // Calculate base [ratio]
+    ratio=((current*360/figure[object->ID-1].vertice)+
+      figure[object->ID-1].rotation+figure[object->ID-1].rotationFix)*(M_PI/180);
+
+    // Calculate [figure] [point] [x]
+    figure[object->ID-1].point[current].X=50+(sqrt(pow(100, 2)*2)/2)*cos(ratio);
+
+    // Calculate [figure] [point] [y]
+    figure[object->ID-1].point[current].Y=50+(sqrt(pow(100, 2)*2)/2)*sin(ratio);
+
+    // Check for [distanceMin] [x] and [y] values
+    if(figure[object->ID-1].point[current].X<distanceMin.x){
+      distanceMin.x=figure[object->ID-1].point[current].X;
+    }
+    if(figure[object->ID-1].point[current].Y<distanceMin.y){
+      distanceMin.y=figure[object->ID-1].point[current].Y;
+    }
+
+    // Check for [distanceMax] [x] and [y] values
+    if(figure[object->ID-1].point[current].X>distanceMax.x){
+      distanceMax.x=figure[object->ID-1].point[current].X;
+    }
+    if(figure[object->ID-1].point[current].Y>distanceMax.y){
+      distanceMax.y=figure[object->ID-1].point[current].Y;
+    }
+  }
+
+  // Calculate [widthScale] and [heightScale] values
+  widthScale=(float)(distanceMax.x-distanceMin.x)/100;
+  heightScale=(float)(distanceMax.y-distanceMin.y)/100;
+
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+
+  for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+    // Calculate base ratio
+    ratio=((current*360/figure[object->ID-1].vertice)+
+      figure[object->ID-1].rotation+figure[object->ID-1].rotationFix)*(M_PI/180);
+
+    // Calculate [figure] [point] [x]
+    figure[object->ID-1].point[current].X=
+      (figure[object->ID-1].width/2)+
+      (sqrt(pow((float)figure[object->ID-1].width/widthScale, 2)*2)/2)*
+      cos(ratio);
+
+    // Calculate [figure] [point] [y]
+    figure[object->ID-1].point[current].Y=
+      (figure[object->ID-1].height/2)+
+      (sqrt(pow((float)figure[object->ID-1].height/heightScale, 2)*2)/2)*
+      sin(ratio);
+
+    // Set [figure] [type] value
+    figure[object->ID-1].type[current]=PathPointTypeLine;
+
+    // Check for [distanceMin] [x] and [y] values
+    if(figure[object->ID-1].point[current].X<distanceMin.x){
+      distanceMin.x=figure[object->ID-1].point[current].X;
+    }
+    if(figure[object->ID-1].point[current].Y<distanceMin.y){
+      distanceMin.y=figure[object->ID-1].point[current].Y;
+    }
+  }
+
+  for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+    // Correct [figure] [point] position
+    figure[object->ID-1].point[current].X-=distanceMin.x-figure[object->ID-1].x;
+    figure[object->ID-1].point[current].Y-=distanceMin.y-figure[object->ID-1].y;
+  }
+
+  // Correct [figure] [type] values
+  figure[object->ID-1].type[0]=PathPointTypeStart | PathPointTypeLine;
+  figure[object->ID-1].type[figure[object->ID-1].vertice]=PathPointTypeCloseSubpath;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugObjectTriangle() [DEBUG]
+ * | .     |
+ * |     . | In: pObject* [object]
+ * \ = , = / Out: bool
+ *
+ * This function checks collision between two triangles.
+ * It simulates two diffrent triangle objects.
+ * Then it checks and returns collision between them.
+ ****************************************************************/
+bool pDebugObjectTriangle(
+    pPosition v1A, pPosition v2A, pPosition v3A,
+    pPosition v1B, pPosition v2B, pPosition v3B){
+
+  // Simulate [triangleA] and [triangleB] objects
+  pPosition triangleA[3]={ v1A, v2A, v3A };
+  pPosition triangleB[3]={ v1B, v2B, v3B };
+
+  for(unsigned short int current=0; current<6; current+=1){
+    // Calculate [edge] values
+    if(current<3){
+      edge.x=triangleA[(current+1)%3].x-triangleA[current].x;
+      edge.y=triangleA[(current+1)%3].y-triangleA[current].y;
+    }
+    else{
+      edge.x=triangleB[(current-2)%3].x-triangleB[current-3].x;
+      edge.y=triangleB[(current-2)%3].y-triangleB[current-3].y;
+    }
+
+    // Reset some variables
+    distanceMin.x=OBJECT_TRIANGLE;
+    distanceMin.y=OBJECT_TRIANGLE;
+    distanceMax.x=(-OBJECT_TRIANGLE);
+    distanceMax.y=(-OBJECT_TRIANGLE);
+
+    for(unsigned short int loop=0; loop<3; loop+=1){
+      // Caululate [projection] values
+      projection.x = (triangleA[loop].x*(-edge.y))+(triangleA[loop].y*edge.x);
+      projection.y = (triangleB[loop].x*(-edge.y))+(triangleB[loop].y*edge.x);
+
+      // Check for collision
+      if(projection.x<distanceMin.x){ distanceMin.x=projection.x; }
+      if(projection.x>distanceMax.x){ distanceMax.x=projection.x; }
+      if(projection.y<distanceMin.y){ distanceMin.y=projection.y; }
+      if(projection.y>distanceMax.y){ distanceMax.y=projection.y; }
+    }
+
+    if(distanceMax.x<distanceMin.y || distanceMax.y<distanceMin.x){
+      // Return `false`, collision undetected
+      return false;
+    }
+  }
+
+  // Return `true`, collision detected
+  return true;
+}
+
+/****************************************************************
  * |\_____/| pSetup()
  * | .     |
  * |     . | In: bool [debug], us_int [frameLimit]
@@ -617,7 +866,6 @@ void pDebugFontReset(pFont *font){
  * It sets global [debug] and [frameLimit] values.
  * It setups locale and libraries used later.
  * It checks current mouse position and display size.
- * It also sets [setup] to `true`.
  ****************************************************************/
 void pSetup(bool debug, unsigned short int frameLimit){
   // Initialize GDI+
@@ -706,7 +954,7 @@ void pClear(){
  * \ = , = / Out: pWindow
  *
  * This function creates Przecinek window.
- * It adds `1` to [winCount]. It sets [ID] for local [window].
+ * It sets [ID] for local [window].
  * It checks if all given parameters are valid.
  * It fills all necessary values for [window] and [build].
  * It sets [window] [title] to default value.
@@ -974,76 +1222,240 @@ printf(
  ****************************************************************/
 void pWindowDrawObject(pWindow *window, pObject *object){
   if(window->active==true){
-    // Check [object] [color] values
-    if(object->color.red>255){
-      if(przecinek.debug==true){
-printf(
-  "[pWO01] \"Object red color value is too big\" (changing from: %i to 255),\n",
-  object->color.red
-);
-        fflush(stdout);
+    if(object->ID!=0){
+      // Check [object] [color] values
+      if(object->color.red>255){
+        if(przecinek.debug==true){
+  printf(
+    "[pWO01] \"Object red color value is too big\" (changing from: %i to 255),\n",
+    object->color.red
+  );
+          fflush(stdout);
+        }
+
+        // Correct [object] [color] [red] value
+        object->color.red=255;
+      }
+      if(object->color.green>255){
+        if(przecinek.debug==true){
+  printf(
+    "[pWO02] \"Object green color value is too big\" (changing from: %i to 255),\n",
+    object->color.green
+  );
+          fflush(stdout);
+        }
+
+        // Correct [object] [color] [green] value
+        object->color.green=255;
+      }
+      if(object->color.blue>255){
+        if(przecinek.debug==true){
+  printf(
+    "[pWO03] \"Object blue color value is too big\" (changing from: %i to 255),\n",
+    object->color.blue
+  );
+          fflush(stdout);
+        }
+
+        // Correct [object] [color] [blue] value
+        object->color.blue=255;
+      }
+      if(object->color.alpha>100){
+        if(przecinek.debug==true){
+  printf(
+    "[pWO04] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
+    object->color.alpha
+  );
+          fflush(stdout);
+        }
+
+        // Correct [object] [color] [alpha] value
+        object->color.alpha=100;
       }
 
-      // Correct [object] [color] [red] value
-      object->color.red=255;
-    }
-    if(object->color.green>255){
-      if(przecinek.debug==true){
+      // Update [figure] [height]
+      if(object->height!=figure[object->ID-1].height){
+        // Check [object] [height] value
+        if(object->height<OBJECT_HEIGHT_MIN){
+          if(przecinek.debug==true){
 printf(
-  "[pWO02] \"Object green color value is too big\" (changing from: %i to 255),\n",
-  object->color.green
+  "[pWO05] \"Object height value is too low\" (changing from: %i to %i),\n",
+  object->height, OBJECT_HEIGHT_MIN
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [object] [height] value
+          object->height=OBJECT_HEIGHT_MIN;
+        }
+        else if(object->height>OBJECT_HEIGHT_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO06] \"Object height value is too big\" (changing from: %i to %i),\n",
+  object->height, OBJECT_HEIGHT_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [height] value
+          object->height=OBJECT_HEIGHT_MAX;
+        }
+
+        // Update [figure] [height]
+        figure[object->ID-1].height=object->height;
+
+        figure[object->ID-1].change=true;
       }
 
-      // Correct [object] [color] [green] value
-      object->color.green=255;
-    }
-    if(object->color.blue>255){
-      if(przecinek.debug==true){
+      // Update [figure] [x]
+      if(object->x!=figure[object->ID-1].x){
+        // Check [object] [x] value
+        if(object->x<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
 printf(
-  "[pWO03] \"Object blue color value is too big\" (changing from: %i to 255),\n",
-  object->color.blue
+  "[pWO07] \"Object x value is too low\" (changing from: %i to %i),\n",
+  object->x, (-WINDOW_POS_MAX)
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [object] [x] value
+          object->x=(-WINDOW_POS_MAX);
+        }
+        else if(object->x>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO08] \"Object x value is too big\" (changing from: %i to %i),\n",
+  object->x, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [x] value
+          object->x=WINDOW_POS_MAX;
+        }
+
+        // Calculate [figure] [point] [x] position
+        if(figure[object->ID-1].change==false){
+          figure[object->ID-1].position=object->x-figure[object->ID-1].x;
+
+          for(unsigned int current=0; current<figure[object->ID-1].vertice; current+=1){
+            figure[object->ID-1].point[current].X+=figure[object->ID-1].position;
+          }
+        }
+
+        // Update [figure] [x]
+        figure[object->ID-1].x=object->x;
       }
 
-      // Correct [object] [color] [blue] value
-      object->color.blue=255;
-    }
-    if(object->color.alpha>100){
-      if(przecinek.debug==true){
+      // Update [figure] [y]
+      if(object->y!=figure[object->ID-1].y){
+        // Check [object] [y] value
+        if(object->y<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
 printf(
-  "[pWO04] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
-  object->color.alpha
+  "[pWO09] \"Object y value is too low\" (changing from: %i to %i),\n",
+  object->y, (-WINDOW_POS_MAX)
 );
-        fflush(stdout);
+            fflush(stdout);
+          }
+
+          // Change [object] [y] value
+          object->y=(-WINDOW_POS_MAX);
+        }
+        else if(object->y>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO10] \"Object y value is too big\" (changing from: %i to %i),\n",
+  object->y, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [y] value
+          object->y=WINDOW_POS_MAX;
+        }
+
+        // Calculate [figure] [point] [y] position
+        if(figure[object->ID-1].change==false){
+          figure[object->ID-1].position=object->y-figure[object->ID-1].y;
+
+          for(unsigned int current=0; current<figure[object->ID-1].vertice; current+=1){
+            figure[object->ID-1].point[current].Y+=figure[object->ID-1].position;
+          }
+        }
+
+        // Update [figure] [y]
+        figure[object->ID-1].y=object->y;
       }
 
-      // Correct [object] [color] [alpha] value
-      object->color.alpha=100;
+      // Update [figure] [rotation]
+      if(object->rotation!=figure[object->ID-1].rotation){
+        // Check [object] [rotation] value
+        if(object->rotation>OBJECT_ROTATION_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO11] \"Object rotation value is too big\" (changing from: %i to %i),\n",
+  object->rotation, OBJECT_ROTATION_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [rotation] value
+          object->rotation=OBJECT_ROTATION_MAX;
+        }
+
+        // Update [figure] [rotation]
+        figure[object->ID-1].rotation=object->rotation;
+
+        figure[object->ID-1].change=true;
+      }
+
+      // Update [figure] [point]
+      if(figure[object->ID-1].change==true){
+        if(figure[object->ID-1].vertice==4){ figure[object->ID-1].rotationFix=45; }
+        else if(figure[object->ID-1].vertice%2!=0){ figure[object->ID-1].rotationFix=270; }
+        else{ figure[object->ID-1].rotationFix=0; }
+
+        // Calculate all [figure] values
+        pDebugObjectCalculate(object);
+
+        figure[object->ID-1].change=false;
+      }
+
+      // Create [build] [graphics]
+      GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
+
+      // Set [argb] values
+      argb=(
+        (ARGB)((int)((float)object->color.alpha*2.55)<<24) |
+        (object->color.red<<16) | (object->color.green<<8) | object->color.blue
+      );
+
+      // Setup [broom] based on [argb]
+      GdipCreateSolidFill(argb, &broom);
+
+      // Create [path]
+      GdipCreatePath2I(
+        figure[object->ID-1].point, figure[object->ID-1].type,
+        figure[object->ID-1].vertice, FillModeWinding, &path
+      );
+
+      // Draw on [build] [hMemDC]
+      GdipFillPath(build[window->ID-1].graphics, broom, path);
+
+      // Clean some variables
+      GdipDeletePath(path);
+      GdipDeleteBrush(broom);
+      GdipDeleteGraphics(build[window->ID-1].graphics);
+      build[window->ID-1].graphics=NULL;
     }
-
-    // Set [argb] value
-    argb=(ARGB)(
-      ((int)((float)object->color.alpha*2.55)<<24) |
-      (object->color.red<<16) | (object->color.green<<8) | object->color.blue
-    );
-
-    // Create [build] [graphics]
-    GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
-
-    // Draw on [build] [hMemDC]
-    GdipCreateSolidFill(argb, &fill);
-    GdipFillRectangle(
-      build[window->ID-1].graphics, fill,
-      object->x, object->y, object->width, object->height
-    );
-
-    // Clean [build] [fill] and [graphics]
-    GdipDeleteBrush(fill);
-    GdipDeleteGraphics(build[window->ID-1].graphics);
-    build[window->ID-1].graphics=NULL;
+    else if(przecinek.debug==true){
+printf(
+  "[pEG03] \"Could not draw object\" (object is closed),\n"
+);
+      fflush(stdout);
+    }
   }
   else if(przecinek.debug==true){
 printf(
@@ -1117,6 +1529,58 @@ printf(
 
         // Correct [font] [color] [alpha] value
         font->color.alpha=100;
+      }
+
+      // Check [text] [x] value
+      if(text->x<(-WINDOW_POS_MAX)){
+        if(przecinek.debug==true){
+printf(
+  "[pWT01] \"Text x value is too low\" (changing from: %i to %i),\n",
+  text->x, (-WINDOW_POS_MAX)
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [x] value
+        text->x=(-WINDOW_POS_MAX);
+      }
+      else if(text->x>WINDOW_POS_MAX){
+        if(przecinek.debug==true){
+printf(
+  "[pWT02] \"Text x value is too big\" (changing from: %i to %i),\n",
+  text->x, WINDOW_POS_MAX
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [x] value
+        text->x=WINDOW_POS_MAX;
+      }
+
+      // Check [text] [y] value
+      if(text->y<(-WINDOW_POS_MAX)){
+        if(przecinek.debug==true){
+printf(
+  "[pWT03] \"Text y value is too low\" (changing from: %i to %i),\n",
+  text->y, (-WINDOW_POS_MAX)
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [y] value
+        text->y=(-WINDOW_POS_MAX);
+      }
+      else if(text->y>WINDOW_POS_MAX){
+        if(przecinek.debug==true){
+printf(
+  "[pWT04] \"Text y value is too big\" (changing from: %i to %i),\n",
+  text->y, WINDOW_POS_MAX
+);
+          fflush(stdout);
+        }
+
+        // Change [text] [y] value
+        text->y=WINDOW_POS_MAX;
       }
 
       // Update [view] [size]
@@ -1216,18 +1680,18 @@ printf(
         view[font->ID-1].change=false;
       }
 
-      // Set [argb] value
-      argb=(ARGB)(
-        ((int)((float)font->color.alpha*2.55)<<24) |
+      // Set [argb] values
+      argb=(
+        (ARGB)((int)((float)font->color.alpha*2.55)<<24) |
         (font->color.red<<16) | (font->color.green<<8) | font->color.blue
       );
 
       // Update [view] [xFix] value
       view[font->ID-1].xFix=(int)((float)((view[font->ID-1].size*(-18))/72));
 
-      // Change [figure] values
-      figure.X=text->x+view[font->ID-1].xFix;
-      figure.Y=text->y;
+      // Change [shape] values
+      shape.X=text->x+view[font->ID-1].xFix;
+      shape.Y=text->y;
 
       // Create [build] [graphics]
       GdipCreateFromHDC(build[window->ID-1].hMemDC, &build[window->ID-1].graphics);
@@ -1240,17 +1704,17 @@ printf(
       if(text->value[0]==L' '){
         GdipDrawString(
           build[window->ID-1].graphics, text->value+1, wcslen(text->value)-1,
-          view[font->ID-1].base, &figure, NULL, fill
+          view[font->ID-1].base, &shape, NULL, fill
         );
       }
       else{
         GdipDrawString(
           build[window->ID-1].graphics, text->value, wcslen(text->value),
-          view[font->ID-1].base, &figure, NULL, fill
+          view[font->ID-1].base, &shape, NULL, fill
         );
       }
 
-      // Clean [build] [fill] and [graphics]
+      // Clean some variables
       GdipDeleteBrush(fill);
       GdipDeleteGraphics(build[window->ID-1].graphics);
       build[window->ID-1].graphics=NULL;
@@ -1937,6 +2401,7 @@ printf(
       // Correct [window] [width]
       if(build[window->ID-1].widthMin==build[window->ID-1].widthMax &&
           build[window->ID-1].width!=build[window->ID-1].widthMin){
+
         window->width=build[window->ID-1].widthMin;
         build[window->ID-1].width=build[window->ID-1].widthMin;
 
@@ -1963,6 +2428,7 @@ printf(
       // Correct [window] [height]
       if(build[window->ID-1].heightMin==build[window->ID-1].heightMax &&
           build[window->ID-1].height!=build[window->ID-1].heightMin){
+
         window->height=build[window->ID-1].heightMin;
         build[window->ID-1].height=build[window->ID-1].heightMin;
 
@@ -1982,6 +2448,7 @@ printf(
         build[window->ID-1].hBitmap=CreateCompatibleBitmap(
           build[window->ID-1].hdc, window->width, window->height
         );
+
         SelectObject(build[window->ID-1].hMemDC, build[window->ID-1].hBitmap);
         ReleaseDC(build[window->ID-1].hwnd, build[window->ID-1].hdc);
       }
@@ -2024,22 +2491,151 @@ printf(
  *
  * This function creates [object].
  * It fills all [object] variables.
+ * Created [object] depends on [vertice] count.
  ****************************************************************/
-pObject pObjectCreate(unsigned short int width, unsigned short int height){
+pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsigned short int height){
   // Create local [object]
   pObject object;
 
-  // Set [object] values
-  object.x=0;
-  object.y=0;
+  for(unsigned short int current=0; current<FONT_MAX; current+=1){
+    if(figure[current].width==0){
+      // Set [object] [ID] and reset [object]
+      object.ID=current+1;
+      pDebugObjectReset(&object);
 
+      break;
+    }
+    else if(current==OBJECT_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pEO01] \"Too many objects were created\" (limit: %i),\n",
+  OBJECT_MAX
+);
+        fflush(stdout);
+      }
+
+      // Reset and return [object]
+      pDebugObjectReset(&object);
+      object.ID=0;
+
+      return object;
+    }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+printf(
+  "[pEG01] \"Could not create object\" (Przecinek is not initialized),\n"
+);
+    fflush(stdout);
+
+    // Reset and return [object]
+    pDebugObjectReset(&object);
+    object.ID=0;
+
+    return object;
+  }
+
+  // Check [vertice] value
+  if(vertice<OBJECT_VERTICE_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWO01] \"Object vertice value is too low\" (changing from: %i to %i),\n",
+  vertice, OBJECT_VERTICE_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [vertice] value
+    vertice=OBJECT_VERTICE_MIN;
+  }
+  else if(vertice>OBJECT_VERTICE_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWO02] \"Object vertice value is too big\" (changing from: %i to %i),\n",
+  vertice, OBJECT_VERTICE_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [vertice] value
+    vertice=OBJECT_VERTICE_MAX;
+  }
+
+  // Check [width] value
+  if(width<OBJECT_WIDTH_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWO03] \"Object width value is too low\" (changing from: %i to %i),\n",
+  width, OBJECT_WIDTH_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [width] value
+    width=OBJECT_WIDTH_MIN;
+  }
+  else if(width>OBJECT_WIDTH_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWO04] \"Object width value is too big\" (changing from: %i to %i),\n",
+  width, OBJECT_WIDTH_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [width] value
+    width=OBJECT_WIDTH_MAX;
+  }
+
+  // Check [height] value
+  if(height<OBJECT_HEIGHT_MIN){
+    if(przecinek.debug==true){
+printf(
+  "[pWO05] \"Object height value is too low\" (changing from: %i to %i),\n",
+  height, OBJECT_HEIGHT_MIN
+);
+      fflush(stdout);
+    }
+
+    // Change [height] value
+    height=OBJECT_HEIGHT_MIN;
+  }
+  else if(height>OBJECT_HEIGHT_MAX){
+    if(przecinek.debug==true){
+printf(
+  "[pWO06] \"Object height value is too big\" (changing from: %i to %i),\n",
+  height, OBJECT_HEIGHT_MAX
+);
+      fflush(stdout);
+    }
+
+    // Change [height] value
+    height=OBJECT_HEIGHT_MAX;
+  }
+
+  // Set [object] values
   object.width=width;
   object.height=height;
-
+  object.vertice=vertice;
+  object.rotation=0;
   object.color.red=0;
   object.color.green=0;
   object.color.blue=0;
   object.color.alpha=100;
+
+  // Set [figure] values
+  figure[object.ID-1].width=width;
+  figure[object.ID-1].height=height;
+  figure[object.ID-1].vertice=vertice;
+
+  // Set [figure] [rotationFix] value
+  if(vertice==4){ figure[object.ID-1].rotationFix=45; }
+  else if(vertice%2!=0){ figure[object.ID-1].rotationFix=270; }
+  else{ figure[object.ID-1].rotationFix=0; }
+
+  // Calculate all [figure] values
+  pDebugObjectCalculate(&object);
 
   // Return local [object]
   return object;
@@ -2052,16 +2648,291 @@ pObject pObjectCreate(unsigned short int width, unsigned short int height){
  * \ = , = / Out: bool
  *
  * This function checks if two [object] collides.
- * Its abilities will be extended in the future.
+ * It simulates triangular collisions between several points.
+ * Then it returns value based on earlier calculations.
  ****************************************************************/
 bool pObjectCollision(pObject *object1, pObject *object2){
-  // Return collision
-  return(
-    object1->x<object2->x+object2->width &&
-    object1->x+object1->width>object2->x &&
-    object1->y<object2->y+object2->height &&
-    object1->y+object1->height>object2->y
-  );
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+  distance=OBJECT_TRIANGLE;
+
+  // Calculate [object1] [centerA]
+  centerA.x=figure[object1->ID-1].x+(figure[object1->ID-1].width/2);
+  centerA.y=figure[object1->ID-1].y+(figure[object1->ID-1].height/2);
+
+  // Calculate [object2] [centerB]
+  centerB.x=figure[object2->ID-1].x+(figure[object2->ID-1].width/2);
+  centerB.y=figure[object2->ID-1].y+(figure[object2->ID-1].height/2);
+
+  for(unsigned short int current=0; current<figure[object1->ID-1].vertice; current+=1){
+    // Calculate [distanceMin] values
+    if(distanceMin.x>figure[object1->ID-1].point[current].X){
+      distanceMin.x=figure[object1->ID-1].point[current].X;
+    }
+    if(distanceMin.y>figure[object1->ID-1].point[current].Y){
+      distanceMin.y=figure[object1->ID-1].point[current].Y;
+    }
+
+    // Calculate [distanceMax] values
+    if(distanceMax.x<figure[object1->ID-1].point[current].X){
+      distanceMax.x=figure[object1->ID-1].point[current].X;
+    }
+    if(distanceMin.y<figure[object1->ID-1].point[current].Y){
+      distanceMax.y=figure[object1->ID-1].point[current].Y;
+    }
+
+    // Calculate [ratio] value
+    ratio=sqrt(pow((centerB.x-figure[object1->ID-1].point[current].X), 2)+
+      pow((centerB.y-figure[object1->ID-1].point[current].Y), 2));
+
+    // Update [distance] value
+    if(ratio<distance){
+      distance=ratio;
+      pointA[0]=current;
+    }
+  }
+
+  // Calculate [ratio] value
+  ratio=(figure[object1->ID-1].vertice/15)+1;
+
+  // Calculate [pointA] `1` and `2`
+  pointA[1]=pointA[0]-ratio;
+  pointA[2]=pointA[0]+ratio;
+
+  if(pointA[1]<0){ pointA[1]+=figure[object1->ID-1].vertice; }
+  if(pointA[1]>figure[object1->ID-1].vertice-1){ pointA[1]-=figure[object1->ID-1].vertice; }
+
+  if(pointA[2]<0){ pointA[2]+=figure[object1->ID-1].vertice; }
+  if(pointA[2]>figure[object1->ID-1].vertice-1){ pointA[2]-=figure[object1->ID-1].vertice; }
+
+  // Calculate [pointA] `3` and `4`
+  if(figure[object1->ID-1].vertice>=10){
+    pointA[3]=pointA[0]-(2*ratio);
+    pointA[4]=pointA[0]+(2*ratio);
+
+    if(pointA[3]<0){ pointA[3]+=figure[object1->ID-1].vertice; }
+    if(pointA[3]>figure[object1->ID-1].vertice-1){ pointA[3]-=figure[object1->ID-1].vertice; }
+
+    if(pointA[4]<0){ pointA[4]+=figure[object1->ID-1].vertice; }
+    if(pointA[4]>figure[object1->ID-1].vertice-1){ pointA[4]-=figure[object1->ID-1].vertice; }
+  }
+
+  // Reset some variables
+  distanceMin.x=OBJECT_WIDTH_MAX;
+  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMax.x=(-OBJECT_WIDTH_MAX);
+  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+  distance=OBJECT_TRIANGLE;
+
+  for(unsigned short int current=0; current<figure[object2->ID-1].vertice; current+=1){
+    // Calculate [distanceMin] values
+    if(distanceMin.x>figure[object2->ID-1].point[current].X){
+      distanceMin.x=figure[object2->ID-1].point[current].X;
+    }
+    if(distanceMin.y>figure[object2->ID-1].point[current].Y){
+      distanceMin.y=figure[object2->ID-1].point[current].Y;
+    }
+
+    // Calculate [distanceMax] values
+    if(distanceMax.x<figure[object2->ID-1].point[current].X){
+      distanceMax.x=figure[object2->ID-1].point[current].X;
+    }
+    if(distanceMax.y<figure[object2->ID-1].point[current].Y){
+      distanceMax.y=figure[object2->ID-1].point[current].Y;
+    }
+
+    // Calculate [ratio] value
+    ratio=sqrt(pow((centerA.x-figure[object2->ID-1].point[current].X), 2)+
+      pow((centerA.y-figure[object2->ID-1].point[current].Y), 2));
+
+    // Update [distance] value
+    if(ratio<distance){
+      distance=ratio;
+      pointB[0]=current;
+    }
+  }
+
+  // Calculate [ratio] value
+  ratio=(figure[object2->ID-1].vertice/15)+1;
+
+  // Calculate [pointB] `1` and `2`
+  pointB[1]=pointB[0]-ratio;
+  pointB[2]=pointB[0]+ratio;
+
+  if(pointB[1]<0){ pointB[1]+=figure[object2->ID-1].vertice; }
+  if(pointB[1]>object2->vertice-1){ pointB[1]-=figure[object2->ID-1].vertice; }
+
+  if(pointB[2]<0){ pointB[2]+=figure[object2->ID-1].vertice; }
+  if(pointB[2]>figure[object2->ID-1].vertice-1){ pointB[2]-=figure[object2->ID-1].vertice; }
+
+  // Calculate [pointB] `3` and `4`
+  if(figure[object2->ID-1].vertice>=10){
+    pointB[3]=pointB[0]-(2*ratio);
+    pointB[4]=pointB[0]+(2*ratio);
+
+    if(pointB[3]<0){ pointB[3]+=figure[object2->ID-1].vertice; }
+    if(pointB[3]>figure[object2->ID-1].vertice-1){ pointB[3]-=figure[object2->ID-1].vertice; }
+
+    if(pointB[4]<0){ pointB[4]+=figure[object2->ID-1].vertice; }
+    if(pointB[4]>figure[object2->ID-1].vertice-1){ pointB[4]-=figure[object2->ID-1].vertice; }
+  }
+
+  // Check for collision X.X
+  if((object1->x<object2->x+object2->width) &&
+      (object1->x+object1->width>object2->x) &&
+      (object1->y<object2->y+object2->height) &&
+      (object1->y+object1->height>object2->y)==true){
+    if(
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  centerB)==false &&
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  centerB)==false &&
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  centerB)==false &&
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  centerB)==false
+    ){
+
+      if(figure[object2->ID-1].vertice>=10){
+        if(
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[3]].X, figure[object2->ID-1].point[pointB[3]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[4]].X, figure[object2->ID-1].point[pointB[4]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[3]].X, figure[object2->ID-1].point[pointB[3]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[0]].X, figure[object1->ID-1].point[pointA[0]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[4]].X, figure[object2->ID-1].point[pointB[4]].Y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+      if(figure[object1->ID-1].vertice>=10){
+        if(
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[3]].X, figure[object1->ID-1].point[pointA[3]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[3]].X, figure[object1->ID-1].point[pointA[3]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[4]].X, figure[object1->ID-1].point[pointA[4]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[4]].X, figure[object1->ID-1].point[pointA[4]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[0]].X, figure[object2->ID-1].point[pointB[0]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+      if(figure[object1->ID-1].vertice>=10 && figure[object2->ID-1].vertice>=10){
+        if(
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[3]].X, figure[object1->ID-1].point[pointA[3]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[3]].X, figure[object2->ID-1].point[pointB[3]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[1]].X, figure[object1->ID-1].point[pointA[1]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[3]].X, figure[object1->ID-1].point[pointA[3]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[4]].X, figure[object2->ID-1].point[pointB[4]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[4]].X, figure[object1->ID-1].point[pointA[4]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[1]].X, figure[object2->ID-1].point[pointB[1]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[3]].X, figure[object2->ID-1].point[pointB[3]].Y },
+  centerB)==true ||
+pDebugObjectTriangle(
+  (pPosition){ figure[object1->ID-1].point[pointA[2]].X, figure[object1->ID-1].point[pointA[2]].Y },
+  (pPosition){ figure[object1->ID-1].point[pointA[4]].X, figure[object1->ID-1].point[pointA[4]].Y },
+  centerA,
+  (pPosition){ figure[object2->ID-1].point[pointB[2]].X, figure[object2->ID-1].point[pointB[2]].Y },
+  (pPosition){ figure[object2->ID-1].point[pointB[4]].X, figure[object2->ID-1].point[pointB[4]].Y },
+  centerB)==true
+        ){
+
+          // Collision found, return `true`
+          return true;
+        }
+      }
+    }
+    else{
+      // Collision found, return `true`
+      return true;
+    }
+  }
+
+  // There is no collision, return `false`
+  return false;
 }
 
 /****************************************************************

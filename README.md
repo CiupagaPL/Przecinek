@@ -30,8 +30,8 @@ It's under active development.
 | Loading Fonts               | ✅  | ✅  |
 | Managing Fonts              | ✅  | ✅  |
 | Rendering Fonts             | ✅  | ❔* |
-| Creating Diffrent Shapes    | ❌  | ✅  |
-| Checking Shapes Collisions  | ❌  | ✅  |
+| Creating Diffrent Shapes    | ✅  | ✅  |
+| Checking Shapes Collisions  | ✅  | ✅  |
 | Loading Images              | ❌  | ❌  |
 | Rendering Images            | ❌  | ❌  |
 | Loading Audio               | ❌  | ❌  |
@@ -48,8 +48,8 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 ### Version
 
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,15]**;<br>
-> Last Updated: **24-01-2026**;
+> Newest Version (Unstable): **[u,16]**;<br>
+> Last Updated: **29-01-2026**;
 
 ### LICENSE
 

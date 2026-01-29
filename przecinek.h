@@ -27,7 +27,7 @@ extern "C"{
    *  |______|
    * (--------)
    ********************************/
-  #define WINDOW_MAX 4
+  #define WINDOW_MAX 1
   #define WINDOW_X_DEF 128
   #define WINDOW_Y_DEF 128
   #define WINDOW_WIDTH_MIN 256
@@ -37,25 +37,22 @@ extern "C"{
   #define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
   #define WINDOW_POS_CHANGE 65536
 
-  #define TITLE_DEF "{,}"
+  #define TITLE_DEF "{,} Window"
   #define TITLE_MAX 256
 
   #define KEY_MAX 256
   #define FRAME_MIN 10
   #define FRAME_MAX 640
 
-  #define SHAPE_MAX 512
-  #define SHAPE_VERTICE_MIN 3
-  #define SHAPE_VERTICE_MAX 300
-  #define SHAPE_ROTATION_MAX 360
-  #define SHAPE_TRIANGLE 1000000
-
-  #define IMAGE_MAX 512
-
+  #define OBJECT_MAX 512
   #define OBJECT_WIDTH_MIN 4
   #define OBJECT_HEIGHT_MIN 4
   #define OBJECT_WIDTH_MAX 7680
   #define OBJECT_HEIGHT_MAX 4320
+  #define OBJECT_VERTICE_MIN 3
+  #define OBJECT_VERTICE_MAX 300
+  #define OBJECT_ROTATION_MAX 360
+  #define OBJECT_TRIANGLE 1000000
 
   #define FONT_MAX 128
   #define FONT_SIZE_MIN 4
@@ -124,7 +121,7 @@ extern "C"{
   } pEvent;
 
   /********************************
-   *  ,______,  Define [pShape]
+   *  ,______,  Define [pObject]
    *  |      |  structure
    *  |______|
    * (--------)
@@ -137,7 +134,7 @@ extern "C"{
     unsigned short int vertice, rotation;
 
     pColor color;
-  } pShape;
+  } pObject;
 
   /********************************
    *  ,______,  Define [pFont]
@@ -163,11 +160,8 @@ extern "C"{
    ********************************/
   typedef struct{
     int x, y;
-    unsigned short int size;
 
     wchar_t value[TEXT_MAX];
-
-    pColor color;
   } pText;
 
   /****************************************************************
@@ -212,16 +206,16 @@ extern "C"{
   pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
 
   /****************************************************************
-   * |\_____/| pWindowDrawShape()
+   * |\_____/| pWindowDrawObject()
    * | .     |
-   * |     . | In: pWindow* [window], pShape* [shape]
+   * |     . | In: pWindow* [window], pObject* [object]
    * \ = , = / Out:
    *
-   * This function draws [shape] on [window] buffer.
-   * It checks if [shape] [color] values are valid.
+   * This function draws [object] on [window] buffer.
+   * It checks if [object] [color] values are valid.
    * Then it does all the rendering stuff.
    ****************************************************************/
-  void pWindowDrawShape(pWindow *window, pShape *shape);
+  void pWindowDrawObject(pWindow *window, pObject *object);
 
   /****************************************************************
    * |\_____/| pWindowDrawText()
@@ -286,28 +280,28 @@ extern "C"{
   void pEventHandle(pWindow *window, pEvent *event);
 
   /****************************************************************
-   * |\_____/| pShapeCreate()
+   * |\_____/| pObjectCreate()
    * | .     |
    * |     . | In: us_int [vertice], [width], [height]
-   * \ = , = / Out: pShape
+   * \ = , = / Out: pObject
    *
-   * This function creates [shape].
-   * It fills all [shape] variables.
-   * Created [shape] depends on [vertice] count.
+   * This function creates [object].
+   * It fills all [object] variables.
+   * Created [object] depends on [vertice] count.
    ****************************************************************/
-  pShape pShapeCreate(unsigned short int vertice, unsigned short int width, unsigned short int height);
+  pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsigned short int height);
 
   /****************************************************************
-   * |\_____/| pShapeCollision()
+   * |\_____/| pObjectCollision()
    * | .     |
-   * |     . | In: pShape* [shape1], [shape2]
+   * |     . | In: pObject* [object1], [object2]
    * \ = , = / Out: bool
    *
-   * This function checks if two [shape] objects collides.
+   * This function checks if two [object] collides.
    * It simulates triangular collisions between several points.
    * Then it returns value based on earlier calculations.
    ****************************************************************/
-  bool pShapeCollision(pShape *shape1, pShape *shape2);
+  bool pObjectCollision(pObject *object1, pObject *object2);
 
   /****************************************************************
    * |\_____/| pFontCreate()
