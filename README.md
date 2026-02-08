@@ -5,51 +5,54 @@
 
 **Przecinek is a minimal multimedia library** for Windows and Linux being developed in C.
 Its purpose is to make it easier for game/app developers to create window applications while keeping their projects small in size and easy to read.
-Przecinek uses only system-built-in libraries.
+Przecinek uses minimal amount of libraries.
 It's under active development.
 
 ### Stable Features
 
-| Feature                     | Version    |
-|-----------------------------|------------|
-| Creating Windows            | **[a1,0]** |
-| Managing Windows            | **[a1,0]** |
-| Input System                | **[a1,0]** |
-| Window Event System         | **[a2,0]** |
-| Window Frame Control        | **[a3,0]** |
-| Basic Render System         | **[a3,0]** |
-| Creating Basic Objects      | **[a3,0]** |
-| Checking Basic Collisions   | **[a3,0]** |
+| Feature                        | Version    |
+|--------------------------------|------------|
+| Creating and managing windows  | **[a1,0]** |
+| Global input system            | **[a1,0]** |
+| Window update system           | **[a2,0]** |
+| Window frame control system    | **[a3,0]** |
+| Complex render system          | **[a4,0]** |
+| Creating and rendering fonts   | **[a4,0]** |
+| Creating complex objects       | **[a5,0]** |
+| Checking complex collisions    | **[a5,0]** |
 
 ### Unstable Features / TODO
 
 | Feature                     | WIN | X11 |
 |-----------------------------|-----|-----|
-| Supporting non-ASCII chars  | ✅  | ✅  |
-| Supporting color alpha      | ✅  | ❔* |
-| Loading Fonts               | ✅  | ✅  |
-| Managing Fonts              | ✅  | ✅  |
-| Rendering Fonts             | ✅  | ❔* |
-| Creating Diffrent Shapes    | ❌  | ❌  |
-| Checking Shapes Collisions  | ❌  | ❌  |
-| Loading Images              | ❌  | ❌  |
-| Rendering Images            | ❌  | ❌  |
-| Loading Audio               | ❌  | ❌  |
-| Managing Audio              | ❌  | ❌  |
-| Playing Audio               | ❌  | ❌  |
+| Loading images              | ❌  | ❌  |
+| Rendering images            | ❌  | ❌  |
+| Loading audio               | ❌  | ❌  |
+| Managing audio              | ❌  | ❌  |
+| Playing audio               | ❌  | ❌  |
 
 `*` > Unfinished Features
 
+### Used libraries
+
+| Library                                           | In       | Purpose                                                         |
+|---------------------------------------------------|----------|-----------------------------------------------------------------|
+| WIN API                                           | **WIN**  | Managing Windows session, Creating windows and managing events  |
+| GDI+ Flat                                         | **WIN**  | Loading fonts, Rendering complex graphics                       |
+| [X11 lib](https://github.com/mirror/libX11)       | **X11**  | Managing X11 session, Creating windows and managing events      |
+| [FreeType2](https://github.com/freetype/freetype) | **X11**  | Loading fonts                                                   |
+| [Cairo](https://github.com/s-u/Cairo)             | **X11**  | Rendering complex graphics                                      |
+
 ### External
 
-You can find all the information about managing, configuring and setting up this project in the **Wiki**.
+You can find all the information about managing, configuring and setting up Przecinek in the **Wiki**.
 Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.<br>
 
 ### Version
 
-> Newest Version (Alpha): **[a4,1]**;<br>
-> Newest Version (Unstable): **[u,13]**;<br>
-> Last Updated: **08-01-2026**;
+> Newest Version (Alpha): **[a5,0]**;<br>
+> Newest Version (Unstable): **[u,17]**;<br>
+> Last Updated: **08-02-2026**;
 
 ### LICENSE
 

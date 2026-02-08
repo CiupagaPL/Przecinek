@@ -9,10 +9,9 @@
  *      {,{,} {,},}
  ****************************************************************/
 
+// Standard C libraries
 #include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
-#include <wchar.h>
 
 #ifndef PRZECINEK_H
 #define PRZECINEK_H
@@ -27,7 +26,7 @@ extern "C"{
    *  |______|
    * (--------)
    ********************************/
-  #define WINDOW_MAX 16
+  #define WINDOW_MAX 4
   #define WINDOW_X_DEF 128
   #define WINDOW_Y_DEF 128
   #define WINDOW_WIDTH_MIN 256
@@ -37,18 +36,30 @@ extern "C"{
   #define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
   #define WINDOW_POS_CHANGE 65536
 
-  #define TITLE_DEF "{,}"
+  #define TITLE_DEF "{,} Window"
   #define TITLE_MAX 256
 
   #define KEY_MAX 256
   #define FRAME_MIN 10
   #define FRAME_MAX 640
 
-  #define FONT_MAX 64
+  #define OBJECT_MAX 512
+  #define OBJECT_WIDTH_MIN 4
+  #define OBJECT_HEIGHT_MIN 4
+  #define OBJECT_WIDTH_MAX 7680
+  #define OBJECT_HEIGHT_MAX 4320
+  #define OBJECT_VERTICE_MIN 3
+  #define OBJECT_VERTICE_MAX 300
+  #define OBJECT_ROTATION_MAX 360
+  #define OBJECT_TRIANGLE 1000000
+
+  #define FONT_MAX 32
   #define FONT_SIZE_MIN 4
   #define FONT_SIZE_MAX 512
   #define FONT_NAME_MAX 256
-  #define TEXT_MAX 8192
+
+  #define TEXT_MAX 128
+  #define TEXT_SIZE_MAX 1024
 
   /********************************
    *  ,______,  Define [pSize],
@@ -62,13 +73,16 @@ extern "C"{
 
   /********************************
    *  ,______,  Define [pPrzecinek]
-   *  |      |  structure and
-   *  |______|  variable
+   *  |      |  structure
+   *  |______|
    * (--------)
    ********************************/
   typedef struct{
     bool debug;
     unsigned short int windowCount, frameLimit;
+
+    unsigned short int key[KEY_MAX];
+    bool keyCaps;
 
     pSize display;
     pPosition cursor;
@@ -84,31 +98,16 @@ extern "C"{
    ********************************/
   typedef struct{
     unsigned short int ID;
-    bool active;
 
     int x, y;
     unsigned short int width, height;
     unsigned short int widthMin, heightMin, widthMax, heightMax;
 
-    bool resize;
     wchar_t title[TITLE_MAX];
-    unsigned short int border;
-    bool fullScreen;
-  } pWindow;
-
-  /********************************
-   *  ,______,  Define [pEvent]
-   *  |      |  structure
-   *  |______|
-   * (--------)
-   ********************************/
-  typedef struct{
-    bool focus;
     unsigned short int frameCount;
 
-    unsigned short int key[KEY_MAX];
-    bool keyCaps;
-  } pEvent;
+    bool resizable, focus, fullScreen;
+  } pWindow;
 
   /********************************
    *  ,______,  Define [pObject]
@@ -117,10 +116,11 @@ extern "C"{
    * (--------)
    ********************************/
   typedef struct{
+    unsigned short int ID;
+
     int x, y;
     unsigned short int width, height;
-
-    pColor color;
+    unsigned short int vertice, rotation;
   } pObject;
 
   /********************************
@@ -130,13 +130,10 @@ extern "C"{
    * (--------)
    ********************************/
   typedef struct{
-    unsigned int ID;
+    unsigned short int ID;
 
     unsigned short int size;
-    wchar_t name[FONT_NAME_MAX];
     wchar_t directory[FONT_NAME_MAX];
-
-    pColor color;
   } pFont;
 
   /********************************
@@ -146,12 +143,11 @@ extern "C"{
    * (--------)
    ********************************/
   typedef struct{
+    unsigned short int ID;
+
     int x, y;
-    unsigned short int size;
 
-    wchar_t value[TEXT_MAX];
-
-    pColor color;
+    wchar_t value[TEXT_SIZE_MAX];
   } pText;
 
   /****************************************************************
@@ -164,9 +160,19 @@ extern "C"{
    * It sets global [debug] and [frameLimit] values.
    * It setups locale and libraries used later.
    * It checks current mouse position and display size.
-   * It also sets [setup] to `true`.
    ****************************************************************/
   void pSetup(bool debug, unsigned short int frameLimit);
+
+  /****************************************************************
+   * |\_____/| pEndup()
+   * | .     |
+   * |     . | In:
+   * \ = , = / Out:
+   *
+   * This function cleans up debug variables before the end of
+   * the program. It should be used when all windows are closed.
+   ****************************************************************/
+  void pEndup();
 
   /****************************************************************
    * |\_____/| pClear()
@@ -180,153 +186,6 @@ extern "C"{
   void pClear();
 
   /****************************************************************
-   * |\_____/| pWindowCreate()
-   * | .     |
-   * |     . | In: us_int [width], [height], bool [resize]
-   * \ = , = / Out: pWindow
-   *
-   * This function creates Przecinek window.
-   * It adds `1` to [winCount]. It sets [ID] for local [window].
-   * It checks if all given parameters are valid.
-   * It fills all necessary values for [window] and [build].
-   * It sets [window] [title] to default value.
-   * It setups [window] buffer for later use.
-   * It also saves time when [window] was created,
-   * to later calculate frame count.
-   ****************************************************************/
-  pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
-
-  /****************************************************************
-   * |\_____/| pWindowDrawObject()
-   * | .     |
-   * |     . | In: pWindow* [window], pObject* [object]
-   * \ = , = / Out:
-   *
-   * This function draws [object] on [window] buffer.
-   * It checks if [object] [color] values are valid.
-   * Then it does all the rendering stuff.
-   ****************************************************************/
-  void pWindowDrawObject(pWindow *window, pObject *object);
-
-  /****************************************************************
-   * |\_____/| pWindowDrawText()
-   * | .     |
-   * |     . | In: pWindow* [window], pFont* [font], pText* [text]
-   * \ = , = / Out:
-   *
-   * This function draws [text] in [font] style on [window] buffer.
-   * It checks if [font] [color] values are valid.
-   * It checks for any changes in [font] values.
-   * Then it does all the rendering stuff.
-   ****************************************************************/
-  void pWindowDrawText(pWindow *window, pFont *font, pText *text);
-
-  /****************************************************************
-   * |\_____/| pWindowClear()
-   * | .     |
-   * |     . | In: pWindow* [window]
-   * \ = , = / Out:
-   *
-   * This function fills [window] buffer with white color.
-   * There isn't too much to say about it c.c
-   ****************************************************************/
-  void pWindowClear(pWindow *window);
-
-  /****************************************************************
-   * |\_____/| pWindowClose()
-   * | .     |
-   * |     . | In: pWindow* [window]
-   * \ = , = / Out:
-   *
-   * This function closes given [window].
-   * It sends signal, which's supossed to destroy [window].
-   ****************************************************************/
-  void pWindowClose(pWindow *window);
-
-  /****************************************************************
-   * |\_____/| pEventCreate()
-   * | .     |
-   * |     . | In:
-   * \ = , = / Out: pEvent
-   *
-   * This function creates [event] object.
-   * It fills all [event] variables.
-   ****************************************************************/
-  pEvent pEventCreate();
-
-  /****************************************************************
-   * |\_____/| pEventHandle()
-   * | .     |
-   * |     . | In: pWindow* [window], pEvent* [event]
-   * \ = , = / Out:
-   *
-   * This function handles every global action.
-   * It checks for any [window] messages. It switches buffers.
-   * It updates [key] values. It updates mouse position,
-   * display size and window count for [event]. It updates
-   * many [window] values. It checks if [window] is fullscreen,
-   * if it changed its size or position, focus or title, etc.
-   * It also updates frame count.
-   ****************************************************************/
-  void pEventHandle(pWindow *window, pEvent *event);
-
-  /****************************************************************
-   * |\_____/| pObjectCreate()
-   * | .     |
-   * |     . | In: us_int [width], [height]
-   * \ = , = / Out: pObject
-   *
-   * This function creates [object].
-   * It fills all [object] variables.
-   ****************************************************************/
-  pObject pObjectCreate(unsigned short int width, unsigned short int height);
-
-  /****************************************************************
-   * |\_____/| pObjectCollision()
-   * | .     |
-   * |     . | In: pObject* [object1], [object2]
-   * \ = , = / Out: bool
-   *
-   * This function checks if two [object] collides.
-   * Its abilities will be extended in the future.
-   ****************************************************************/
-  bool pObjectCollision(pObject *object1, pObject *object2);
-
-  /****************************************************************
-   * |\_____/| pFontCreate()
-   * | .     |
-   * |     . | In: wchar_t* [name], [directory], us_int [size]
-   * \ = , = / Out: pFont
-   *
-   * This function creates [font] object. It checks
-   * if [size] value is valid. It checks if [directory] exists.
-   * It loads [font] and save it to memory.
-   ****************************************************************/
-  pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size);
-
-  /****************************************************************
-   * |\_____/| pFontClose()
-   * | .     |
-   * |     . | In: pFont* [font]
-   * \ = , = / Out:
-   *
-   * This function resets given [font].
-   * It deletes loaded [font] data from the memory.
-   ****************************************************************/
-  void pFontClose(pFont *font);
-
-  /****************************************************************
-   * |\_____/| pTextCreate()
-   * | .     |
-   * |     . | In: wchar_t* [value]
-   * \ = , = / Out: pText
-   *
-   * This function creates [text] object.
-   * It fills all [text] variables.
-   ****************************************************************/
-  pText pTextCreate(wchar_t *value);
-
-  /****************************************************************
    * |\_____/| pKey()
    * | .     |
    * |     . | In: wchar_t* [key]
@@ -336,6 +195,173 @@ extern "C"{
    * Returned [key] id depends on current OS.
    ****************************************************************/
   unsigned short int pKey(wchar_t *key);
+
+  /****************************************************************
+   * |\_____/| pWindowCreate()
+   * | .     |
+   * |     . | In: us_int [width], [height], bool [resize]
+   * \ = , = / Out: pWindow
+   *
+   * This function creates Przecinek window.
+   * It sets [ID] for local [window].
+   * It checks if all given parameters are valid.
+   * It fills all necessary values for [window] and [build].
+   * It sets [window] [title] to default value.
+   * It setups [build] objects for later use.
+   * It also saves time when [window] was created,
+   * to later calculate frame count.
+   ****************************************************************/
+  pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
+
+  /****************************************************************
+   * |\_____/| pWindowDrawObject()
+   * | .     | In: pWindow* [window], pObject* [object],
+   * |     . |     pColor* [color]
+   * \ = , = / Out:
+   *
+   * This function draws [object] on [window].
+   * It checks if [color] values are valid.
+   * It checks for any changes in [object] values.
+   * Then it does all the rendering stuff.
+   ****************************************************************/
+  void pWindowDrawObject(pWindow *window, pObject *object, pColor *color);
+
+  /****************************************************************
+   * |\_____/| pWindowDrawText()
+   * | .     | In: pWindow* [window], pFont* [font],
+   * |     . |     pText* [text], pColor* [color];
+   * \ = , = / Out:
+   *
+   * This function draws [text] in [font] style on [window].
+   * It checks if [color] values are valid.
+   * It checks for any changes in [font] values.
+   * Then it does all the rendering stuff.
+   ****************************************************************/
+  void pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color);
+
+  /****************************************************************
+   * |\_____/| pWindowClear()
+   * | .     | In: pWindow* [window], int [x], [y],
+   * |     . |     us_int [width], [height], pColor* [color]
+   * \ = , = / Out:
+   *
+   * This function clears [window] with given color.
+   * Cleared area depends on given position and size values.
+   ****************************************************************/
+  void pWindowClear(
+    pWindow *window, int x, int y,
+    unsigned short int width, unsigned short int height, pColor *color
+  );
+
+  /****************************************************************
+   * |\_____/| pWindowDestroy()
+   * | .     |
+   * |     . | In: pWindow* [window]
+   * \ = , = / Out:
+   *
+   * This function destroys given [window].
+   * It sends destroy signal, which activates after next
+   * [window] handle function usage.
+   * It also resets [window] `ID` to `0`.
+   ****************************************************************/
+  void pWindowDestroy(pWindow *window);
+
+  /****************************************************************
+   * |\_____/| pWindowHandle()
+   * | .     |
+   * |     . | In: pWindow* [window]
+   * \ = , = / Out:
+   *
+   * This function handles every global action.
+   * It checks for any [window] messages. It switches buffers.
+   * It updates [key] values. It updates mouse position,
+   * display size and window count for [przecinek]. It updates
+   * many [window] values. It checks if [window] is fullscreen,
+   * if it changed its size or position, focus or title, etc.
+   * It also updates frame count.
+   ****************************************************************/
+  void pWindowHandle(pWindow *window);
+
+  /****************************************************************
+   * |\_____/| pObjectCreate()
+   * | .     |
+   * |     . | In: us_int [vertice], [width], [height]
+   * \ = , = / Out: pObject
+   *
+   * This function creates [object].
+   * It fills all [object] variables.
+   * Created [object] depends on [vertice] count.
+   ****************************************************************/
+  pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsigned short int height);
+
+  /****************************************************************
+   * |\_____/| pObjectCollision()
+   * | .     |
+   * |     . | In: pObject* [object1], [object2]
+   * \ = , = / Out: bool
+   *
+   * This function checks if two [object] collides.
+   * It simulates triangular collisions between several points.
+   * Then it returns value based on earlier calculations.
+   ****************************************************************/
+  bool pObjectCollision(pObject *object1, pObject *object2);
+
+  /****************************************************************
+   * |\_____/| pObjectDestroy()
+   * | .     |
+   * |     . | In: pObject* [object]
+   * \ = , = / Out:
+   *
+   * This function destroys given [object].
+   * It also resets [object] `ID` to `0`.
+   ****************************************************************/
+  void pObjectDestroy(pObject *object);
+
+  /****************************************************************
+   * |\_____/| pFontCreate()
+   * | .     |
+   * |     . | In: wchar_t* [directory], us_int [size]
+   * \ = , = / Out: pFont
+   *
+   * This function creates [font] object. It sets [ID]
+   * for local [font]. It checks if [size] value is valid.
+   * It checks if [directory] exists.
+   * It loads [font] and saves it to memory.
+   ****************************************************************/
+  pFont pFontCreate(wchar_t *directory, unsigned short int size);
+
+  /****************************************************************
+   * |\_____/| pFontDestroy()
+   * | .     |
+   * |     . | In: pFont* [font]
+   * \ = , = / Out:
+   *
+   * This function destroys given [font].
+   * It also resets [font] `ID` to `0`.
+   ****************************************************************/
+  void pFontDestroy(pFont *font);
+
+  /****************************************************************
+   * |\_____/| pTextCreate()
+   * | .     |
+   * |     . | In: wchar_t* [value]
+   * \ = , = / Out: pText
+   *
+   * This function creates [text] object. It sets [ID]
+   * for local [text]. It fills all [text] variables.
+   ****************************************************************/
+  pText pTextCreate(wchar_t *value);
+
+  /****************************************************************
+   * |\_____/| pTextDestroy()
+   * | .     |
+   * |     . | In: pText* [text]
+   * \ = , = / Out:
+   *
+   * This function destroys given [text].
+   * It also resets [text] `ID` to `0`.
+   ****************************************************************/
+  void pTextDestroy(pText *text);
 
   #ifdef __cplusplus
 }

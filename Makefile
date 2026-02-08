@@ -9,9 +9,7 @@ win: clean
 	mkdir -p build/
 	cmake -B build/ . -DWIN=ON
 	cmake --build build/
-	for c in $(wildcard add/*.ttf); do \
-		cp $$c build/; \
-	done
+	cp -r add/ build/
 
 # Compile X11
 x11: clean
