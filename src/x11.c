@@ -9,24 +9,30 @@
  *      {,{,} {,},}
  ****************************************************************/
 
+// Standard C libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <locale.h>
 #include <wchar.h>
 #include <math.h>
+#include <locale.h>
 
-#include <sys/time.h>
-#include <sys/stat.h>
+// Unix only libraries
 #include <unistd.h>
+#include <sys/time.h>
 
+// X11 and Xft libraries
 #include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
-#include <X11/extensions/Xrender.h>
 
+// FreeType2 library
 #include <ft2build.h>
+
+// Cairo libraries
+#include <cairo/cairo.h>
+#include <cairo/cairo-xlib.h>
+#include <cairo/cairo-ft.h>
 
 /********************************
  *  ,______,  Define default
@@ -34,7 +40,7 @@
  *  |______|
  * (--------)
  ********************************/
-#define WINDOW_MAX 1
+#define WINDOW_MAX 4
 #define WINDOW_X_DEF 128
 #define WINDOW_Y_DEF 128
 #define WINDOW_WIDTH_MIN 256
@@ -61,11 +67,13 @@
 #define OBJECT_ROTATION_MAX 360
 #define OBJECT_TRIANGLE 1000000
 
-#define FONT_MAX 128
+#define FONT_MAX 32
 #define FONT_SIZE_MIN 4
 #define FONT_SIZE_MAX 512
 #define FONT_NAME_MAX 256
-#define TEXT_MAX 8192
+
+#define TEXT_MAX 128
+#define TEXT_SIZE_MAX 1024
 
 /********************************
  *  ,______,  Define [pSize],
@@ -87,6 +95,9 @@ typedef struct{
   bool debug;
   unsigned short int windowCount, frameLimit;
 
+  unsigned short int key[KEY_MAX];
+  bool keyCaps;
+
   pSize display;
   pPosition cursor;
 } pPrzecinek;
@@ -105,66 +116,28 @@ typedef struct{
   unsigned short int widthMin, heightMin, widthMax, heightMax;
   unsigned short int widthBac, heightBac;
 
-  bool resize;
   char title[TITLE_MAX];
-  wchar_t titleWide[TITLE_MAX];
-  unsigned short int border;
-  bool fullScreen;
+  wchar_t titleW[TITLE_MAX];
+  struct timeval frameStart, frameEnd;
+  unsigned short int frameCount;
+  double frameMax;
+
+  bool resizable, focus, fullScreen;
+
+  cairo_surface_t *surface;
+  cairo_t *cairo;
 
   Display *display;
   int screen;
   Window base;
-  Pixmap buffer;
-  bool limitChange;
-  bool sizeRefresh, screenRefresh;
+  bool limitChange, sizeRefresh, screenRefresh;
 
   Atom delete, state;
   XSizeHints sizeHint;
   XSetWindowAttributes attributeBase;
-  XWindowAttributes attributeBorder;
 
-  GC graphics;
-  XRenderColor color;
-  Colormap colorMap;
-  XRenderPictFormat *format;
-  Picture picture;
-
-  XftDraw *textDraw;
-  XftColor textColor;
-
-  XKeyboardState keyboardState;
-
-  struct timeval frameStart, frameEnd;
-  unsigned short int frameCount;
-  double frameMax;
+  bool exist;
 } pBuildX11;
-
-/********************************
- *  ,______,  Define [pFontX11]
- *  |      |  structure [DEBUG]
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  unsigned short int size;
-  char name[FONT_NAME_MAX];
-  char directory[FONT_NAME_MAX];
-
-  wchar_t nameWide[FONT_NAME_MAX];
-  wchar_t directoryWide[FONT_NAME_MAX];
-  char value[FONT_NAME_MAX+42];
-  XftFont *base;
-
-  int x, y;
-  int yFix;
-  bool space;
-
-  FcPattern *pattern;
-  FcObjectSet *objectSet;
-  FcFontSet *fontSet;
-
-  bool change;
-} pFontX11;
 
 /********************************
  *  ,______,  Define [pFigureX11]
@@ -177,13 +150,50 @@ typedef struct{
   unsigned short int width, height;
   unsigned short int vertice, rotation;
 
-  XPoint point[OBJECT_VERTICE_MAX];
+  pPosition point[OBJECT_VERTICE_MAX];
   pPosition center;
   unsigned short int rotationFix;
 
   int position;
   bool change;
+
+  bool exist;
 } pFigureX11;
+
+/********************************
+ *  ,______,  Define [pViewX11]
+ *  |      |  structure [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  unsigned short int size;
+
+  char directory[FONT_NAME_MAX];
+  wchar_t directoryW[FONT_NAME_MAX];
+
+  FT_Face face[WINDOW_MAX];
+  cairo_font_face_t *cairoFace[WINDOW_MAX];
+
+  bool change;
+
+  bool exist;
+} pViewX11;
+
+/********************************
+ *  ,______,  Define [pCodeX11]
+ *  |      |  structure [DEBUG]
+ *  |______|
+ * (--------)
+ ********************************/
+typedef struct{
+  char value[TEXT_SIZE_MAX];
+  wchar_t valueW[TEXT_SIZE_MAX];
+
+  int xFix, yFix;
+
+  bool exist;
+} pCodeX11;
 
 /********************************
  *  ,______,  Define [pWindow]
@@ -193,31 +203,16 @@ typedef struct{
  ********************************/
 typedef struct{
   unsigned short int ID;
-  bool active;
 
   int x, y;
   unsigned short int width, height;
   unsigned short int widthMin, heightMin, widthMax, heightMax;
 
-  bool resize;
   wchar_t title[TITLE_MAX];
-  unsigned short int border;
-  bool fullScreen;
-} pWindow;
-
-/********************************
- *  ,______,  Define [pEvent]
- *  |      |  structure
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  bool focus;
   unsigned short int frameCount;
 
-  unsigned short int key[KEY_MAX];
-  bool keyCaps;
-} pEvent;
+  bool resizable, focus, fullScreen;
+} pWindow;
 
 /********************************
  *  ,______,  Define [pObject]
@@ -231,8 +226,6 @@ typedef struct{
   int x, y;
   unsigned short int width, height;
   unsigned short int vertice, rotation;
-
-  pColor color;
 } pObject;
 
 /********************************
@@ -245,10 +238,7 @@ typedef struct{
   unsigned short int ID;
 
   unsigned short int size;
-  wchar_t name[FONT_NAME_MAX];
   wchar_t directory[FONT_NAME_MAX];
-
-  pColor color;
 } pFont;
 
 /********************************
@@ -258,22 +248,24 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
+  unsigned short int ID;
+
   int x, y;
 
-  wchar_t value[TEXT_MAX];
+  wchar_t value[TEXT_SIZE_MAX];
 } pText;
-
-// FreeType
-FT_Library freeType;
-FT_Face face;
 
 // Przecinek
 pPrzecinek przecinek={ true, 0, 0 };
 bool setup=false;
 
+FT_Library freeType;
+
+pPosition cursorMain, cursorLocal;
+
 // Window
-unsigned short int activeWinID=0;
-unsigned short int winCount=0;
+unsigned short int windowMainID=0;
+unsigned short int windowCount=0;
 
 pBuildX11 build[WINDOW_MAX];
 
@@ -283,26 +275,95 @@ int screen;
 Window root;
 unsigned int mask;
 
-// Cursor
-pPosition cursorMain, cursorLocal;
+XKeyboardState keyboardState;
 
-// Event
-pEvent change;
-
-// Font
-FT_Error FTError;
-pFontX11 view[FONT_MAX];
-struct stat status;
+unsigned short int input[KEY_MAX];
+bool inputChange;
 
 // Object
 pFigureX11 figure[OBJECT_MAX];
+
+float widthScale, heightScale, ratio, distance;
 pPosition distanceMin, distanceMax;
-float widthScale, heightScale;
-float ratio;
 pPosition edge, projection;
-int pointA[5], pointB[5];
 pPosition centerA, centerB;
-int distance;
+int pointA[5], pointB[5];
+
+// Font
+pViewX11 view[FONT_MAX];
+
+cairo_font_extents_t fontExtents;
+
+struct stat status;
+
+// Text
+pCodeX11 code[TEXT_MAX];
+
+char *segment;
+char *token;
+
+/****************************************************************
+ * |\_____/| pDebugColorCheck() [DEBUG]
+ * | .     |
+ * |     . | In: pColor* [color]
+ * \ = , = / Out:
+ *
+ * This function checks if all [color] values are correct.
+ * Maximal values are based on rgba(255, 255, 255, 100).
+ ****************************************************************/
+void pDebugColorCheck(pColor *color){
+  // Check [color] values
+  if(color->red>255){
+    if(przecinek.debug==true){
+printf(
+  "[pWG04] \"Color red value is too big\" (changing from: %i to 255),\n",
+  color->red
+);
+      fflush(stdout);
+    }
+
+    // Correct [color] [red] value
+    color->red=255;
+  }
+  if(color->green>255){
+    if(przecinek.debug==true){
+printf(
+  "[pWG05] \"Color green value is too big\" (changing from: %i to 255),\n",
+  color->green
+);
+      fflush(stdout);
+    }
+
+    // Correct [color] [green] value
+    color->green=255;
+  }
+  if(color->blue>255){
+    if(przecinek.debug==true){
+printf(
+  "[pWG06] \"Color blue value is too big\" (changing from: %i to 255),\n",
+  color->blue
+);
+      fflush(stdout);
+    }
+
+    // Correct [color] [blue] value
+    color->blue=255;
+  }
+  if(color->alpha>100){
+    if(przecinek.debug==true){
+printf(
+  "[pWG07] \"Color alpha value is too big\" (changing from: %i to 100),\n",
+  color->alpha
+);
+      fflush(stdout);
+    }
+
+    // Correct [color] [alpha] value
+    color->alpha=100;
+  }
+
+  return;
+}
 
 /****************************************************************
  * |\_____/| pDebugWindowReset() [DEBUG]
@@ -315,8 +376,6 @@ int distance;
  ****************************************************************/
 void pDebugWindowReset(pWindow *window){
   // Reset [window] values
-  window->active=false;
-
   window->x=0;
   window->y=0;
 
@@ -328,9 +387,11 @@ void pDebugWindowReset(pWindow *window){
   window->widthMax=0;
   window->heightMax=0;
 
-  window->resize=false;
   memset(window->title, 0, sizeof(window->title));
-  window->border=0;
+  window->frameCount=0;
+
+  window->resizable=false;
+  window->focus=false;
   window->fullScreen=false;
 
   // Reset [build] values
@@ -351,16 +412,31 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].widthBac=0;
   build[window->ID-1].heightBac=0;
 
-  build[window->ID-1].resize=false;
   memset(build[window->ID-1].title, 0, sizeof(build[window->ID-1].title));
-  memset(build[window->ID-1].titleWide, 0, sizeof(build[window->ID-1].titleWide));
-  build[window->ID-1].border=0;
+  memset(build[window->ID-1].titleW, 0, sizeof(build[window->ID-1].titleW));
+
+  build[window->ID-1].frameStart.tv_sec=0;
+  build[window->ID-1].frameStart.tv_usec=0;
+  build[window->ID-1].frameEnd.tv_sec=0;
+  build[window->ID-1].frameEnd.tv_usec=0;
+  build[window->ID-1].frameCount=0;
+  build[window->ID-1].frameMax=0;
+
+  build[window->ID-1].resizable=false;
+  build[window->ID-1].focus=false;
   build[window->ID-1].fullScreen=false;
 
-  build[window->ID-1].display=NULL;
+  cairo_surface_destroy(build[window->ID-1].surface);
+
+  if(build[window->ID-1].base!=0){
+    XDestroyWindow(build[window->ID-1].display, build[window->ID-1].base);
+    build[window->ID-1].base=0;
+  }
   build[window->ID-1].screen=0;
-  build[window->ID-1].base=0;
-  build[window->ID-1].buffer=0;
+  if(build[window->ID-1].display!=NULL){
+    XCloseDisplay(build[window->ID-1].display);
+    build[window->ID-1].display=NULL;
+  }
   build[window->ID-1].limitChange=false;
   build[window->ID-1].sizeRefresh=false;
   build[window->ID-1].screenRefresh=false;
@@ -368,67 +444,10 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].delete=None;
   build[window->ID-1].state=None;
 
-  build[window->ID-1].graphics=NULL;
-  build[window->ID-1].colorMap=0;
+  build[window->ID-1].exist=false;
 
-  build[window->ID-1].textDraw=NULL;
-  build[window->ID-1].format=NULL;
-  build[window->ID-1].picture=0;
-
-  build[window->ID-1].frameStart.tv_sec=0;
-  build[window->ID-1].frameStart.tv_usec=0;
-  build[window->ID-1].frameEnd.tv_sec=0;
-  build[window->ID-1].frameEnd.tv_usec=0;
-
-  build[window->ID-1].frameCount=0;
-  build[window->ID-1].frameMax=0;
-
-  // Change [winCount]
-  winCount-=1;
-
-  return;
-}
-
-/****************************************************************
- * |\_____/| pDebugFontReset() [DEBUG]
- * | .     |
- * |     . | In: pFont* [font]
- * \ = , = / Out:
- *
- * This function resets all [font] and [view] values.
- * Cleared variables depend on [font] [ID].
- ****************************************************************/
-void pDebugFontReset(pFont *font){
-  // Reset [font] values
-  font->size=0;
-  memset(font->name, 0, sizeof(font->name));
-  memset(font->directory, 0, sizeof(font->directory));
-
-  font->color.red=0;
-  font->color.green=0;
-  font->color.blue=0;
-  font->color.alpha=0;
-
-  // Reset [view] values
-  view[font->ID-1].size=0;
-  memset(view[font->ID-1].name, 0, sizeof(view[font->ID-1].name));
-  memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
-
-  memset(view[font->ID-1].nameWide, 0, sizeof(view[font->ID-1].name));
-  memset(view[font->ID-1].directoryWide, 0, sizeof(view[font->ID-1].directory));
-  memset(view[font->ID-1].value, 0, sizeof(view[font->ID-1].value));
-  view[font->ID-1].base=NULL;
-
-  view[font->ID-1].x=0;
-  view[font->ID-1].y=0;
-  view[font->ID-1].yFix=0;
-  view[font->ID-1].space=false;
-
-  view[font->ID-1].pattern=NULL;
-  view[font->ID-1].objectSet=NULL;
-  view[font->ID-1].fontSet=NULL;
-
-  view[font->ID-1].change=false;
+  // Change [windowCount]
+  windowCount-=1;
 
   return;
 }
@@ -452,11 +471,6 @@ void pDebugObjectReset(pObject *object){
   object->vertice=0;
   object->rotation=0;
 
-  object->color.red=0;
-  object->color.green=0;
-  object->color.blue=0;
-  object->color.alpha=0;
-
   // Reset [figure] values
   figure[object->ID-1].x=0;
   figure[object->ID-1].y=0;
@@ -466,16 +480,15 @@ void pDebugObjectReset(pObject *object){
   figure[object->ID-1].vertice=0;
   figure[object->ID-1].rotation=0;
 
-  for(unsigned short int current=0; current<OBJECT_VERTICE_MAX; current+=1){
-    figure[object->ID-1].point[current].x=0;
-    figure[object->ID-1].point[current].y=0;
-  }
+  memset(figure[object->ID-1].point, 0, sizeof(figure[object->ID-1].point));
   figure[object->ID-1].center.x=0;
   figure[object->ID-1].center.y=0;
   figure[object->ID-1].rotationFix=0;
 
   figure[object->ID-1].position=0;
   figure[object->ID-1].change=false;
+
+  figure[object->ID-1].exist=false;
 
   return;
 }
@@ -572,7 +585,7 @@ void pDebugObjectCalculate(pObject *object){
 /****************************************************************
  * |\_____/| pDebugObjectTriangle() [DEBUG]
  * | .     |
- * |     . | In: pObject* [object]
+ * |     . | In: pPosition 3x[v_A], 3x[v_B]
  * \ = , = / Out: bool
  *
  * This function checks collision between two triangles.
@@ -580,8 +593,9 @@ void pDebugObjectCalculate(pObject *object){
  * Then it checks and returns collision between them.
  ****************************************************************/
 bool pDebugObjectTriangle(
-    pPosition v1A, pPosition v2A, pPosition v3A,
-    pPosition v1B, pPosition v2B, pPosition v3B){
+  pPosition v1A, pPosition v2A, pPosition v3A,
+  pPosition v1B, pPosition v2B, pPosition v3B
+){
 
   // Simulate [triangleA] and [triangleB] objects
   pPosition triangleA[3]={ v1A, v2A, v3A };
@@ -627,6 +641,72 @@ bool pDebugObjectTriangle(
 }
 
 /****************************************************************
+ * |\_____/| pDebugFontReset() [DEBUG]
+ * | .     |
+ * |     . | In: pFont* [font]
+ * \ = , = / Out:
+ *
+ * This function resets all [font] and [view] values.
+ * Cleared variables depend on [font] [ID].
+ ****************************************************************/
+void pDebugFontReset(pFont *font){
+  // Reset [font] values
+  font->size=0;
+  memset(font->directory, 0, sizeof(font->directory));
+
+  // Reset [view] values
+  view[font->ID-1].size=0;
+
+  memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
+  memset(view[font->ID-1].directoryW, 0, sizeof(view[font->ID-1].directoryW));
+
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+    if(view[font->ID-1].face[current]!=NULL){
+      FT_Done_Face(view[font->ID-1].face[current]);
+      view[font->ID-1].face[current]=NULL;
+    }
+
+    if(view[font->ID-1].cairoFace[current]!=NULL){
+      cairo_font_face_destroy(view[font->ID-1].cairoFace[current]);
+    }
+  }
+
+  view[font->ID-1].change=false;
+
+  view[font->ID-1].exist=false;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugTextReset() [DEBUG]
+ * | .     |
+ * |     . | In: pText* [text]
+ * \ = , = / Out:
+ *
+ * This function resets all [text] and [code] values.
+ * Cleared variables depend on [text] [ID].
+ ****************************************************************/
+void pDebugTextReset(pText *text){
+  // Reset [text] values
+  text->x=0;
+  text->y=0;
+
+  memset(text->value, 0, sizeof(text->value));
+
+  // Reset [code] values
+  memset(code[text->ID-1].value, 0, sizeof(code[text->ID-1].value));
+  memset(code[text->ID-1].valueW, 0, sizeof(code[text->ID-1].valueW));
+
+  code[text->ID-1].xFix=0;
+  code[text->ID-1].yFix=0;
+
+  code[text->ID-1].exist=false;
+
+  return;
+}
+
+/****************************************************************
  * |\_____/| pSetup()
  * | .     |
  * |     . | In: bool [debug], us_int [frameLimit]
@@ -638,14 +718,18 @@ bool pDebugObjectTriangle(
  * It checks current mouse position and display size.
  ****************************************************************/
 void pSetup(bool debug, unsigned short int frameLimit){
+  // Initialize locale
+  setlocale(LC_ALL, "");
+
   // Initialize FreeType
   FT_Init_FreeType(&freeType);
 
-  // Initialize locale
-  setlocale(LC_CTYPE, "");
-
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
+
+  // Set [przecinek] [key] and [keyCaps] values
+  memset(przecinek.key, 0, sizeof(przecinek.key));
+  przecinek.keyCaps=false;
 
   // Update [przecinek] [frameLimit] value
   if(frameLimit<FRAME_MIN){
@@ -714,6 +798,26 @@ printf(
 }
 
 /****************************************************************
+ * |\_____/| pEndup()
+ * | .     |
+ * |     . | In:
+ * \ = , = / Out:
+ *
+ * This function cleans up debug variables before the end of
+ * the program. It should be used when all windows are closed.
+ ****************************************************************/
+void pEndup(){
+  // End FreeType session
+  //FT_Done_FreeType(freeType);
+
+  // Destroy debug [display] and [root]
+  XCloseDisplay(display);
+  XDestroyWindow(display, root);
+
+  return;
+}
+
+/****************************************************************
  * |\_____/| pClear()
  * | .     |
  * |     . | In:
@@ -730,9 +834,123 @@ void pClear(){
 }
 
 /****************************************************************
+ * |\_____/| pKey()
+ * | .     |
+ * |     . | In: wchar_t* [key]
+ * \ = , = / Out: us_int
+ *
+ * This function converts given [key] value into it's id.
+ * Returned [key] id depends on current OS.
+ ****************************************************************/
+unsigned short int pKey(wchar_t *key){
+  if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){ return 1; }
+  if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){ return 2; }
+  if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){ return 3; }
+  if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){ return 4; }
+  if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){ return 5; }
+
+  if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){ return 9; }
+  if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){ return 23; }
+  if(wcscmp(key, L"CAPS")==0 || wcscmp(key, L"caps")==0 || wcscmp(key, L"Caps")==0){ return 66; }
+  if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){ return 50; }
+  if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){ return 37; }
+  if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){ return 133; }
+  if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){ return 64; }
+  if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){ return 65; }
+
+  if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){ return 67; }
+  if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){ return 68; }
+  if(wcscmp(key, L"F3")==0 || wcscmp(key, L"f3")==0){ return 69; }
+  if(wcscmp(key, L"F4")==0 || wcscmp(key, L"f4")==0){ return 70; }
+  if(wcscmp(key, L"F5")==0 || wcscmp(key, L"f5")==0){ return 71; }
+  if(wcscmp(key, L"F6")==0 || wcscmp(key, L"f6")==0){ return 72; }
+  if(wcscmp(key, L"F7")==0 || wcscmp(key, L"f7")==0){ return 73; }
+  if(wcscmp(key, L"F8")==0 || wcscmp(key, L"f8")==0){ return 74; }
+  if(wcscmp(key, L"F9")==0 || wcscmp(key, L"f9")==0){ return 75; }
+  if(wcscmp(key, L"F10")==0 || wcscmp(key, L"f10")==0){ return 76; }
+  if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){ return 95; }
+  if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){ return 96; }
+
+  if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){ return 108; }
+  if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){ return 134; }
+  if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){ return 135; }
+  if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){ return 105; }
+  if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){ return 62; }
+  if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){ return 36; }
+  if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 || wcscmp(key, L"Backspace")==0){ return 22; }
+
+  if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 || wcscmp(key, L"LArrow")==0){ return 113; }
+  if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 || wcscmp(key, L"DArrow")==0){ return 116; }
+  if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 || wcscmp(key, L"RArrow")==0){ return 114; }
+  if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 || wcscmp(key, L"UArrow")==0){ return 111; }
+
+  if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 || wcscmp(key, L"PrintScrn")==0){ return 107; }
+  if(wcscmp(key, L"SCROLLLOCK")==0 || wcscmp(key, L"scrolllock")==0 || wcscmp(key, L"ScrollLock")==0){ return 78; }
+  if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 || wcscmp(key, L"PauseBreak")==0){ return 127; }
+  if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){ return 118; }
+  if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){ return 110; }
+  if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){ return 112; }
+  if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){ return 119; }
+  if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){ return 115; }
+  if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){ return 117; }
+
+  if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){ return 24; }
+  if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){ return 25; }
+  if(wcscmp(key, L"E")==0 || wcscmp(key, L"e")==0){ return 26; }
+  if(wcscmp(key, L"R")==0 || wcscmp(key, L"r")==0){ return 27; }
+  if(wcscmp(key, L"T")==0 || wcscmp(key, L"t")==0){ return 28; }
+  if(wcscmp(key, L"Y")==0 || wcscmp(key, L"y")==0){ return 29; }
+  if(wcscmp(key, L"U")==0 || wcscmp(key, L"u")==0){ return 30; }
+  if(wcscmp(key, L"I")==0 || wcscmp(key, L"i")==0){ return 31; }
+  if(wcscmp(key, L"O")==0 || wcscmp(key, L"o")==0){ return 32; }
+  if(wcscmp(key, L"P")==0 || wcscmp(key, L"p")==0){ return 33; }
+  if(wcscmp(key, L"A")==0 || wcscmp(key, L"a")==0){ return 38; }
+  if(wcscmp(key, L"S")==0 || wcscmp(key, L"s")==0){ return 39; }
+  if(wcscmp(key, L"D")==0 || wcscmp(key, L"d")==0){ return 40; }
+  if(wcscmp(key, L"F")==0 || wcscmp(key, L"f")==0){ return 41; }
+  if(wcscmp(key, L"G")==0 || wcscmp(key, L"g")==0){ return 42; }
+  if(wcscmp(key, L"H")==0 || wcscmp(key, L"h")==0){ return 43; }
+  if(wcscmp(key, L"J")==0 || wcscmp(key, L"j")==0){ return 44; }
+  if(wcscmp(key, L"K")==0 || wcscmp(key, L"k")==0){ return 45; }
+  if(wcscmp(key, L"L")==0 || wcscmp(key, L"l")==0){ return 46; }
+  if(wcscmp(key, L"Z")==0 || wcscmp(key, L"z")==0){ return 52; }
+  if(wcscmp(key, L"X")==0 || wcscmp(key, L"x")==0){ return 53; }
+  if(wcscmp(key, L"C")==0 || wcscmp(key, L"c")==0){ return 54; }
+  if(wcscmp(key, L"V")==0 || wcscmp(key, L"v")==0){ return 55; }
+  if(wcscmp(key, L"B")==0 || wcscmp(key, L"b")==0){ return 56; }
+  if(wcscmp(key, L"N")==0 || wcscmp(key, L"n")==0){ return 57; }
+  if(wcscmp(key, L"M")==0 || wcscmp(key, L"m")==0){ return 58; }
+
+  if(wcscmp(key, L"1")==0){ return 10; }
+  if(wcscmp(key, L"2")==0){ return 11; }
+  if(wcscmp(key, L"3")==0){ return 12; }
+  if(wcscmp(key, L"4")==0){ return 13; }
+  if(wcscmp(key, L"5")==0){ return 14; }
+  if(wcscmp(key, L"6")==0){ return 15; }
+  if(wcscmp(key, L"7")==0){ return 16; }
+  if(wcscmp(key, L"8")==0){ return 17; }
+  if(wcscmp(key, L"9")==0){ return 18; }
+  if(wcscmp(key, L"0")==0){ return 19; }
+
+  if(wcscmp(key, L"`")==0){ return 49; }
+  if(wcscmp(key, L",")==0){ return 59; }
+  if(wcscmp(key, L".")==0){ return 60; }
+  if(wcscmp(key, L"/")==0){ return 61; }
+  if(wcscmp(key, L";")==0){ return 47; }
+  if(wcscmp(key, L"'")==0){ return 48; }
+  if(wcscmp(key, L"\\")==0){ return 51; }
+  if(wcscmp(key, L"[")==0){ return 34; }
+  if(wcscmp(key, L"]")==0){ return 35; }
+  if(wcscmp(key, L"-")==0){ return 20; }
+  if(wcscmp(key, L"=")==0){ return 21; }
+
+  return 0;
+}
+
+/****************************************************************
  * |\_____/| pWindowCreate()
  * | .     |
- * |     . | In: us_int [width], [height], bool [resize]
+ * |     . | In: us_int [width], [height], bool [resizable]
  * \ = , = / Out: pWindow
  *
  * This function creates Przecinek window.
@@ -740,25 +958,25 @@ void pClear(){
  * It checks if all given parameters are valid.
  * It fills all necessary values for [window] and [build].
  * It sets [window] [title] to default value.
- * It setups [window] buffer for later use.
+ * It setups [build] objects for later use.
  * It also saves time when [window] was created,
  * to later calculate frame count.
  ****************************************************************/
-pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize){
+pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resizable){
   // Create local [window]
   pWindow window;
 
-  // Change [winCount]
-  winCount+=1;
+  // Change [windowCount]
+  windowCount+=1;
 
   for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-    if(build[current].width==0 && build[current].height==0){
+    if(build[current].exist==false){
       // Set [window] [ID] and reset [window]
       window.ID=current+1;
       pDebugWindowReset(&window);
 
-      // Change [winCount]
-      winCount+=1;
+      // Change [windowCount]
+      windowCount+=1;
       break;
     }
     else if(current==WINDOW_MAX-1){
@@ -843,15 +1061,13 @@ printf(
   }
 
   // Update [window] values
-  window.active=true;
-
   window.x=WINDOW_X_DEF;
   window.y=WINDOW_Y_DEF;
 
   window.width=width;
   window.height=height;
 
-  if(resize==true){
+  if(resizable==true){
     window.widthMin=WINDOW_WIDTH_MIN;
     window.heightMin=WINDOW_HEIGHT_MIN;
     window.widthMax=WINDOW_WIDTH_MAX;
@@ -864,9 +1080,11 @@ printf(
     window.heightMax=height;
   }
 
-  window.resize=resize;
+  window.resizable=resizable;
 
   // Update [build] values
+  build[window.ID-1].exist=true;
+
   build[window.ID-1].x=window.x;
   build[window.ID-1].y=window.y;
 
@@ -878,7 +1096,7 @@ printf(
   build[window.ID-1].widthMax=window.widthMax;
   build[window.ID-1].heightMax=window.heightMax;
 
-  build[window.ID-1].resize=resize;
+  build[window.ID-1].resizable=resizable;
 
   // Create [diplay] for [build]
   build[window.ID-1].display=XOpenDisplay(NULL);
@@ -924,7 +1142,6 @@ printf(
 
     // Reset [window] and close [build] [display]
     pDebugWindowReset(&window);
-    XCloseDisplay(build[window.ID-1].display);
 
     window.ID=0;
     return window;
@@ -934,7 +1151,7 @@ printf(
   XStoreName(build[window.ID-1].display, build[window.ID-1].base, TITLE_DEF);
   mbstowcs(window.title, TITLE_DEF, TITLE_MAX);
   strcpy(build[window.ID-1].title, TITLE_DEF);
-  mbstowcs(build[window.ID-1].titleWide, TITLE_DEF, TITLE_MAX);
+  mbstowcs(build[window.ID-1].titleW, TITLE_DEF, TITLE_MAX);
 
   // Create [build] [delete] and [state]
   build[window.ID-1].delete=XInternAtom(build[window.ID-1].display, "WM_DELETE_WINDOW", False);
@@ -942,16 +1159,6 @@ printf(
     build[window.ID-1].display, build[window.ID-1].base, &build[window.ID-1].delete, 1
   );
   build[window.ID-1].state=XInternAtom(build[window.ID-1].display, "_NET_WM_STATE", False);
-
-  // Get [build] [attributeBorder] values
-  XGetWindowAttributes(
-    build[window.ID-1].display, build[window.ID-1].base, &build[window.ID-1].attributeBorder
-  );
-
-  // Calculate [window] and [build] [border] values
-  window.border=
-    width-build[window.ID-1].attributeBorder.width+build[window.ID-1].attributeBorder.border_width;
-  build[window.ID-1].border=window.border;
 
   // Set [build] [sizeHint] values
   build[window.ID-1].sizeHint.flags=PMinSize | PMaxSize;
@@ -975,26 +1182,14 @@ printf(
   XMoveWindow(build[window.ID-1].display, build[window.ID-1].base, window.x, window.y);
   XFlush(build[window.ID-1].display);
 
-  // Create [build] [graphics]
-  build[window.ID-1].graphics=XCreateGC(
-    build[window.ID-1].display, build[window.ID-1].base, 0, NULL
-  );
-  XSetForeground(
-    build[window.ID-1].display, build[window.ID-1].graphics,
-    WhitePixel(build[window.ID-1].display, build[window.ID-1].screen
-  ));
-
-  // Setup [build] [colorMap]
-  build[window.ID-1].colorMap=DefaultColormap(build[window.ID-1].display, build[window.ID-1].screen);
-
   // Set timer start value
   gettimeofday(&build[window.ID-1].frameStart, NULL);
 
-  // Create [build] [buffer]
-  build[window.ID-1].buffer=XCreatePixmap(
+  // Create [build] [surface]
+  build[window.ID-1].surface=cairo_xlib_surface_create(
     build[window.ID-1].display, build[window.ID-1].base,
-    width, height,
-    DefaultDepth(build[window.ID-1].display, build[window.ID-1].screen)
+    DefaultVisual(build[window.ID-1].display, build[window.ID-1].screen),
+    width, height
   );
 
   // Return local [window]
@@ -1003,66 +1198,20 @@ printf(
 
 /****************************************************************
  * |\_____/| pWindowDrawObject()
- * | .     |
- * |     . | In: pWindow* [window], pObject* [object]
+ * | .     | In: pWindow* [window], pObject* [object],
+ * |     . |     pColor* [color]
  * \ = , = / Out:
  *
- * This function draws [object] on [window] buffer.
- * It checks if [object] [color] values are valid.
+ * This function draws [object] on [window].
+ * It checks if [color] values are valid.
+ * It checks for any changes in [object] values.
  * Then it does all the rendering stuff.
  ****************************************************************/
-void pWindowDrawObject(pWindow *window, pObject *object){
-  if(window->active==true){
+void pWindowDrawObject(pWindow *window, pObject *object, pColor *color){
+  if(window->ID!=0){
     if(object->ID!=0){
-      // Check [object] [color] values
-      if(object->color.red>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWO12] \"Object red color value is too big\" (changing from: %i to 255),\n",
-  object->color.red
-);
-          fflush(stdout);
-        }
-
-        // Correct [object] [color] [red] value
-        object->color.red=255;
-      }
-      if(object->color.green>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWO13] \"Object green color value is too big\" (changing from: %i to 255),\n",
-  object->color.green
-);
-          fflush(stdout);
-        }
-
-        // Correct [object] [color] [green] value
-        object->color.green=255;
-      }
-      if(object->color.blue>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWO14] \"Object blue color value is too big\" (changing from: %i to 255),\n",
-  object->color.blue
-);
-          fflush(stdout);
-        }
-
-        // Correct [object] [color] [blue] value
-        object->color.blue=255;
-      }
-      if(object->color.alpha>100){
-        if(przecinek.debug==true){
-printf(
-  "[pWO15] \"Object alpha color value is too big\" (changing from: %i to 100),\n",
-  object->color.alpha
-);
-          fflush(stdout);
-        }
-
-        // Correct [object] [color] [alpha] value
-        object->color.alpha=100;
-      }
+      // Check [color] values
+      pDebugColorCheck(color);
 
       // Update [figure] [vertice]
       if(object->vertice!=figure[object->ID-1].vertice){
@@ -1090,12 +1239,12 @@ printf(
 
           // Change [object] [vertice] value
           object->vertice=OBJECT_VERTICE_MAX;
-
-          figure[object->ID-1].change=true;
         }
 
         // Update [figure] [vertice]
         figure[object->ID-1].vertice=object->vertice;
+
+        figure[object->ID-1].change=true;
       }
 
       // Update [figure] [width]
@@ -1166,95 +1315,13 @@ printf(
         figure[object->ID-1].change=true;
       }
 
-      // Update [figure] [x]
-      if(object->x!=figure[object->ID-1].x){
-        // Check [object] [x] value
-        if(object->x<(-WINDOW_POS_MAX)){
-          if(przecinek.debug==true){
-printf(
-  "[pWO07] \"Object x value is too low\" (changing from: %i to %i),\n",
-  object->x, (-WINDOW_POS_MAX)
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [x] value
-          object->x=(-WINDOW_POS_MAX);
-        }
-        else if(object->x>WINDOW_POS_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO08] \"Object x value is too big\" (changing from: %i to %i),\n",
-  object->x, WINDOW_POS_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [x] value
-          object->x=WINDOW_POS_MAX;
-        }
-
-        // Calculate [figure] [point] [x] position
-        if(figure[object->ID-1].change==false){
-          figure[object->ID-1].position=object->x-figure[object->ID-1].x;
-
-          for(unsigned int current=0; current<figure[object->ID-1].vertice; current+=1){
-            figure[object->ID-1].point[current].x+=figure[object->ID-1].position;
-          }
-        }
-
-        // Update [figure] [x]
-        figure[object->ID-1].x=object->x;
-      }
-
-      // Update [figure] [y]
-      if(object->y!=figure[object->ID-1].y){
-        // Check [object] [y] value
-        if(object->y<(-WINDOW_POS_MAX)){
-          if(przecinek.debug==true){
-printf(
-  "[pWO09] \"Object y value is too low\" (changing from: %i to %i),\n",
-  object->y, (-WINDOW_POS_MAX)
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [y] value
-          object->y=(-WINDOW_POS_MAX);
-        }
-        else if(object->y>WINDOW_POS_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO10] \"Object y value is too big\" (changing from: %i to %i),\n",
-  object->y, WINDOW_POS_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [y] value
-          object->y=WINDOW_POS_MAX;
-        }
-
-        // Calculate [figure] [point] [y] position
-        if(figure[object->ID-1].change==false){
-          figure[object->ID-1].position=object->y-figure[object->ID-1].y;
-
-          for(unsigned int current=0; current<figure[object->ID-1].vertice; current+=1){
-            figure[object->ID-1].point[current].y+=figure[object->ID-1].position;
-          }
-        }
-
-        // Update [figure] [y]
-        figure[object->ID-1].y=object->y;
-      }
-
       // Update [figure] [rotation]
       if(object->rotation!=figure[object->ID-1].rotation){
         // Check [object] [rotation] value
         if(object->rotation>OBJECT_ROTATION_MAX){
           if(przecinek.debug==true){
 printf(
-  "[pWO11] \"Object rotation value is too big\" (changing from: %i to %i),\n",
+  "[pWO07] \"Object rotation value is too big\" (changing from: %i to %i),\n",
   object->rotation, OBJECT_ROTATION_MAX
 );
             fflush(stdout);
@@ -1270,6 +1337,88 @@ printf(
         figure[object->ID-1].change=true;
       }
 
+      // Update [figure] [x]
+      if(object->x!=figure[object->ID-1].x){
+        // Check [object] [x] value
+        if(object->x<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
+printf(
+  "[pWO08] \"Object x value is too low\" (changing from: %i to %i),\n",
+  object->x, (-WINDOW_POS_MAX)
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [x] value
+          object->x=(-WINDOW_POS_MAX);
+        }
+        else if(object->x>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO09] \"Object x value is too big\" (changing from: %i to %i),\n",
+  object->x, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [x] value
+          object->x=WINDOW_POS_MAX;
+        }
+
+        // Calculate [figure] [point] [x] position
+        if(figure[object->ID-1].change==false){
+          figure[object->ID-1].position=object->x-figure[object->ID-1].x;
+
+          for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+            figure[object->ID-1].point[current].x+=figure[object->ID-1].position;
+          }
+        }
+
+        // Update [figure] [x]
+        figure[object->ID-1].x=object->x;
+      }
+
+      // Update [figure] [y]
+      if(object->y!=figure[object->ID-1].y){
+        // Check [object] [y] value
+        if(object->y<(-WINDOW_POS_MAX)){
+          if(przecinek.debug==true){
+printf(
+  "[pWO10] \"Object y value is too low\" (changing from: %i to %i),\n",
+  object->y, (-WINDOW_POS_MAX)
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [y] value
+          object->y=(-WINDOW_POS_MAX);
+        }
+        else if(object->y>WINDOW_POS_MAX){
+          if(przecinek.debug==true){
+printf(
+  "[pWO11] \"Object y value is too big\" (changing from: %i to %i),\n",
+  object->y, WINDOW_POS_MAX
+);
+            fflush(stdout);
+          }
+
+          // Change [object] [y] value
+          object->y=WINDOW_POS_MAX;
+        }
+
+        // Calculate [figure] [point] [y] position
+        if(figure[object->ID-1].change==false){
+          figure[object->ID-1].position=object->y-figure[object->ID-1].y;
+
+          for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+            figure[object->ID-1].point[current].y+=figure[object->ID-1].position;
+          }
+        }
+
+        // Update [figure] [y]
+        figure[object->ID-1].y=object->y;
+      }
+
       // Update [figure] [point]
       if(figure[object->ID-1].change==true){
         if(figure[object->ID-1].vertice==4){ figure[object->ID-1].rotationFix=45; }
@@ -1282,27 +1431,33 @@ printf(
         figure[object->ID-1].change=false;
       }
 
-      // Set [build] [color] values
-      build[window->ID-1].color.red=(unsigned char)object->color.red*256;
-      build[window->ID-1].color.green=(unsigned char)object->color.green*256;
-      build[window->ID-1].color.blue=(unsigned char)object->color.blue*256;
-      build[window->ID-1].color.alpha=(unsigned char)object->color.alpha*655;
+      // Setup [build] [cairo]
+      build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
 
-      // Setup [build] [format] and [picture]
-      build[window->ID-1].format=XRenderFindVisualFormat(
-        build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
-      );
-      build[window->ID-1].picture=XRenderCreatePicture(
-        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
+      // Set [build] [cairo] [color] values
+      cairo_set_source_rgba(
+        build[window->ID-1].cairo,
+        (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
       );
 
-      // Draw on [build] [buffer]
-      // TODO
-      XSetForeground(build[window->ID-1].display, build[window->ID-1].graphics, 0xFF0000);
-      XFillPolygon(
-        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].graphics,
-        figure[object->ID-1].point, figure[object->ID-1].vertice, Convex, CoordModeOrigin
+      // Draw on [build] [cairo]
+      cairo_move_to(
+        build[window->ID-1].cairo,
+        figure[object->ID-1].point[0].x, figure[object->ID-1].point[0].y
       );
+
+      for(unsigned short int current=1; current<object->vertice; current+=1){
+        cairo_line_to(
+          build[window->ID-1].cairo,
+          figure[object->ID-1].point[current].x, figure[object->ID-1].point[current].y
+        );
+      }
+
+      cairo_close_path(build[window->ID-1].cairo);
+      cairo_fill(build[window->ID-1].cairo);
+
+      // Clean [build] [cairo]
+      cairo_destroy(build[window->ID-1].cairo);
     }
     else if(przecinek.debug==true){
 printf(
@@ -1323,67 +1478,20 @@ printf(
 
 /****************************************************************
  * |\_____/| pWindowDrawText()
- * | .     |
- * |     . | In: pWindow* [window], pFont* [font], pText* [text]
+ * | .     | In: pWindow* [window], pFont* [font],
+ * |     . |     pText* [text], pColor* [color];
  * \ = , = / Out:
  *
- * This function draws [text] in [font] style on [window] buffer.
- * It checks if [font] [color] values are valid.
+ * This function draws [text] in [font] style on [window].
+ * It checks if [color] values are valid.
  * It checks for any changes in [font] values.
  * Then it does all the rendering stuff.
  ****************************************************************/
-void pWindowDrawText(pWindow *window, pFont *font, pText *text){
-  if(window->active==true){
+void pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color){
+  if(window->ID!=0){
     if(font->ID!=0){
-      // Check [font] [color] values
-      if(font->color.red>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWF03] \"Font red color value is too big\" (changing from: %i to 255),\n",
-  font->color.red
-);
-          fflush(stdout);
-        }
-
-        // Correct [font] [color] [red] value
-        font->color.red=255;
-      }
-      if(font->color.green>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWF04] \"Font green color value is too big\" (changing from: %i to 255),\n",
-  font->color.green
-);
-          fflush(stdout);
-        }
-
-        // Correct [font] [color] [green] value
-        font->color.green=255;
-      }
-      if(font->color.blue>255){
-        if(przecinek.debug==true){
-printf(
-  "[pWF05] \"Font blue color value is too big\" (changing from: %i to 255),\n",
-  font->color.blue
-);
-          fflush(stdout);
-        }
-
-        // Correct [font] [color] [blue] value
-        font->color.blue=255;
-      }
-      if(font->color.alpha>100){
-        if(przecinek.debug==true){
-printf(
-  "[pWF06] \"Font alpha color value is too big\" (changing from: %i to 100),\n",
-  font->color.alpha
-);
-          fflush(stdout);
-        }
-
-        // Correct [font] [color] [alpha] value
-        font->color.alpha=100;
-      }
+      // Check [color] values
+      pDebugColorCheck(color);
 
       // Check [text] [x] value
       if(text->x<(-WINDOW_POS_MAX)){
@@ -1437,6 +1545,12 @@ printf(
         text->y=WINDOW_POS_MAX;
       }
 
+      // Update [code] [value]
+      if(wcscmp(text->value, code[text->ID-1].valueW)!=0){
+        wcscpy(code[text->ID-1].valueW, text->value);
+        wcstombs(code[text->ID-1].value, text->value, sizeof(code[text->ID-1].value));
+      }
+
       // Update [view] [size]
       if(font->size!=view[font->ID-1].size){
         // Check [font] [size] value
@@ -1465,31 +1579,22 @@ printf(
           font->size=FONT_SIZE_MAX;
         }
 
-        // Update [face] size
-        FT_Set_Pixel_Sizes(face, 0, font->size*1.5);
-
         // Refresh [view] values
         view[font->ID-1].size=font->size;
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [name] value
-      if(wcscmp(font->name, view[font->ID-1].nameWide)!=0){
-        wcscpy(view[font->ID-1].nameWide, font->name);
-
-        view[font->ID-1].change=true;
-      }
-
       // Update [view] [directory] value
-      if(wcscmp(font->directory, view[font->ID-1].directoryWide)!=0){
-        wcscpy(view[font->ID-1].directoryWide, font->directory);
+      if(wcscmp(font->directory, view[font->ID-1].directoryW)!=0){
+        wcscpy(view[font->ID-1].directoryW, font->directory);
+        wcstombs(view[font->ID-1].directory, font->directory, sizeof(view[font->ID-1].directory));
 
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [base]
+      // Update [view] font
       if(view[font->ID-1].change==true){
-        // Check if [directory] exists
+        // Check if [view] [directory] exists
         if(stat(view[font->ID-1].directory, &status)!=0){
           if(przecinek.debug==true){
 printf(
@@ -1508,85 +1613,83 @@ printf(
           return;
         }
 
-        // Load [face] and check if font loads properly
-        if(FT_New_Face(freeType, view[font->ID-1].directory, 0, &face)){
-          if(przecinek.debug==true){
+        // Reset [view] [face]
+        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+          FT_Done_Face(view[font->ID-1].face[current]);
+        }
+
+        // Load [view] [face] and check if font loads properly
+        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+          if(FT_New_Face(freeType, view[font->ID-1].directory, 0, &view[font->ID-1].face[current])){
+            if(przecinek.debug==true){
 printf(
   "[pEFx1] \"Could not create X11 font\",\n"
 );
 printf(
   "[pEG04] \"Could not draw text\" (font is closed),\n"
 );
-            fflush(stdout);
+              fflush(stdout);
+            }
+
+            // Reset [font]
+            pDebugFontReset(font);
+            font->ID=0;
+
+            return;
           }
+        }
 
-          // Reset [font]
-          pDebugFontReset(font);
-          font->ID=0;
-
-          return;
+        // Load [view] [cairoFace]
+        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+          view[font->ID-1].cairoFace[current]=cairo_ft_font_face_create_for_ft_face(
+            view[font->ID-1].face[current], FT_LOAD_NO_HINTING
+          );
+          FT_Set_Pixel_Sizes(view[font->ID-1].face[current], 0, view[font->ID-1].size);
         }
 
         view[font->ID-1].change=false;
       }
 
-      // Update [view] [yFix] value
-      view[font->ID-1].yFix=(int)((float)((view[font->ID-1].size*64)/72));
+      // Update [code] [xFix] and [yFix] value
+      code[text->ID-1].xFix=(view[font->ID-1].size*48)/512;
+      code[text->ID-1].yFix=(view[font->ID-1].size*352)/512;
 
-      // Set [view] [x] and [y] values
-      view[font->ID-1].x=text->x;
-      view[font->ID-1].y=text->y+view[font->ID-1].yFix;
+      // Setup [build] [cairo]
+      build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
 
-      // Set [build] [color] values
-      build[window->ID-1].color.red=(unsigned char)font->color.red*256;
-      build[window->ID-1].color.green=(unsigned char)font->color.green*256;
-      build[window->ID-1].color.blue=(unsigned char)font->color.blue*256;
-      build[window->ID-1].color.alpha=(unsigned char)font->color.alpha*655;
+      // Setup [build] [cairo] font
+      cairo_set_font_face(build[window->ID-1].cairo, view[font->ID-1].cairoFace[window->ID-1]);
+      cairo_set_font_size(build[window->ID-1].cairo, view[font->ID-1].size);
+      cairo_font_extents(build[window->ID-1].cairo, &fontExtents);
 
-      // Setup [build] [format] and [picture]
-      build[window->ID-1].format=XRenderFindVisualFormat(
-        build[window->ID-1].display, DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen)
-      );
-      build[window->ID-1].picture=XRenderCreatePicture(
-        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].format, 0, NULL
+      // Set [build] [cairo] [color] values
+      cairo_set_source_rgba(
+        build[window->ID-1].cairo,
+        (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
       );
 
-      // Correct [text] [value]
-      if(wcscmp(text->value, L"")==0){ wcscpy(text->value, L" "); }
+      // Load [code] [value] [segment]
+      segment=strtok_r(code[text->ID-1].value, "\n", &token);
+      while(segment!=NULL){
+        // Draw on [build] [cairo]
+        cairo_move_to(
+          build[window->ID-1].cairo,
+          text->x-code[text->ID-1].xFix, text->y+code[text->ID-1].yFix
+        );
+        cairo_show_text(build[window->ID-1].cairo, segment);
 
-      // Check for space at the start of [text] [value]
-      if(text->value[0]==L' '){ view[font->ID-1].space=true; }
-      else{ view[font->ID-1].space=false; }
+        // Update [code] [yFix]
+        code[text->ID-1].yFix+=fontExtents.height;
 
-      for(wchar_t *current=text->value+(unsigned short int)view[font->ID-1].space; *current; current+=1){
-        // Check for `\n` and make new line
-        if(*current==L'\n'){
-          view[font->ID-1].y+=face->size->metrics.height>>6;
-          view[font->ID-1].x=text->x;
-
-          continue;
-        }
-
-        // Load [current] character
-        if(FT_Load_Char(face, *current, FT_LOAD_RENDER)){ continue; }
-
-        // Fill [text] pixel by pixel
-        for(unsigned int row=0; row<face->glyph->bitmap.rows; row+=1){
-          for(unsigned int col=0; col<face->glyph->bitmap.width; col+=1){
-            if(face->glyph->bitmap.buffer[row*face->glyph->bitmap.pitch+col]){
-              // Draw on [build] [buffer]
-              XRenderFillRectangle(
-                build[window->ID-1].display, PictOpOver, build[window->ID-1].picture,
-                &build[window->ID-1].color, view[font->ID-1].x+col,
-                (view[font->ID-1].y-face->glyph->bitmap_top)+row, 1, 1
-              );
-            }
-          }
-        }
-
-        // Move current position
-        view[font->ID-1].x+=face->glyph->advance.x>>6;
+        // Load next [segment]
+        segment=strtok_r(NULL, "\n", &token);
       }
+
+      // Update [code] [value]
+      wcstombs(code[text->ID-1].value, text->value, sizeof(code[text->ID-1].value));
+
+      // Clean [build] [cairo]
+      cairo_destroy(build[window->ID-1].cairo);
     }
     else if(przecinek.debug==true){
 printf(
@@ -1607,24 +1710,37 @@ printf(
 
 /****************************************************************
  * |\_____/| pWindowClear()
- * | .     |
- * |     . | In: pWindow* [window]
+ * | .     | In: pWindow* [window], int [x], [y],
+ * |     . |     us_int [width], [height], pColor* [color]
  * \ = , = / Out:
  *
- * This function fills [window] buffer with white color.
- * There isn't too much to say about it c.c
+ * This function clears [window] with given color.
+ * Cleared area depends on given position and size values.
  ****************************************************************/
-void pWindowClear(pWindow* window){
-  if(window->active==true){
-    // Clear [build] [buffer]
-    XSetForeground(
-      build[window->ID-1].display, build[window->ID-1].graphics,
-      WhitePixel(build[window->ID-1].display, build[window->ID-1].screen)
+void pWindowClear(
+  pWindow *window, int x, int y,
+  unsigned short int width, unsigned short int height, pColor *color
+){
+
+  if(window->ID!=0){
+    // Check [color] values
+    pDebugColorCheck(color);
+
+    // Setup [build] [cairo]
+    build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
+
+    // Set [build] [cairo] [color] values
+    cairo_set_source_rgba(
+      build[window->ID-1].cairo,
+      (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
     );
-    XFillRectangle(
-      build[window->ID-1].display, build[window->ID-1].buffer,
-      build[window->ID-1].graphics, 0, 0, window->width, window->height
-    );
+
+    // Draw on [build] [cairo]
+    cairo_rectangle(build[window->ID-1].cairo, x, y, width, height);
+    cairo_fill(build[window->ID-1].cairo);
+
+    // Clean [build] [cairo]
+    cairo_destroy(build[window->ID-1].cairo);
   }
   else if(przecinek.debug==true){
 printf(
@@ -1637,86 +1753,52 @@ printf(
 }
 
 /****************************************************************
- * |\_____/| pWindowClose()
+ * |\_____/| pWindowHandle()
  * | .     |
  * |     . | In: pWindow* [window]
- * \ = , = / Out:
- *
- * This function closes given [window].
- * It sends signal, which's supossed to destroy [window].
- ****************************************************************/
-void pWindowClose(pWindow *window){
-  if(window->active==true){
-    // Send kill [currentAction]
-    currentAction.type=ClientMessage;
-    currentAction.xclient.window=build[window->ID-1].base;
-    currentAction.xclient.message_type=build[window->ID-1].delete;
-    currentAction.xclient.format=32;
-    currentAction.xclient.data.l[0]=build[window->ID-1].delete;
-    currentAction.xclient.data.l[1]=CurrentTime;
-
-    XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
-  }
-  else if(przecinek.debug==true){
-printf(
-  "[pWG03] \"Window is already closed\",\n"
-);
-    fflush(stdout);
-  }
-
-  return;
-}
-
-/****************************************************************
- * |\_____/| pEventCreate()
- * | .     |
- * |     . | In:
- * \ = , = / Out: pEvent
- *
- * This function creates [event] object.
- * It fills all [event] variables.
- ****************************************************************/
-pEvent pEventCreate(){
-  // Create local [event]
-  pEvent event;
-
-  // Set [event] values
-  event.focus=false;
-  event.frameCount=0;
-
-  for(unsigned short int current=0; current<KEY_MAX; current+=1){
-    event.key[current]=0;
-  }
-  event.keyCaps=false;
-
-  // Return local [event]
-  return event;
-}
-
-/****************************************************************
- * |\_____/| pEventHandle()
- * | .     |
- * |     . | In: pWindow* [window], pEvent* [event]
  * \ = , = / Out:
  *
  * This function handles every global action.
  * It checks for any [window] messages. It switches buffers.
  * It updates [key] values. It updates mouse position,
- * display size and window count for [event]. It updates
+ * display size and window count for [przecinek]. It updates
  * many [window] values. It checks if [window] is fullscreen,
  * if it changed its size or position, focus or title, etc.
  * It also updates frame count.
  ****************************************************************/
-void pEventHandle(pWindow *window, pEvent *event){
-  if(window->active==true){
-    // Change [event] [key] values from `1` to `2`
-    for(unsigned short int current=0; current<KEY_MAX; current+=1){
-      if(event->key[current]==1){ event->key[current]=2; }
+void pWindowHandle(pWindow *window){
+  if(window->ID!=0){
+    // Update [windowMainID]
+    if(build[windowMainID].exist==false){
+      for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+        if(build[current].exist==true){
+          windowMainID=current;
+        }
+      }
+    }
+
+    // Change [przecinek] [key] values from `1` to `2`
+    if((window->ID-1)==windowMainID){
+      for(unsigned short int button=0; button<KEY_MAX; button+=1){
+        if(input[button]!=0){ przecinek.key[input[button]]=2; }
+        else{ break; }
+      }
     }
 
     while(XPending(build[window->ID-1].display)){
       // Manage pending [currentEvent]
       XNextEvent(build[window->ID-1].display, &currentEvent);
+
+      // Manage close [currentEvent]
+      if(currentEvent.type==ClientMessage &&
+          (Atom)currentEvent.xclient.data.l[0]==build[window->ID-1].delete){
+
+        // Reset [window]
+        pDebugWindowReset(window);
+        window->ID=0;
+
+        return;
+      }
 
       // Update [przecinek] [display] values
       przecinek.display.width=DisplayWidth(build[window->ID-1].display, build[window->ID-1].screen);
@@ -1737,49 +1819,148 @@ void pEventHandle(pWindow *window, pEvent *event){
       }
 
       // Update [przecinek] [windowCount]
-      przecinek.windowCount=winCount;
+      przecinek.windowCount=windowCount;
 
-      // Update [build] [attributeBorder] value
-      XGetWindowAttributes(
-        build[window->ID-1].display, build[window->ID-1].base, &build[window->ID-1].attributeBorder
-      );
+      // Update [window] [resizable]
+      window->resizable=build[window->ID-1].resizable;
 
-      // Update [build] [border]
-      build[window->ID-1].border=
-        build[window->ID-1].width-build[window->ID-1].attributeBorder.width+
-        build[window->ID-1].attributeBorder.border_width;
+      // Update [przecinek] [keyCaps]
+      XGetKeyboardControl(build[window->ID-1].display, &keyboardState);
+      przecinek.keyCaps=(keyboardState.led_mask&(1<<1)!=0);
 
-      // Update [window] [resize] and [border]
-      window->resize=build[window->ID-1].resize;
-      window->border=build[window->ID-1].border;
+      // Manage key press [currentEvent]
+      if(currentEvent.type==KeyPress){
+        if(przecinek.key[currentEvent.xkey.keycode]==0){
+          przecinek.key[currentEvent.xkey.keycode]=1;
 
-      // Update [event] [keyCaps]
-      XGetKeyboardControl(build[window->ID-1].display, &build[window->ID-1].keyboardState);
-      event->keyCaps=(build[window->ID-1].keyboardState.led_mask&(1<<1)!=0);
-
-      // Manage close [currentEvent]
-      if(currentEvent.type==ClientMessage &&
-          (Atom)currentEvent.xclient.data.l[0]==build[window->ID-1].delete){
-
-        // Clean [buffer] and [graphics]
-        XFreePixmap(build[window->ID-1].display, build[window->ID-1].buffer);
-        XFreeGC(build[window->ID-1].display, build[window->ID-1].graphics);
-
-        // Destroy [base] and close [display]
-        XDestroyWindow(build[window->ID-1].display, build[window->ID-1].base);
-        XCloseDisplay(build[window->ID-1].display);
-
-        // Reset [window]
-        pDebugWindowReset(window);
-
-        // Set [change] value and reset [event]
-        change=pEventCreate();
-        event=&change;
-
-        window->ID=0;
-        return;
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]==0){
+              input[button]=currentEvent.xkey.keycode;
+              break;
+            }
+          }
+        }
       }
-      else{ window->active=true; }
+      if(currentEvent.type==ButtonPress){
+        if(currentEvent.xbutton.button==8){ currentEvent.xbutton.button=4; }
+        if(currentEvent.xbutton.button==9){ currentEvent.xbutton.button=5; }
+
+        if(przecinek.key[currentEvent.xbutton.button]==0){
+          przecinek.key[currentEvent.xbutton.button]=1;
+
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]==0){
+              input[button]=currentEvent.xbutton.button;
+              break;
+            }
+          }
+        }
+      }
+
+      // Manage key release [currentEvent]
+      if(currentEvent.type==KeyRelease){
+        if(XEventsQueued(build[window->ID-1].display, QueuedAfterReading)){
+          XPeekEvent(build[window->ID-1].display, &currentReport);
+
+          if(currentReport.type==KeyPress &&
+              currentReport.xkey.time==currentEvent.xkey.time &&
+              currentReport.xkey.keycode==currentEvent.xkey.keycode){
+
+            // System released [key]
+            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+              if(input[button]==currentEvent.xkey.keycode){
+                przecinek.key[currentEvent.xkey.keycode]=2;
+                break;
+              }
+              else if(input[button]==0){ break; }
+            }
+
+            XNextEvent(build[window->ID-1].display, &currentEvent);
+          }
+
+          // Fully released [key]
+          else{
+            przecinek.key[currentEvent.xkey.keycode]=0;
+
+            inputChange=false;
+            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+              if(input[button]==currentEvent.xkey.keycode || inputChange==true){
+                input[button]=input[button+1];
+                inputChange=true; 
+
+                if(input[button]==0){ break; }
+              }
+            }
+          }
+        }
+        // Fully released [key]
+        else{
+          przecinek.key[currentEvent.xkey.keycode]=0;
+
+          inputChange=false;
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]==currentEvent.xkey.keycode || inputChange==true){
+              input[button]=input[button+1];
+              inputChange=true;
+
+              if(input[button]==0){ break; }
+            }
+          }
+        }
+      }
+      if(currentEvent.type==ButtonRelease){
+        if(currentEvent.xbutton.button==8){ currentEvent.xbutton.button=4; }
+        if(currentEvent.xbutton.button==9){ currentEvent.xbutton.button=5; }
+
+        if(XEventsQueued(build[window->ID-1].display, QueuedAfterReading)){
+          XPeekEvent(build[window->ID-1].display, &currentReport);
+
+          if(currentReport.type==ButtonPress &&
+              currentReport.xbutton.time==currentEvent.xbutton.time &&
+              currentReport.xbutton.button==currentEvent.xbutton.button){
+
+            // System released [key]
+            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+              if(input[button]==currentEvent.xbutton.button){
+                przecinek.key[currentEvent.xbutton.button]=2;
+                break;
+              }
+              else if(input[button]==0){ break; }
+            }
+
+            XNextEvent(build[window->ID-1].display, &currentEvent);
+          }
+
+          // Fully released [key]
+          else{
+            przecinek.key[currentEvent.xbutton.button]=0;
+
+            inputChange=false;
+            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+              if(input[button]==currentEvent.xbutton.button || inputChange==true){
+                input[button]=input[button+1];
+                inputChange=true;
+
+                if(input[button]==0){ break; }
+              }
+            }
+          }
+        }
+        // Fully released [key]
+        else{
+          przecinek.key[currentEvent.xbutton.button]=0;
+
+          inputChange=false;
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]==currentEvent.xbutton.button || inputChange==true){
+              input[button]=input[button+1];
+              inputChange=true;
+
+              if(input[button]==0){ break; }
+            }
+          }
+        }
+      }
 
       // Manage fullscreen change [currentEvent]
       if(window->fullScreen==true && build[window->ID-1].fullScreen==false){
@@ -1795,14 +1976,17 @@ void pEventHandle(pWindow *window, pEvent *event){
         build[window->ID-1].width=window->width;
         build[window->ID-1].height=window->height;
 
-        // Resize [window] and update [buffer]
+        // Resize [window]
         XResizeWindow(build[window->ID-1].display, build[window->ID-1].base,
           window->width, window->height
         );
-        build[window->ID-1].buffer=XCreatePixmap(
+
+        // Update [build] [surface]
+        cairo_surface_destroy(build[window->ID-1].surface);
+        build[window->ID-1].surface=cairo_xlib_surface_create(
           build[window->ID-1].display, build[window->ID-1].base,
-          window->width, window->height,
-          DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+          window->width, window->height
         );
 
         // Update [window] and [build] position parameters
@@ -1824,14 +2008,17 @@ void pEventHandle(pWindow *window, pEvent *event){
         build[window->ID-1].width=window->width;
         build[window->ID-1].height=window->height;
 
-        // Resize [window] and update [buffer]
+        // Resize [window]
         XResizeWindow(
           build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
         );
-        build[window->ID-1].buffer=XCreatePixmap(
+
+        // Update [build] [surface]
+        cairo_surface_destroy(build[window->ID-1].surface);
+        build[window->ID-1].surface=cairo_xlib_surface_create(
           build[window->ID-1].display, build[window->ID-1].base,
-          window->width, window->height,
-          DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+          window->width, window->height
         );
 
         // Change [window] and [build] position parameters to the backuped ones
@@ -1907,9 +2094,13 @@ printf(
           build[window->ID-1].x=window->x;
           build[window->ID-1].y=window->y;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
 
           // Move [window]
@@ -1922,9 +2113,13 @@ printf(
           build[window->ID-1].x=window->x;
           build[window->ID-1].y=window->y;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
         }
 
@@ -1986,20 +2181,27 @@ printf(
           build[window->ID-1].width=window->width;
           build[window->ID-1].height=window->height;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
 
-          // Resize [window] and update [buffer]
+          // Resize [window]
           XResizeWindow(
             build[window->ID-1].display, build[window->ID-1].base,
             window->width, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(
+
+          // Update [build] [surface]
+          cairo_surface_destroy(build[window->ID-1].surface);
+          build[window->ID-1].surface=cairo_xlib_surface_create(
             build[window->ID-1].display, build[window->ID-1].base,
-            window->width, window->height,
-            DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+            window->width, window->height
           );
 
           build[window->ID-1].sizeRefresh=true;
@@ -2011,26 +2213,21 @@ printf(
           build[window->ID-1].width=currentEvent.xconfigure.width;
           build[window->ID-1].height=currentEvent.xconfigure.height;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
 
-          // Update [buffer]
-          build[window->ID-1].buffer=XCreatePixmap(
+          // Update [build] [surface]
+          cairo_surface_destroy(build[window->ID-1].surface);
+          build[window->ID-1].surface=cairo_xlib_surface_create(
             build[window->ID-1].display, build[window->ID-1].base,
-            window->width, window->height,
-            DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
-          );
-
-          // Clear [window]
-          XSetForeground(
-            build[window->ID-1].display, build[window->ID-1].graphics,
-            WhitePixel(build[window->ID-1].display, build[window->ID-1].screen)
-          );
-          XFillRectangle(
-            build[window->ID-1].display, build[window->ID-1].base,
-            build[window->ID-1].graphics, 0, 0, window->width, window->height
+            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+            window->width, window->height
           );
 
           build[window->ID-1].sizeRefresh=true;
@@ -2038,90 +2235,47 @@ printf(
       }
       else{ build[window->ID-1].sizeRefresh=false; }
 
-      // Manage key press [currentEvent]
-      if(currentEvent.type==KeyPress){
-        if(event->key[currentEvent.xkey.keycode]==0){ event->key[currentEvent.xkey.keycode]=1; }
-        else{ event->key[currentEvent.xkey.keycode]=2; }
-      }
-      if(currentEvent.type==ButtonPress){
-        if(currentEvent.xbutton.button==8){ currentEvent.xbutton.button=4; }
-        if(currentEvent.xbutton.button==9){ currentEvent.xbutton.button=5; }
-
-        if(event->key[currentEvent.xbutton.button]==0){ event->key[currentEvent.xbutton.button]=1; }
-        else{ event->key[currentEvent.xbutton.button]=2; }
-      }
-
-      // Manage key release [currentEvent]
-      if(currentEvent.type==KeyRelease){
-        if(XEventsQueued(build[window->ID-1].display, QueuedAfterReading)){
-          XPeekEvent(build[window->ID-1].display, &currentReport);
-
-          if(currentReport.type==KeyPress &&
-              currentReport.xkey.time==currentEvent.xkey.time &&
-              currentReport.xkey.keycode==currentEvent.xkey.keycode){
-
-            // Fully released key
-            event->key[currentEvent.xkey.keycode]=2;
-
-            XNextEvent(build[window->ID-1].display, &currentEvent);
-          }
-
-          // System released key
-          else{ event->key[currentEvent.xkey.keycode]=0; }
-        }
-        else{ event->key[currentEvent.xkey.keycode]=0; }
-      }
-      if(currentEvent.type==ButtonRelease){
-        if(currentEvent.xbutton.button==8){ currentEvent.xbutton.button=4; }
-        if(currentEvent.xbutton.button==9){ currentEvent.xbutton.button=5; }
-
-        if(XEventsQueued(build[window->ID-1].display, QueuedAfterReading)){
-          XPeekEvent(build[window->ID-1].display, &currentReport);
-
-          if(currentReport.type==ButtonPress &&
-              currentReport.xbutton.time==currentEvent.xbutton.time &&
-              currentReport.xbutton.button==currentEvent.xbutton.button){
-
-            // Fully released key
-            event->key[currentEvent.xbutton.button]=2;
-
-            XNextEvent(build[window->ID-1].display, &currentEvent);
-          }
-
-          // System released key
-          else{ event->key[currentEvent.xbutton.button]=0; }
-        }
-        else{ event->key[currentEvent.xbutton.button]=0; }
-      }
-
       // Manage focus in [currentEvent]
       if(currentEvent.type==FocusIn){
-        activeWinID=window->ID;
-        event->focus=true;
+        build[window->ID-1].focus=true;
+
+        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+          if(current==window->ID-1){ continue; }
+
+          if(build[current].exist==true){
+            if(build[current].focus==true){ build[current].focus=false; }
+          }
+          else{ break; }
+        }
       }
 
       // Manage focus out [currentEvent]
-      if(currentEvent.type==FocusOut && activeWinID==window->ID){
-        activeWinID=0;
-        event->focus=false;
+      if(currentEvent.type==FocusOut){ build[window->ID-1].focus=false; }
 
-        // Change [event] [key] values to `0`
-        for(unsigned short int current=0; current<KEY_MAX; current+=1){
-          event->key[current]=0;
+      // Update [window] [focus]
+      if(window->focus!=build[window->ID-1].focus){
+        window->focus=build[window->ID-1].focus;
+
+        // Change [przecinek] [key] values to `0`
+        for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          if(input[button]!=0){
+            przecinek.key[input[button]]=0;
+            input[button]=0;
+          }
+          else{ break; }
         }
       }
 
-      // Update [window] [title] value
-      if(wcscmp(window->title, build[window->ID-1].titleWide)!=0){
+      if(wcscmp(window->title, build[window->ID-1].titleW)!=0){
         // Update [build] [title] value
-        wcscpy(build[window->ID-1].titleWide, window->title);
+        wcscpy(build[window->ID-1].titleW, window->title);
         wcstombs(build[window->ID-1].title, window->title, TITLE_MAX);
 
         // Change [window] [title]
         XStoreName(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].title);
       }
 
-      if(window->resize==true){
+      if(window->resizable==true){
         // Check [window] [widthMin] value
         if(build[window->ID-1].widthMin!=window->widthMin){
           if(window->widthMin<WINDOW_WIDTH_MIN){
@@ -2292,19 +2446,26 @@ printf(
           window->width=build[window->ID-1].widthMin;
           build[window->ID-1].width=build[window->ID-1].widthMin;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
 
-          // Resize [window] and update [buffer]
+          // Resize [window]
           XResizeWindow(
             build[window->ID-1].display, build[window->ID-1].base, window->width, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(
+
+          // Update [build] [surface]
+          cairo_surface_destroy(build[window->ID-1].surface);
+          build[window->ID-1].surface=cairo_xlib_surface_create(
             build[window->ID-1].display, build[window->ID-1].base,
-            window->width, window->height,
-            DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+            window->width, window->height
           );
         }
 
@@ -2315,19 +2476,26 @@ printf(
           window->height=build[window->ID-1].heightMin;
           build[window->ID-1].height=build[window->ID-1].heightMin;
 
-          // Change [event] [key] values to `0`
-          for(unsigned short int current=0; current<KEY_MAX; current+=1){
-            event->key[current]=0;
+          // Change [przecinek] [key] values to `0`
+          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            if(input[button]!=0){
+              przecinek.key[input[button]]=0;
+              input[button]=0;
+            }
+            else{ break; }
           }
 
-          // Resize [window] and update [buffer]
+          // Resize [window]
           XResizeWindow(
             build[window->ID-1].display, build[window->ID-1].base, window->height, window->height
           );
-          build[window->ID-1].buffer=XCreatePixmap(
+
+          // Update [build] [surface]
+          cairo_surface_destroy(build[window->ID-1].surface);
+          build[window->ID-1].surface=cairo_xlib_surface_create(
             build[window->ID-1].display, build[window->ID-1].base,
-            window->height, window->height,
-            DefaultDepth(build[window->ID-1].display, build[window->ID-1].screen)
+            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
+            window->width, window->height
           );
         }
       }
@@ -2339,13 +2507,9 @@ printf(
       }
     }
 
-    // Switch [window] [buffer]
+    // Switch [window] buffers
     if(currentEvent.type!=ConfigureNotify){
-      XCopyArea(
-        build[window->ID-1].display, build[window->ID-1].buffer, build[window->ID-1].base,
-        DefaultGC(build[window->ID-1].display, build[window->ID-1].screen),
-        0, 0, window->width, window->height, 0, 0
-      );
+      cairo_surface_show_page(build[window->ID-1].surface);
     }
 
     // Refresh [window]
@@ -2362,7 +2526,7 @@ printf(
 
     // Update [frameCount] and sleep
     build[window->ID-1].frameCount+=1;
-    usleep((1000000/winCount)/przecinek.frameLimit);
+    usleep((1000000/windowCount)/przecinek.frameLimit);
 
     // Set and calculate current time
     gettimeofday(&build[window->ID-1].frameEnd, NULL);
@@ -2371,8 +2535,8 @@ printf(
       (build[window->ID-1].frameEnd.tv_usec-build[window->ID-1].frameStart.tv_usec)/1000000.0);
 
     if(build[window->ID-1].frameMax>=1.0){
-      // Set [event] [frameCount] and reset loop
-      event->frameCount=build[window->ID-1].frameCount;
+      // Set [window] [frameCount] and reset loop
+      window->frameCount=build[window->ID-1].frameCount;
 
       build[window->ID-1].frameCount=0;
       build[window->ID-1].frameMax=0;
@@ -2381,7 +2545,40 @@ printf(
   }
   else if(przecinek.debug==true){
 printf(
-  "[pEG02] \"Could not handle event\" (window is closed),\n"
+  "[pEG02] \"Could not handle window\" (window is closed),\n"
+);
+    fflush(stdout);
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pWindowDestroy()
+ * | .     |
+ * |     . | In: pWindow* [window]
+ * \ = , = / Out:
+ *
+ * This function destroys given [window].
+ * It sends destroy signal, which activates after next
+ * [window] handle function usage.
+ * It also resets [window] `ID` to `0`.
+ ****************************************************************/
+void pWindowDestroy(pWindow *window){
+  if(window->ID!=0){
+    // Send kill [currentAction]
+    currentAction.type=ClientMessage;
+    currentAction.xclient.window=build[window->ID-1].base;
+    currentAction.xclient.message_type=build[window->ID-1].delete;
+    currentAction.xclient.format=32;
+    currentAction.xclient.data.l[0]=build[window->ID-1].delete;
+    currentAction.xclient.data.l[1]=CurrentTime;
+
+    XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pWG03] \"Window is already closed\",\n"
 );
     fflush(stdout);
   }
@@ -2404,7 +2601,7 @@ pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsi
   pObject object;
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
-    if(figure[current].width==0){
+    if(figure[current].exist==false){
       // Set [object] [ID] and reset [object]
       object.ID=current+1;
       pDebugObjectReset(&object);
@@ -2525,12 +2722,10 @@ printf(
   object.height=height;
   object.vertice=vertice;
   object.rotation=0;
-  object.color.red=0;
-  object.color.green=0;
-  object.color.blue=0;
-  object.color.alpha=100;
 
   // Set [figure] values
+  figure[object.ID-1].exist=true;
+
   figure[object.ID-1].width=width;
   figure[object.ID-1].height=height;
   figure[object.ID-1].vertice=vertice;
@@ -2558,6 +2753,18 @@ printf(
  * Then it returns value based on earlier calculations.
  ****************************************************************/
 bool pObjectCollision(pObject *object1, pObject *object2){
+  // Simple collision check on two squares
+  if(figure[object1->ID-1].vertice==4 && figure[object2->ID-1].vertice==4 &&
+      figure[object1->ID-1].rotation==0 && figure[object2->ID-1].rotation==0){
+
+    return(
+      object1->x<object2->x+object2->width &&
+      object1->x+object1->width>object2->x &&
+      object1->y<object2->y+object2->height &&
+      object1->y+object1->height>object2->y
+    );
+  }
+
   // Reset some variables
   distanceMin.x=OBJECT_WIDTH_MAX;
   distanceMin.y=OBJECT_HEIGHT_MAX;
@@ -2842,9 +3049,34 @@ pDebugObjectTriangle(
 }
 
 /****************************************************************
+ * |\_____/| pObjectDestroy()
+ * | .     |
+ * |     . | In: pObject* [object]
+ * \ = , = / Out:
+ *
+ * This function destroys given [object].
+ * It also resets [object] `ID` to `0`.
+ ****************************************************************/
+void pObjectDestroy(pObject *object){
+  if(object->ID!=0){
+    // Fully reset [object]
+    pDebugObjectReset(object);
+    object->ID=0;
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pWG08] \"Object is already closed\",\n"
+);
+    fflush(stdout);
+  }
+
+  return;
+}
+
+/****************************************************************
  * |\_____/| pFontCreate()
  * | .     |
- * |     . | In: wchar_t* [name], [directory], us_int [size]
+ * |     . | In: wchar_t* [directory], us_int [size]
  * \ = , = / Out: pFont
  *
  * This function creates [font] object. It sets [ID]
@@ -2852,12 +3084,12 @@ pDebugObjectTriangle(
  * It checks if [directory] exists.
  * It loads [font] and saves it to memory.
  ****************************************************************/
-pFont pFontCreate(wchar_t *name, wchar_t *directory, unsigned short int size){
+pFont pFontCreate(wchar_t *directory, unsigned short int size){
   // Create local [font]
   pFont font;
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
-    if(view[current].size==0){
+    if(view[current].exist==false){
       // Set [font] [ID] and reset [font]
       font.ID=current+1;
       pDebugFontReset(&font);
@@ -2922,20 +3154,15 @@ printf(
   }
 
   // Set [font] values
-  wcscpy(font.name, name);
-  wcscpy(font.directory, directory);
   font.size=size;
-  font.color.red=0;
-  font.color.green=0;
-  font.color.blue=0;
-  font.color.alpha=100;
+  wcscpy(font.directory, directory);
 
   // Set [view] values
+  view[font.ID-1].exist=true;
+
   view[font.ID-1].size=size;
-  wcscpy(view[font.ID-1].nameWide, name);
-  wcscpy(view[font.ID-1].directoryWide, directory);
-  wcstombs(view[font.ID-1].name, view[font.ID-1].nameWide, FONT_NAME_MAX);
-  wcstombs(view[font.ID-1].directory, view[font.ID-1].directoryWide, FONT_NAME_MAX);
+  wcscpy(view[font.ID-1].directoryW, directory);
+  wcstombs(view[font.ID-1].directory, directory, FONT_NAME_MAX);
 
   // Check if [directory] exists
   if(stat(view[font.ID-1].directory, &status)!=0){
@@ -2953,43 +3180,57 @@ printf(
     return font;
   }
 
-  // Load [face] and check if font loads properly
-  FTError=FT_New_Face(freeType, view[font.ID-1].directory, 0, &face);
-  if(FTError==true){
-    if(przecinek.debug==true){
+  // Load [view] [face] and check if font loads properly
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+    if(FT_New_Face(freeType, view[font.ID-1].directory, 0, &view[font.ID-1].face[current])){
+      if(przecinek.debug==true){
 printf(
   "[pEFx1] \"Could not create X11 font\",\n"
 );
-      fflush(stdout);
+        fflush(stdout);
+      }
+
+      // Reset and return [font]
+      pDebugFontReset(&font);
+      font.ID=0;
+
+      return font;
     }
-
-    // Reset and return [font]
-    pDebugFontReset(&font);
-    font.ID=0;
-
-    return font;
   }
 
-  // Set [face] size
-  FT_Set_Pixel_Sizes(face, 0, font.size*1.5);
+  // Load [view] [cairoFace]
+  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+    view[font.ID-1].cairoFace[current]=cairo_ft_font_face_create_for_ft_face(
+      view[font.ID-1].face[current], FT_LOAD_NO_HINTING
+    );
+    FT_Set_Pixel_Sizes(view[font.ID-1].face[current], 0, view[font.ID-1].size);
+  }
 
   // Return local [font]
   return font;
 }
 
 /****************************************************************
- * |\_____/| pFontClose()
+ * |\_____/| pFontDestroy()
  * | .     |
  * |     . | In: pFont* [font]
  * \ = , = / Out:
  *
- * This function resets given [font].
- * It deletes loaded [font] data from the memory.
+ * This function destroys given [font].
+ * It also resets [font] `ID` to `0`.
  ****************************************************************/
-void pFontClose(pFont *font){
-  // Fully reset [font]
-  pDebugFontReset(font);
-  font->ID=0;
+void pFontDestroy(pFont *font){
+  if(font->ID!=0){
+    // Fully reset [font]
+    pDebugFontReset(font);
+    font->ID=0;
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pWG09] \"Font is already closed\",\n"
+);
+    fflush(stdout);
+  }
 
   return;
 }
@@ -3000,133 +3241,86 @@ void pFontClose(pFont *font){
  * |     . | In: wchar_t* [value]
  * \ = , = / Out: pText
  *
- * This function creates [text] object.
- * It fills all [text] variables.
+ * This function creates [text] object. It sets [ID]
+ * for local [text]. It fills all [text] variables.
  ****************************************************************/
 pText pTextCreate(wchar_t *value){
   // Create local [text]
   pText text;
 
-  // Set [text] values
-  text.x=0;
-  text.y=0;
+  for(unsigned short int current=0; current<TEXT_MAX; current+=1){
+    if(code[current].exist==false){
+      // Set [text] [ID] and reset [text]
+      text.ID=current+1;
+      pDebugTextReset(&text);
 
+      break;
+    }
+    else if(current==TEXT_MAX-1){
+      if(przecinek.debug==true){
+printf(
+  "[pET01] \"Too many texts were created\" (limit: %i),\n",
+  TEXT_MAX
+);
+        fflush(stdout);
+      }
+
+      // Reset and return [text]
+      pDebugTextReset(&text);
+      text.ID=0;
+
+      return text;
+    }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+printf(
+  "[pEG01] \"Could not create text\" (Przecinek is not initialized),\n"
+);
+    fflush(stdout);
+
+    // Reset and return [text]
+    pDebugTextReset(&text);
+    text.ID=0;
+
+    return text;
+  }
+
+  // Set [text] value
   wcscpy(text.value, value);
+
+  // Set [code] values
+  code[text.ID-1].exist=true;
+
+  wcscpy(code[text.ID-1].valueW, value);
+  wcstombs(code[text.ID-1].value, value, sizeof(code[text.ID-1].value));
 
   // Return local [text]
   return text;
 }
 
 /****************************************************************
- * |\_____/| pKey()
+ * |\_____/| pTextDestroy()
  * | .     |
- * |     . | In: wchar_t* [key]
- * \ = , = / Out: us_int
+ * |     . | In: pText* [text]
+ * \ = , = / Out:
  *
- * This function converts given [key] value into it's id.
- * Returned [key] id depends on current OS.
+ * This function destroys given [text].
+ * It also resets [text] `ID` to `0`.
  ****************************************************************/
-unsigned short int pKey(wchar_t *key){
-  if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){ return 1; }
-  if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){ return 2; }
-  if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){ return 3; }
-  if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){ return 4; }
-  if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){ return 5; }
+void pTextDestroy(pText *text){
+  if(text->ID!=0){
+    // Fully reset [text]
+    pDebugTextReset(text);
+    text->ID=0;
+  }
+  else if(przecinek.debug==true){
+printf(
+  "[pWG10] \"Text is already closed\",\n"
+);
+    fflush(stdout);
+  }
 
-  if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){ return 9; }
-  if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){ return 23; }
-  if(wcscmp(key, L"CAPS")==0 || wcscmp(key, L"caps")==0 || wcscmp(key, L"Caps")==0){ return 66; }
-  if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){ return 50; }
-  if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){ return 37; }
-  if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){ return 133; }
-  if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){ return 64; }
-  if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){ return 65; }
-
-  if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){ return 67; }
-  if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){ return 68; }
-  if(wcscmp(key, L"F3")==0 || wcscmp(key, L"f3")==0){ return 69; }
-  if(wcscmp(key, L"F4")==0 || wcscmp(key, L"f4")==0){ return 70; }
-  if(wcscmp(key, L"F5")==0 || wcscmp(key, L"f5")==0){ return 71; }
-  if(wcscmp(key, L"F6")==0 || wcscmp(key, L"f6")==0){ return 72; }
-  if(wcscmp(key, L"F7")==0 || wcscmp(key, L"f7")==0){ return 73; }
-  if(wcscmp(key, L"F8")==0 || wcscmp(key, L"f8")==0){ return 74; }
-  if(wcscmp(key, L"F9")==0 || wcscmp(key, L"f9")==0){ return 75; }
-  if(wcscmp(key, L"F10")==0 || wcscmp(key, L"f10")==0){ return 76; }
-  if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){ return 95; }
-  if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){ return 96; }
-
-  if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){ return 108; }
-  if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){ return 134; }
-  if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){ return 135; }
-  if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){ return 105; }
-  if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){ return 62; }
-  if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){ return 36; }
-  if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 || wcscmp(key, L"Backspace")==0){ return 22; }
-
-  if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 || wcscmp(key, L"LArrow")==0){ return 113; }
-  if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 || wcscmp(key, L"DArrow")==0){ return 116; }
-  if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 || wcscmp(key, L"RArrow")==0){ return 114; }
-  if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 || wcscmp(key, L"UArrow")==0){ return 111; }
-
-  if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 || wcscmp(key, L"PrintScrn")==0){ return 107; }
-  if(wcscmp(key, L"SCROLLLOCK")==0 || wcscmp(key, L"scrolllock")==0 || wcscmp(key, L"ScrollLock")==0){ return 78; }
-  if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 || wcscmp(key, L"PauseBreak")==0){ return 127; }
-  if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){ return 118; }
-  if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){ return 110; }
-  if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){ return 112; }
-  if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){ return 119; }
-  if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){ return 115; }
-  if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){ return 117; }
-
-  if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){ return 24; }
-  if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){ return 25; }
-  if(wcscmp(key, L"E")==0 || wcscmp(key, L"e")==0){ return 26; }
-  if(wcscmp(key, L"R")==0 || wcscmp(key, L"r")==0){ return 27; }
-  if(wcscmp(key, L"T")==0 || wcscmp(key, L"t")==0){ return 28; }
-  if(wcscmp(key, L"Y")==0 || wcscmp(key, L"y")==0){ return 29; }
-  if(wcscmp(key, L"U")==0 || wcscmp(key, L"u")==0){ return 30; }
-  if(wcscmp(key, L"I")==0 || wcscmp(key, L"i")==0){ return 31; }
-  if(wcscmp(key, L"O")==0 || wcscmp(key, L"o")==0){ return 32; }
-  if(wcscmp(key, L"P")==0 || wcscmp(key, L"p")==0){ return 33; }
-  if(wcscmp(key, L"A")==0 || wcscmp(key, L"a")==0){ return 38; }
-  if(wcscmp(key, L"S")==0 || wcscmp(key, L"s")==0){ return 39; }
-  if(wcscmp(key, L"D")==0 || wcscmp(key, L"d")==0){ return 40; }
-  if(wcscmp(key, L"F")==0 || wcscmp(key, L"f")==0){ return 41; }
-  if(wcscmp(key, L"G")==0 || wcscmp(key, L"g")==0){ return 42; }
-  if(wcscmp(key, L"H")==0 || wcscmp(key, L"h")==0){ return 43; }
-  if(wcscmp(key, L"J")==0 || wcscmp(key, L"j")==0){ return 44; }
-  if(wcscmp(key, L"K")==0 || wcscmp(key, L"k")==0){ return 45; }
-  if(wcscmp(key, L"L")==0 || wcscmp(key, L"l")==0){ return 46; }
-  if(wcscmp(key, L"Z")==0 || wcscmp(key, L"z")==0){ return 52; }
-  if(wcscmp(key, L"X")==0 || wcscmp(key, L"x")==0){ return 53; }
-  if(wcscmp(key, L"C")==0 || wcscmp(key, L"c")==0){ return 54; }
-  if(wcscmp(key, L"V")==0 || wcscmp(key, L"v")==0){ return 55; }
-  if(wcscmp(key, L"B")==0 || wcscmp(key, L"b")==0){ return 56; }
-  if(wcscmp(key, L"N")==0 || wcscmp(key, L"n")==0){ return 57; }
-  if(wcscmp(key, L"M")==0 || wcscmp(key, L"m")==0){ return 58; }
-
-  if(wcscmp(key, L"1")==0){ return 10; }
-  if(wcscmp(key, L"2")==0){ return 11; }
-  if(wcscmp(key, L"3")==0){ return 12; }
-  if(wcscmp(key, L"4")==0){ return 13; }
-  if(wcscmp(key, L"5")==0){ return 14; }
-  if(wcscmp(key, L"6")==0){ return 15; }
-  if(wcscmp(key, L"7")==0){ return 16; }
-  if(wcscmp(key, L"8")==0){ return 17; }
-  if(wcscmp(key, L"9")==0){ return 18; }
-  if(wcscmp(key, L"0")==0){ return 19; }
-
-  if(wcscmp(key, L"`")==0){ return 49; }
-  if(wcscmp(key, L",")==0){ return 59; }
-  if(wcscmp(key, L".")==0){ return 60; }
-  if(wcscmp(key, L"/")==0){ return 61; }
-  if(wcscmp(key, L";")==0){ return 47; }
-  if(wcscmp(key, L"'")==0){ return 48; }
-  if(wcscmp(key, L"\\")==0){ return 51; }
-  if(wcscmp(key, L"[")==0){ return 34; }
-  if(wcscmp(key, L"]")==0){ return 35; }
-  if(wcscmp(key, L"-")==0){ return 20; }
-  if(wcscmp(key, L"=")==0){ return 21; }
-
-  return 0;
+  return;
 }
