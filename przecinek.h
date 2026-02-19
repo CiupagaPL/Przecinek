@@ -6,10 +6,11 @@
  * \__  \/        |   Make sure to read the License and Manual!
  *    \_         /
  *      \ \----\ \
- *      {,{,} {,},}
+ *       {,{,} {,},}
  ****************************************************************/
 
 // Standard C libraries
+#include <limits.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -21,55 +22,74 @@ extern "C"{
   #endif
 
   /********************************
-   *  ,______,  Define default
-   *  |      |  values
-   *  |______|
-   * (--------)
-   ********************************/
-  #define WINDOW_MAX 4
-  #define WINDOW_X_DEF 128
-  #define WINDOW_Y_DEF 128
-  #define WINDOW_WIDTH_MIN 256
-  #define WINDOW_HEIGHT_MIN 256
-  #define WINDOW_WIDTH_MAX 7680
-  #define WINDOW_HEIGHT_MAX 4320
-  #define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
-  #define WINDOW_POS_CHANGE 65536
-
-  #define TITLE_DEF "{,} Window"
-  #define TITLE_MAX 256
-
-  #define KEY_MAX 256
-  #define FRAME_MIN 10
-  #define FRAME_MAX 640
-
-  #define OBJECT_MAX 512
-  #define OBJECT_WIDTH_MIN 4
-  #define OBJECT_HEIGHT_MIN 4
-  #define OBJECT_WIDTH_MAX 7680
-  #define OBJECT_HEIGHT_MAX 4320
-  #define OBJECT_VERTICE_MIN 3
-  #define OBJECT_VERTICE_MAX 300
-  #define OBJECT_ROTATION_MAX 360
-  #define OBJECT_TRIANGLE 1000000
-
-  #define FONT_MAX 32
-  #define FONT_SIZE_MIN 4
-  #define FONT_SIZE_MAX 512
-  #define FONT_NAME_MAX 256
-
-  #define TEXT_MAX 128
-  #define TEXT_SIZE_MAX 1024
-
-  /********************************
    *  ,______,  Define [pSize],
    *  |      |  [pPosition],
    *  |______|  [pColor] structures
    * (--------)
    ********************************/
   typedef struct{ unsigned short int width, height; } pSize;
-  typedef struct{ int x, y; } pPosition;
+  typedef struct{ short int x, y; } pPosition;
   typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
+
+  /********************************
+   *  ,______,  Define default
+   *  |      |  values
+   *  |______|
+   * (--------)
+   ********************************/
+  #define PRZECINEK_VERSION L"a"
+  #define PRZECINEK_VERSION_MAJOR 5
+  #define PRZECINEK_VERSION_MINOR 0
+  //#define PRZECINEK_VERSION_PATCH L"a"
+  #define PRZECINEK_UNSTABLE 18
+  #define PRZECINEK_EXPERIMENTAL false
+
+  #define PRZECINEK_KEY_MAX 256
+  #define PRZECINEK_FRAME_MIN 10
+  #define PRZECINEK_FRAME_MAX 480
+
+  #define COLOR_DEFAULT_BACKGROUND (pColor){ 255, 255, 255, 255 }
+  #define COLOR_DEFAULT_FOREGROUND (pColor){ 50, 50, 60, 255 }
+
+  #define WINDOW_MAX 4
+
+  #define WINDOW_WIDTH_MIN 256
+  #define WINDOW_HEIGHT_MIN 256
+  #define WINDOW_WIDTH_MAX 7680
+  #define WINDOW_HEIGHT_MAX 4320
+
+  #define WINDOW_X_DEF 128
+  #define WINDOW_Y_DEF 128
+  #define WINDOW_X_MIN SHRT_MIN+WINDOW_WIDTH_MAX
+  #define WINDOW_X_MAX SHRT_MAX-WINDOW_WIDTH_MAX
+  #define WINDOW_Y_MIN SHRT_MIN+WINDOW_HEIGHT_MAX
+  #define WINDOW_Y_MAX SHRT_MAX-WINDOW_HEIGHT_MAX
+
+  #define WINDOW_TITLE_CHAR 256
+  #define WINDOW_TITLE_DEF "{,} Window"
+
+  #define OBJECT_MAX 512
+
+  #define OBJECT_WIDTH_MIN 4
+  #define OBJECT_HEIGHT_MIN 4
+
+  #define OBJECT_VERTICE_MIN 3
+  #define OBJECT_VERTICE_MAX 300
+
+  #define FONT_MAX 32
+
+  #define FONT_SIZE_MIN 4
+  #define FONT_SIZE_MAX 1024
+
+  #define FONT_DIRECTORY_CHAR 256
+
+  #define TEXT_MAX 128
+
+  #define TEXT_CHAR 512
+
+  #define IMAGE_MAX 128
+
+  #define IMAGE_DIRECTORY_CHAR 256
 
   /********************************
    *  ,______,  Define [pPrzecinek]
@@ -81,7 +101,7 @@ extern "C"{
     bool debug;
     unsigned short int windowCount, frameLimit;
 
-    unsigned short int key[KEY_MAX];
+    unsigned short int key[PRZECINEK_KEY_MAX];
     bool keyCaps;
 
     pSize display;
@@ -99,11 +119,11 @@ extern "C"{
   typedef struct{
     unsigned short int ID;
 
-    int x, y;
+    short int x, y;
     unsigned short int width, height;
     unsigned short int widthMin, heightMin, widthMax, heightMax;
 
-    wchar_t title[TITLE_MAX];
+    wchar_t title[WINDOW_TITLE_CHAR];
     unsigned short int frameCount;
 
     bool resizable, focus, fullScreen;
@@ -118,7 +138,7 @@ extern "C"{
   typedef struct{
     unsigned short int ID;
 
-    int x, y;
+    short int x, y;
     unsigned short int width, height;
     unsigned short int vertice, rotation;
   } pObject;
@@ -133,7 +153,7 @@ extern "C"{
     unsigned short int ID;
 
     unsigned short int size;
-    wchar_t directory[FONT_NAME_MAX];
+    wchar_t directory[FONT_DIRECTORY_CHAR];
   } pFont;
 
   /********************************
@@ -145,10 +165,22 @@ extern "C"{
   typedef struct{
     unsigned short int ID;
 
-    int x, y;
+    short int x, y;
 
-    wchar_t value[TEXT_SIZE_MAX];
+    wchar_t value[TEXT_CHAR];
   } pText;
+
+  /********************************
+   *  ,______,  Define [pImage]
+   *  |      |  structure
+   *  |______|
+   * (--------)
+   ********************************/
+  typedef struct{
+    unsigned short int ID;
+
+    wchar_t directory[IMAGE_DIRECTORY_CHAR];
+  } pImage;
 
   /****************************************************************
    * |\_____/| pSetup()
@@ -206,6 +238,7 @@ extern "C"{
    * It sets [ID] for local [window].
    * It checks if all given parameters are valid.
    * It fills all necessary values for [window] and [build].
+   * It creates [window] [buffer] for rendering purposes.
    * It sets [window] [title] to default value.
    * It setups [build] objects for later use.
    * It also saves time when [window] was created,
@@ -216,15 +249,15 @@ extern "C"{
   /****************************************************************
    * |\_____/| pWindowDrawObject()
    * | .     | In: pWindow* [window], pObject* [object],
-   * |     . |     pColor* [color]
+   * |     . |     pColor* [color], pImage* [image]
    * \ = , = / Out:
    *
    * This function draws [object] on [window].
-   * It checks if [color] values are valid.
+   * It checks if [color] and [image] values are valid.
    * It checks for any changes in [object] values.
    * Then it does all the rendering stuff.
    ****************************************************************/
-  void pWindowDrawObject(pWindow *window, pObject *object, pColor *color);
+  void pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image);
 
   /****************************************************************
    * |\_____/| pWindowDrawText()
@@ -241,7 +274,7 @@ extern "C"{
 
   /****************************************************************
    * |\_____/| pWindowClear()
-   * | .     | In: pWindow* [window], int [x], [y],
+   * | .     | In: pWindow* [window], s_int [x], [y],
    * |     . |     us_int [width], [height], pColor* [color]
    * \ = , = / Out:
    *
@@ -249,7 +282,7 @@ extern "C"{
    * Cleared area depends on given position and size values.
    ****************************************************************/
   void pWindowClear(
-    pWindow *window, int x, int y,
+    pWindow *window, short int x, short int y,
     unsigned short int width, unsigned short int height, pColor *color
   );
 
@@ -362,6 +395,28 @@ extern "C"{
    * It also resets [text] `ID` to `0`.
    ****************************************************************/
   void pTextDestroy(pText *text);
+
+  /****************************************************************
+   * |\_____/| pImageCreate()
+   * | .     |
+   * |     . | In: wchar_t* [directory]
+   * \ = , = / Out: pImage
+   *
+   * This function creates [image] object. It sets [ID]
+   * for local [image]. It fills all [image] variables.
+   ****************************************************************/
+  pImage pImageCreate(wchar_t *directory);
+
+  /****************************************************************
+   * |\_____/| pImageDestroy()
+   * | .     |
+   * |     . | In: pImage* [image]
+   * \ = , = / Out:
+   *
+   * This function destroys given [image].
+   * It also resets [image] `ID` to `0`.
+   ****************************************************************/
+  void pImageDestroy(pImage *image);
 
   #ifdef __cplusplus
 }

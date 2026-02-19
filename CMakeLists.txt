@@ -16,6 +16,7 @@ if(X11)
   # Check for packages
   find_package(X11 REQUIRED)
   find_package(Freetype REQUIRED)
+  find_package(OpenGL REQUIRED)
 
   # Set X11 location
   add_executable(${PROJECT_NAME} ${CODE} "src/x11.c" ${HEADERS})
@@ -25,8 +26,8 @@ if(X11)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 
   # Set target libraries
-  include_directories(${CAIRO_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
-  target_link_libraries(${PROJECT_NAME} m X11 cairo freetype)
+  include_directories(${FREETYPE_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} m X11 GL GLX png jpeg freetype)
 else()
   # Set WIN location
   add_executable(${PROJECT_NAME} ${CODE} "src/win.c" ${HEADERS})

@@ -6,7 +6,7 @@
  * \__  \/        |   Make sure to read the License and Manual!
  *    \_         /
  *      \ \----\ \
- *      {,{,} {,},}
+ *       {,{,} {,},}
  ****************************************************************/
 
 // Standard C libraries
@@ -913,7 +913,7 @@ void pDebugObjectCalculate(pObject *object){
   distanceMin.y=OBJECT_HEIGHT_MAX;
 
   for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
-    // Calculate base ratio
+    // Calculate base [ratio]
     ratio=((current*360/figure[object->ID-1].vertice)+
       figure[object->ID-1].rotation+figure[object->ID-1].rotationFix)*(M_PI/180);
 
@@ -992,8 +992,8 @@ bool pDebugObjectTriangle(
 
     for(unsigned short int loop=0; loop<3; loop+=1){
       // Caululate [projection] values
-      projection.x = (triangleA[loop].x*(-edge.y))+(triangleA[loop].y*edge.x);
-      projection.y = (triangleB[loop].x*(-edge.y))+(triangleB[loop].y*edge.x);
+      projection.x=(triangleA[loop].x*(-edge.y))+(triangleA[loop].y*edge.x);
+      projection.y=(triangleB[loop].x*(-edge.y))+(triangleB[loop].y*edge.x);
 
       // Check for collision
       if(projection.x<distanceMin.x){ distanceMin.x=projection.x; }
@@ -1163,6 +1163,8 @@ void pEndup(){
   // End GDI+ session
   GdiplusShutdown(gdiToken);
 
+  setup=false;
+
   return;
 }
 
@@ -1178,6 +1180,7 @@ void pEndup(){
 void pClear(){
   // Clear console
   system("cls");
+  fflush(stdout);
 
   return;
 }
@@ -1334,8 +1337,9 @@ unsigned short int pKey(wchar_t *key){
  * It sets [ID] for local [window].
  * It checks if all given parameters are valid.
  * It fills all necessary values for [window] and [build].
+ * It creates [window] [buffer] for rendering purposes.
  * It sets [window] [title] to default value.
-   * It setups [build] objects for later use.
+ * It setups [build] objects for later use.
  * It also saves time when [window] was created,
  * to later calculate frame count.
  ****************************************************************/
@@ -1372,8 +1376,9 @@ printf(
         fflush(stdout);
       }
 
-      // Reset and return [window]
-      pDebugWindowReset(&window);
+      // Return [window]
+      window.ID=0;
+
       return window;
     }
   }
@@ -2170,6 +2175,16 @@ void pWindowHandle(pWindow *window){
     // Manage console
     if(GetConsoleWindow()!=NULL && przecinek.debug==false){ FreeConsole(); }
 
+    // Update [windowMainID]
+    if(build[windowMainID].exist==false){
+      for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
+        if(build[current].exist==true){
+          windowMainID=current;
+          break;
+        }
+      }
+    }
+
     // Change [przecinek] [key] values from `1` to `2`
     if((window->ID-1)==windowMainID){
       for(unsigned short int button=0; button<KEY_MAX; button+=1){
@@ -2192,15 +2207,6 @@ void pWindowHandle(pWindow *window){
       build[window->ID-1].hMemDC, 0, 0, SRCCOPY
     );
     EndPaint(build[window->ID-1].hwnd, &paintStruct);
-
-    // Update [windowMainID]
-    if(build[windowMainID].exist==false){
-      for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-        if(build[current].exist==true){
-          windowMainID=current;
-        }
-      }
-    }
 
     // Update [przecinek] [display] values
     przecinek.display.width=GetSystemMetrics(SM_CXSCREEN);
@@ -2886,8 +2892,7 @@ printf(
         fflush(stdout);
       }
 
-      // Reset and return [object]
-      pDebugObjectReset(&object);
+      // Return [object]
       object.ID=0;
 
       return object;
@@ -3374,8 +3379,7 @@ printf(
         fflush(stdout);
       }
 
-      // Reset and return [font]
-      pDebugFontReset(&font);
+      // Return [font]
       font.ID=0;
 
       return font;
@@ -3547,8 +3551,7 @@ printf(
         fflush(stdout);
       }
 
-      // Reset and return [text]
-      pDebugTextReset(&text);
+      // Return [text]
       text.ID=0;
 
       return text;

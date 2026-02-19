@@ -6,6 +6,7 @@ default:
 
 # Compile WIN
 win: clean
+	clear
 	mkdir -p build/
 	cmake -B build/ . -DWIN=ON
 	cmake --build build/
@@ -13,6 +14,7 @@ win: clean
 
 # Compile X11
 x11: clean
+	clear
 	mkdir -p build/
 	cmake -B build/ . -DX11=ON
 	cmake --build build/

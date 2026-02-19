@@ -6,13 +6,14 @@
  * \__  \/        |   Make sure to read the License and Manual!
  *    \_         /
  *      \ \----\ \
- *      {,{,} {,},}
+ *       {,{,} {,},}
  ****************************************************************/
+
+// Przecinek header
+#include "../przecinek.h"
 
 // Standard C libraries
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <wchar.h>
 #include <math.h>
@@ -24,83 +25,18 @@
 
 // X11 and Xft libraries
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
+
+// GL and GLX libraries
+#include <GL/glx.h>
+
+// PNG and JPEG libraries
+#include <png.h>
+#include <jpeglib.h>
 
 // FreeType2 library
 #include <ft2build.h>
-
-// Cairo libraries
-#include <cairo/cairo.h>
-#include <cairo/cairo-xlib.h>
-#include <cairo/cairo-ft.h>
-
-/********************************
- *  ,______,  Define default
- *  |      |  values
- *  |______|
- * (--------)
- ********************************/
-#define WINDOW_MAX 4
-#define WINDOW_X_DEF 128
-#define WINDOW_Y_DEF 128
-#define WINDOW_WIDTH_MIN 256
-#define WINDOW_HEIGHT_MIN 256
-#define WINDOW_WIDTH_MAX 7680
-#define WINDOW_HEIGHT_MAX 4320
-#define WINDOW_POS_MAX 32768-WINDOW_WIDTH_MAX
-#define WINDOW_POS_CHANGE 65536
-
-#define TITLE_DEF "{,} Window"
-#define TITLE_MAX 256
-
-#define KEY_MAX 256
-#define FRAME_MIN 10
-#define FRAME_MAX 640
-
-#define OBJECT_MAX 512
-#define OBJECT_WIDTH_MIN 4
-#define OBJECT_HEIGHT_MIN 4
-#define OBJECT_WIDTH_MAX 7680
-#define OBJECT_HEIGHT_MAX 4320
-#define OBJECT_VERTICE_MIN 3
-#define OBJECT_VERTICE_MAX 300
-#define OBJECT_ROTATION_MAX 360
-#define OBJECT_TRIANGLE 1000000
-
-#define FONT_MAX 32
-#define FONT_SIZE_MIN 4
-#define FONT_SIZE_MAX 512
-#define FONT_NAME_MAX 256
-
-#define TEXT_MAX 128
-#define TEXT_SIZE_MAX 1024
-
-/********************************
- *  ,______,  Define [pSize],
- *  |      |  [pPosition],
- *  |______|  [pColor] structures
- * (--------)
- ********************************/
-typedef struct{ unsigned short int width, height; } pSize;
-typedef struct{ int x, y; } pPosition;
-typedef struct{ unsigned short int red, green, blue, alpha; } pColor;
-
-/********************************
- *  ,______,  Define [pPrzecinek]
- *  |      |  structure
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  bool debug;
-  unsigned short int windowCount, frameLimit;
-
-  unsigned short int key[KEY_MAX];
-  bool keyCaps;
-
-  pSize display;
-  pPosition cursor;
-} pPrzecinek;
 
 /********************************
  *  ,______,  Define [pBuildX11]
@@ -109,27 +45,26 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
-  int x, y;
-  int xBac, yBac;
+  short int x, y;
+  short int xBac, yBac;
 
   unsigned short int width, height;
   unsigned short int widthMin, heightMin, widthMax, heightMax;
   unsigned short int widthBac, heightBac;
 
-  char title[TITLE_MAX];
-  wchar_t titleW[TITLE_MAX];
+  char title[WINDOW_TITLE_CHAR];
+  wchar_t titleW[WINDOW_TITLE_CHAR];
   struct timeval frameStart, frameEnd;
   unsigned short int frameCount;
-  double frameMax;
 
   bool resizable, focus, fullScreen;
 
-  cairo_surface_t *surface;
-  cairo_t *cairo;
+  GLXContext buffer;
 
   Display *display;
   int screen;
   Window base;
+  XVisualInfo *visual;
   bool limitChange, sizeRefresh, screenRefresh;
 
   Atom delete, state;
@@ -146,12 +81,13 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
-  int x, y;
+  short int x, y;
   unsigned short int width, height;
   unsigned short int vertice, rotation;
 
   pPosition point[OBJECT_VERTICE_MAX];
   pPosition center;
+  float textureX[OBJECT_VERTICE_MAX], textureY[OBJECT_VERTICE_MAX];
   unsigned short int rotationFix;
 
   int position;
@@ -169,11 +105,10 @@ typedef struct{
 typedef struct{
   unsigned short int size;
 
-  char directory[FONT_NAME_MAX];
-  wchar_t directoryW[FONT_NAME_MAX];
+  char directory[FONT_DIRECTORY_CHAR];
+  wchar_t directoryW[FONT_DIRECTORY_CHAR];
 
-  FT_Face face[WINDOW_MAX];
-  cairo_font_face_t *cairoFace[WINDOW_MAX];
+  FT_Face face;
 
   bool change;
 
@@ -187,73 +122,35 @@ typedef struct{
  * (--------)
  ********************************/
 typedef struct{
-  char value[TEXT_SIZE_MAX];
-  wchar_t valueW[TEXT_SIZE_MAX];
+  wchar_t valueW[TEXT_CHAR];
 
-  int xFix, yFix;
+  short int xFix, yFix;
+
+  GLuint texture[FONT_MAX][TEXT_CHAR];
+  pSize textureSize[FONT_MAX][TEXT_CHAR];
+  pPosition texturePosition[FONT_MAX][TEXT_CHAR];
+
+  bool change;
 
   bool exist;
 } pCodeX11;
 
 /********************************
- *  ,______,  Define [pWindow]
- *  |      |  structure
+ *  ,______,  Define [pTextureX11]
+ *  |      |  structure [DEBUG]
  *  |______|
  * (--------)
  ********************************/
 typedef struct{
   unsigned short int ID;
 
-  int x, y;
-  unsigned short int width, height;
-  unsigned short int widthMin, heightMin, widthMax, heightMax;
+  char directory[IMAGE_DIRECTORY_CHAR];
+  wchar_t directoryW[IMAGE_DIRECTORY_CHAR];
 
-  wchar_t title[TITLE_MAX];
-  unsigned short int frameCount;
+  GLuint texture;
 
-  bool resizable, focus, fullScreen;
-} pWindow;
-
-/********************************
- *  ,______,  Define [pObject]
- *  |      |  structure
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  unsigned short int ID;
-
-  int x, y;
-  unsigned short int width, height;
-  unsigned short int vertice, rotation;
-} pObject;
-
-/********************************
- *  ,______,  Define [pFont]
- *  |      |  structure
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  unsigned short int ID;
-
-  unsigned short int size;
-  wchar_t directory[FONT_NAME_MAX];
-} pFont;
-
-/********************************
- *  ,______,  Define [pText]
- *  |      |  structure
- *  |______|
- * (--------)
- ********************************/
-typedef struct{
-  unsigned short int ID;
-
-  int x, y;
-
-  wchar_t value[TEXT_SIZE_MAX];
-} pText;
+  bool exist;
+} pTextureX11;
 
 // Przecinek
 pPrzecinek przecinek={ true, 0, 0 };
@@ -261,7 +158,7 @@ bool setup=false;
 
 FT_Library freeType;
 
-pPosition cursorMain, cursorLocal;
+int cursorMainX, cursorMainY, cursorLocalX, cursorLocalY;
 
 // Window
 unsigned short int windowMainID=0;
@@ -274,96 +171,57 @@ Display *display;
 int screen;
 Window root;
 unsigned int mask;
+GLXContext buffer;
+XVisualInfo *visual;
+
+GLXFBConfig *facebookConfig;
+int facebookCount;
+
+double frameMax;
+unsigned short int currentFrameLimit, frameAdjust, frameOverHead;
 
 XKeyboardState keyboardState;
 
-unsigned short int input[KEY_MAX];
+unsigned short int input[PRZECINEK_KEY_MAX];
 bool inputChange;
 
 // Object
 pFigureX11 figure[OBJECT_MAX];
 
 float widthScale, heightScale, ratio, distance;
-pPosition distanceMin, distanceMax;
-pPosition edge, projection;
+int distanceMinX, distanceMinY, distanceMaxX, distanceMaxY;
+int edgeX, edgeY, projectionX, projectionY;
 pPosition centerA, centerB;
 int pointA[5], pointB[5];
 
 // Font
 pViewX11 view[FONT_MAX];
 
-cairo_font_extents_t fontExtents;
-
 struct stat status;
 
 // Text
 pCodeX11 code[TEXT_MAX];
 
-char *segment;
-char *token;
+char *segment, *token;
+unsigned short int line=0;
+GLubyte* textData;
 
-/****************************************************************
- * |\_____/| pDebugColorCheck() [DEBUG]
- * | .     |
- * |     . | In: pColor* [color]
- * \ = , = / Out:
- *
- * This function checks if all [color] values are correct.
- * Maximal values are based on rgba(255, 255, 255, 100).
- ****************************************************************/
-void pDebugColorCheck(pColor *color){
-  // Check [color] values
-  if(color->red>255){
-    if(przecinek.debug==true){
-printf(
-  "[pWG04] \"Color red value is too big\" (changing from: %i to 255),\n",
-  color->red
-);
-      fflush(stdout);
-    }
+// Image
+pTextureX11 texture[IMAGE_MAX];
 
-    // Correct [color] [red] value
-    color->red=255;
-  }
-  if(color->green>255){
-    if(przecinek.debug==true){
-printf(
-  "[pWG05] \"Color green value is too big\" (changing from: %i to 255),\n",
-  color->green
-);
-      fflush(stdout);
-    }
+FILE *fileImage;
+unsigned long int imageWidth, imageHeight;
+unsigned short int imageChannel;
 
-    // Correct [color] [green] value
-    color->green=255;
-  }
-  if(color->blue>255){
-    if(przecinek.debug==true){
-printf(
-  "[pWG06] \"Color blue value is too big\" (changing from: %i to 255),\n",
-  color->blue
-);
-      fflush(stdout);
-    }
+png_byte pngDepth, pngColor;
+png_structp png;
+png_infop pngInfo;
+png_byte **pngBuffer;
 
-    // Correct [color] [blue] value
-    color->blue=255;
-  }
-  if(color->alpha>100){
-    if(przecinek.debug==true){
-printf(
-  "[pWG07] \"Color alpha value is too big\" (changing from: %i to 100),\n",
-  color->alpha
-);
-      fflush(stdout);
-    }
-
-    // Correct [color] [alpha] value
-    color->alpha=100;
-  }
-
-  return;
-}
+struct jpeg_decompress_struct jpegInfo;
+struct jpeg_error_mgr jpegError;
+unsigned char *jpegBuffer;
+unsigned char *jpegRow[1];
 
 /****************************************************************
  * |\_____/| pDebugWindowReset() [DEBUG]
@@ -420,13 +278,17 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].frameEnd.tv_sec=0;
   build[window->ID-1].frameEnd.tv_usec=0;
   build[window->ID-1].frameCount=0;
-  build[window->ID-1].frameMax=0;
 
   build[window->ID-1].resizable=false;
   build[window->ID-1].focus=false;
   build[window->ID-1].fullScreen=false;
 
-  cairo_surface_destroy(build[window->ID-1].surface);
+  if(build[window->ID-1].buffer!=NULL){
+    glXMakeCurrent(build[window->ID-1].display, None, NULL);
+    glXDestroyContext(build[window->ID-1].display, build[window->ID-1].buffer);
+
+    build[window->ID-1].buffer=NULL;
+  }
 
   if(build[window->ID-1].base!=0){
     XDestroyWindow(build[window->ID-1].display, build[window->ID-1].base);
@@ -437,6 +299,7 @@ void pDebugWindowReset(pWindow *window){
     XCloseDisplay(build[window->ID-1].display);
     build[window->ID-1].display=NULL;
   }
+  build[window->ID-1].visual=NULL;
   build[window->ID-1].limitChange=false;
   build[window->ID-1].sizeRefresh=false;
   build[window->ID-1].screenRefresh=false;
@@ -483,6 +346,8 @@ void pDebugObjectReset(pObject *object){
   memset(figure[object->ID-1].point, 0, sizeof(figure[object->ID-1].point));
   figure[object->ID-1].center.x=0;
   figure[object->ID-1].center.y=0;
+  memset(figure[object->ID-1].textureX, 0, sizeof(figure[object->ID-1].textureX));
+  memset(figure[object->ID-1].textureY, 0, sizeof(figure[object->ID-1].textureY));
   figure[object->ID-1].rotationFix=0;
 
   figure[object->ID-1].position=0;
@@ -506,10 +371,10 @@ void pDebugObjectReset(pObject *object){
  ****************************************************************/
 void pDebugObjectCalculate(pObject *object){
   // Reset some variables
-  distanceMin.x=OBJECT_WIDTH_MAX;
-  distanceMin.y=OBJECT_HEIGHT_MAX;
-  distanceMax.x=(-OBJECT_WIDTH_MAX);
-  distanceMax.y=(-OBJECT_HEIGHT_MAX);
+  distanceMinX=INT_MAX;
+  distanceMinY=INT_MAX;
+  distanceMaxX=INT_MIN;
+  distanceMaxY=INT_MIN;
 
   for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
     // Calculate base [ratio]
@@ -522,33 +387,35 @@ void pDebugObjectCalculate(pObject *object){
     // Calculate [figure] [point] [y]
     figure[object->ID-1].point[current].y=50+(sqrt(pow(100, 2)*2)/2)*sin(ratio);
 
-    // Check for [distanceMin] [x] and [y] values
-    if(figure[object->ID-1].point[current].x<distanceMin.x){
-      distanceMin.x=figure[object->ID-1].point[current].x;
+    // Check for [distanceMinX] and [distanceMinY] values
+    if(figure[object->ID-1].point[current].x<distanceMinX){
+      distanceMinX=figure[object->ID-1].point[current].x;
     }
-    if(figure[object->ID-1].point[current].y<distanceMin.y){
-      distanceMin.y=figure[object->ID-1].point[current].y;
+    if(figure[object->ID-1].point[current].y<distanceMinY){
+      distanceMinY=figure[object->ID-1].point[current].y;
     }
 
-    // Check for [distanceMax] [x] and [y] values
-    if(figure[object->ID-1].point[current].x>distanceMax.x){
-      distanceMax.x=figure[object->ID-1].point[current].x;
+    // Check for [distanceMaxX] and [distanceMaxY] values
+    if(figure[object->ID-1].point[current].x>distanceMaxX){
+      distanceMaxX=figure[object->ID-1].point[current].x;
     }
-    if(figure[object->ID-1].point[current].y>distanceMax.y){
-      distanceMax.y=figure[object->ID-1].point[current].y;
+    if(figure[object->ID-1].point[current].y>distanceMaxY){
+      distanceMaxY=figure[object->ID-1].point[current].y;
     }
   }
 
   // Calculate [widthScale] and [heightScale] values
-  widthScale=(float)(distanceMax.x-distanceMin.x)/100;
-  heightScale=(float)(distanceMax.y-distanceMin.y)/100;
+  widthScale=(float)(distanceMaxX-distanceMinX)/100;
+  heightScale=(float)(distanceMaxY-distanceMinY)/100;
 
   // Reset some variables
-  distanceMin.x=OBJECT_WIDTH_MAX;
-  distanceMin.y=OBJECT_HEIGHT_MAX;
+  distanceMinX=INT_MAX;
+  distanceMinY=INT_MAX;
+  distanceMaxX=INT_MIN;
+  distanceMaxY=INT_MIN;
 
   for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
-    // Calculate base ratio
+    // Calculate base [ratio]
     ratio=((current*360/figure[object->ID-1].vertice)+
       figure[object->ID-1].rotation+figure[object->ID-1].rotationFix)*(M_PI/180);
 
@@ -564,19 +431,40 @@ void pDebugObjectCalculate(pObject *object){
       (sqrt(pow((float)figure[object->ID-1].height/heightScale, 2)*2)/2)*
       sin(ratio);
 
-    // Check for [distanceMin] [x] and [y] values
-    if(figure[object->ID-1].point[current].x<distanceMin.x){
-      distanceMin.x=figure[object->ID-1].point[current].x;
+    // Check for [distanceMinX] and [distanceMinY] values
+    if(figure[object->ID-1].point[current].x<distanceMinX){
+      distanceMinX=figure[object->ID-1].point[current].x;
     }
-    if(figure[object->ID-1].point[current].y<distanceMin.y){
-      distanceMin.y=figure[object->ID-1].point[current].y;
+    if(figure[object->ID-1].point[current].y<distanceMinY){
+      distanceMinY=figure[object->ID-1].point[current].y;
     }
   }
 
   for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
     // Correct [figure] [point] position
-    figure[object->ID-1].point[current].x-=distanceMin.x-figure[object->ID-1].x;
-    figure[object->ID-1].point[current].y-=distanceMin.y-figure[object->ID-1].y;
+    figure[object->ID-1].point[current].x-=distanceMinX-figure[object->ID-1].x;
+    figure[object->ID-1].point[current].y-=distanceMinY-figure[object->ID-1].y;
+
+    // Calculate [distanceMaxX] and [distanceMaxY]
+    if(figure[object->ID-1].point[current].x>distanceMaxX){
+      distanceMaxX=figure[object->ID-1].point[current].x;
+    }
+    if(figure[object->ID-1].point[current].y>distanceMaxY){
+      distanceMaxY=figure[object->ID-1].point[current].y;
+    }
+  }
+
+  for(unsigned short int current=0; current<figure[object->ID-1].vertice; current+=1){
+    // Calculate [figure] [textureX] and [textureY] values
+    figure[object->ID-1].textureX[current]=
+      (float)(distanceMaxX-figure[object->ID-1].point[current].x)/
+      (float)(distanceMaxX-figure[object->ID-1].x);
+    figure[object->ID-1].textureY[current]=
+      (float)(distanceMaxY-figure[object->ID-1].point[current].y)/
+      (float)(distanceMaxY-figure[object->ID-1].y);
+
+    figure[object->ID-1].textureY[current]=1-figure[object->ID-1].textureY[current];
+    figure[object->ID-1].textureX[current]=1-figure[object->ID-1].textureX[current];
   }
 
   return;
@@ -602,35 +490,35 @@ bool pDebugObjectTriangle(
   pPosition triangleB[3]={ v1B, v2B, v3B };
 
   for(unsigned short int current=0; current<6; current+=1){
-    // Calculate [edge] values
+    // Calculate [edgeX] and [edgeY] values
     if(current<3){
-      edge.x=triangleA[(current+1)%3].x-triangleA[current].x;
-      edge.y=triangleA[(current+1)%3].y-triangleA[current].y;
+      edgeX=triangleA[(current+1)%3].x-triangleA[current].x;
+      edgeY=triangleA[(current+1)%3].y-triangleA[current].y;
     }
     else{
-      edge.x=triangleB[(current-2)%3].x-triangleB[current-3].x;
-      edge.y=triangleB[(current-2)%3].y-triangleB[current-3].y;
+      edgeX=triangleB[(current-2)%3].x-triangleB[current-3].x;
+      edgeY=triangleB[(current-2)%3].y-triangleB[current-3].y;
     }
 
     // Reset some variables
-    distanceMin.x=OBJECT_TRIANGLE;
-    distanceMin.y=OBJECT_TRIANGLE;
-    distanceMax.x=(-OBJECT_TRIANGLE);
-    distanceMax.y=(-OBJECT_TRIANGLE);
+    distanceMinX=INT_MAX;
+    distanceMinY=INT_MAX;
+    distanceMaxX=INT_MIN;
+    distanceMaxY=INT_MIN;
 
     for(unsigned short int loop=0; loop<3; loop+=1){
-      // Caululate [projection] values
-      projection.x = (triangleA[loop].x*(-edge.y))+(triangleA[loop].y*edge.x);
-      projection.y = (triangleB[loop].x*(-edge.y))+(triangleB[loop].y*edge.x);
+      // Caululate [projectionX] and [projectionY] values
+      projectionX=(triangleA[loop].x*(-edgeY))+(triangleA[loop].y*edgeX);
+      projectionY=(triangleB[loop].x*(-edgeY))+(triangleB[loop].y*edgeX);
 
       // Check for collision
-      if(projection.x<distanceMin.x){ distanceMin.x=projection.x; }
-      if(projection.x>distanceMax.x){ distanceMax.x=projection.x; }
-      if(projection.y<distanceMin.y){ distanceMin.y=projection.y; }
-      if(projection.y>distanceMax.y){ distanceMax.y=projection.y; }
+      if(projectionX<distanceMinX){ distanceMinX=projectionX; }
+      if(projectionX>distanceMaxX){ distanceMaxX=projectionX; }
+      if(projectionY<distanceMinY){ distanceMinY=projectionY; }
+      if(projectionY>distanceMaxY){ distanceMaxY=projectionY; }
     }
 
-    if(distanceMax.x<distanceMin.y || distanceMax.y<distanceMin.x){
+    if(distanceMaxX<distanceMinY || distanceMaxY<distanceMinX){
       // Return `false`, collision undetected
       return false;
     }
@@ -660,15 +548,9 @@ void pDebugFontReset(pFont *font){
   memset(view[font->ID-1].directory, 0, sizeof(view[font->ID-1].directory));
   memset(view[font->ID-1].directoryW, 0, sizeof(view[font->ID-1].directoryW));
 
-  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-    if(view[font->ID-1].face[current]!=NULL){
-      FT_Done_Face(view[font->ID-1].face[current]);
-      view[font->ID-1].face[current]=NULL;
-    }
-
-    if(view[font->ID-1].cairoFace[current]!=NULL){
-      cairo_font_face_destroy(view[font->ID-1].cairoFace[current]);
-    }
+  if(view[font->ID-1].face!=NULL){
+    FT_Done_Face(view[font->ID-1].face);
+    view[font->ID-1].face=NULL;
   }
 
   view[font->ID-1].change=false;
@@ -695,13 +577,252 @@ void pDebugTextReset(pText *text){
   memset(text->value, 0, sizeof(text->value));
 
   // Reset [code] values
-  memset(code[text->ID-1].value, 0, sizeof(code[text->ID-1].value));
   memset(code[text->ID-1].valueW, 0, sizeof(code[text->ID-1].valueW));
 
   code[text->ID-1].xFix=0;
   code[text->ID-1].yFix=0;
 
+  for(unsigned short int font=0; font<FONT_MAX; font+=1){
+    for(unsigned short int current=0; current<TEXT_CHAR; current+=1){
+      glDeleteTextures(1, &code[text->ID-1].texture[font][current]);
+      code[text->ID-1].textureSize[font][current]=(pSize){ 0, 0 };
+      code[text->ID-1].texturePosition[font][current]=(pPosition){ 0, 0 };
+    }
+  }
+
+  code[text->ID-1].change=false;
+
   code[text->ID-1].exist=false;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugTextSetup() [DEBUG]
+ * | .     |
+ * |     . | In: pText* [text], pFont* [font]
+ * \ = , = / Out:
+ *
+ * This function setups [text] for current [font].
+ * It creates textures used later for rendering.
+ ****************************************************************/
+void pDebugTextSetup(pText *text, pFont *font){
+  // Update [code] [xFix] and [yFix] value
+  code[text->ID-1].xFix=(view[font->ID-1].size*48)/512;
+  code[text->ID-1].yFix=(view[font->ID-1].size*352)/512;
+
+  // Reset [code] [texture] for current [font]
+  for(unsigned short int current=0; current<TEXT_CHAR; current+=1){
+    glDeleteTextures(1, &code[text->ID-1].texture[font->ID-1][current]);
+    glGenTextures(1, &code[text->ID-1].texture[font->ID-1][current]);
+  }
+
+  // Reset [line] value
+  line=0;
+
+  for(unsigned short int current=0; current<wcslen(code[text->ID-1].valueW); current+=1){
+    // Add space to new [line]
+    if(code[text->ID-1].valueW[current]==L'\n'){
+      line+=1;
+      code[text->ID-1].xFix=(view[font->ID-1].size*48)/512;
+
+      continue;
+    }
+
+    // Load [current] char from [code] [valueW]
+    if(FT_Load_Char(view[text->ID-1].face, code[text->ID-1].valueW[current], FT_LOAD_RENDER)){ continue; }
+
+    // Setup [code] [texture]
+    glBindTexture(GL_TEXTURE_2D, code[text->ID-1].texture[font->ID-1][current]);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Set [code] [textureSize] values
+    code[text->ID-1].textureSize[font->ID-1][current].width=view[font->ID-1].face->glyph->bitmap.width;
+    code[text->ID-1].textureSize[font->ID-1][current].height=view[font->ID-1].face->glyph->bitmap.rows;
+
+    // Set [code] [texturePosition] values
+    code[text->ID-1].texturePosition[font->ID-1][current].x=
+      text->x+view[font->ID-1].face->glyph->bitmap_left-code[text->ID-1].xFix;
+    code[text->ID-1].texturePosition[font->ID-1][current].y=
+      text->y-view[font->ID-1].face->glyph->bitmap_top+code[text->ID-1].yFix+(font->size*line);
+
+    // Setup [textData]
+    textData=(GLubyte*)malloc(
+      view[font->ID-1].face->glyph->bitmap.width*view[font->ID-1].face->glyph->bitmap.rows*4
+    );
+    for(unsigned int current=0;
+        current<view[font->ID-1].face->glyph->bitmap.width*view[font->ID-1].face->glyph->bitmap.rows;
+        current+=1){
+
+      textData[current*4]=view[font->ID-1].face->glyph->bitmap.buffer[current];
+      textData[(current*4)+1]=view[font->ID-1].face->glyph->bitmap.buffer[current];
+      textData[(current*4)+2]=view[font->ID-1].face->glyph->bitmap.buffer[current];
+      textData[(current*4)+3]=view[font->ID-1].face->glyph->bitmap.buffer[current];
+    }
+
+    // Initialize [code] [texture]
+    glTexImage2D(
+      GL_TEXTURE_2D, 0, GL_RGBA, view[font->ID-1].face->glyph->bitmap.width,
+      view[font->ID-1].face->glyph->bitmap.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, textData
+    );
+
+    // Clear [textData]
+    free(textData);
+
+    // Change [code] [xFix] value
+    code[text->ID-1].xFix-=view[font->ID-1].face->glyph->advance.x>>6;
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugImageReset() [DEBUG]
+ * | .     |
+ * |     . | In: pImage* [image]
+ * \ = , = / Out:
+ *
+ * This function resets all [image] and [texture] values.
+ * Cleared variables depend on [image] [ID].
+ ****************************************************************/
+void pDebugImageReset(pImage *image){
+  // Reset [image] values
+  memset(image->directory, 0, sizeof(image->directory));
+
+  // Reset [texture] values
+  memset(texture[image->ID-1].directory, 0, sizeof(texture[image->ID-1].directory));
+  memset(texture[image->ID-1].directoryW, 0, sizeof(texture[image->ID-1].directoryW));
+
+  glDeleteTextures(1, &texture[image->ID-1].texture);
+  glGenTextures(1, &texture[image->ID-1].texture);
+
+  texture[image->ID-1].exist=false;
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugImageSetup() [DEBUG]
+ * | .     |
+ * |     . | In: pImage* [image]
+ * \ = , = / Out:
+ *
+ * This function setups [texture] for current [image].
+ * It loads image from given [directory].
+ * It checks its parameters and initializes it.
+ ****************************************************************/
+void pDebugImageSetup(pImage *image){
+  // Reset [pngBuffer] and [jpegBuffer]
+  /*if(pngBuffer!=NULL){
+    for(unsigned long int current=0; current<INT_MAX; current+=1){
+      if(pngBuffer[current]==NULL){ break; }
+      free(pngBuffer[current]);
+    }
+    free(pngBuffer);
+  }*/
+  if(jpegBuffer!=NULL){
+    free(jpegBuffer);
+    free(jpegRow[0]);
+  }
+
+  // Reset [texture] x2
+  glDeleteTextures(1, &texture[image->ID-1].texture);
+  glGenTextures(1, &texture[image->ID-1].texture);
+
+  if(wcscmp(texture[image->ID-1].directoryW+wcslen(texture[image->ID-1].directoryW)-4, L".png")==0){
+    // Recreate [png] and [pngInfo]
+    png_destroy_read_struct(&png, &pngInfo, NULL);
+    png=png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    pngInfo=png_create_info_struct(png);
+    setjmp(png_jmpbuf(png));
+
+    // Link [fileImage] to [png]
+    png_init_io(png, fileImage);
+    png_read_info(png, pngInfo);
+
+    // Check [pngDepth] and [pngColor] values
+    pngDepth=png_get_bit_depth(png, pngInfo);
+    pngColor=png_get_color_type(png, pngInfo);
+
+    if(pngColor==PNG_COLOR_TYPE_PALETTE){ png_set_palette_to_rgb(png); }
+
+    if(pngColor==PNG_COLOR_TYPE_GRAY && pngDepth<8){ png_set_expand_gray_1_2_4_to_8(png); }
+    if(pngDepth==16){ png_set_strip_16(png); }
+
+    // Update [pngInfo]
+    png_read_update_info(png, pngInfo);
+
+    // Set [imageWidth] and [imageHeight] values
+    imageWidth=png_get_image_width(png, pngInfo);
+    imageHeight=png_get_image_height(png, pngInfo);
+
+    if(imageWidth%2==0){ imageWidth+=4; }
+    else{ imageWidth+=5; }
+
+    // Setup [pngBuffer]
+    pngBuffer=(png_byte **)malloc(sizeof(png_byte *)*imageHeight);
+    for(unsigned long int current=0; current<imageHeight; current+=1){
+      pngBuffer[current]=(png_byte *)malloc(png_get_rowbytes(png, pngInfo));
+    }
+
+    // Load data from [png] into [pngBuffer]
+    for(unsigned long int current=0; current<imageHeight; current+=1){
+      png_read_row(png, pngBuffer[current], NULL);
+    }
+
+    png_read_end(png, pngInfo);
+
+    // Setup [texture] x2
+    glGenTextures(1, &texture[image->ID-1].texture);
+    glBindTexture(GL_TEXTURE_2D, texture[image->ID-1].texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, pngBuffer[0]);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  }
+  else{
+    // Recreate [jpegInfo]
+    jpeg_destroy_decompress(&jpegInfo);
+    jpeg_create_decompress(&jpegInfo);
+
+    // Setup [jpegInfo]
+    jpegInfo.err=jpeg_std_error(&jpegError);
+    jpeg_create_decompress(&jpegInfo);
+    jpeg_stdio_src(&jpegInfo, fileImage);
+    jpeg_read_header(&jpegInfo, TRUE);
+    jpeg_start_decompress(&jpegInfo);
+
+    // Set [imageWidth], [imageHeight] and [imageChannel] values
+    imageWidth=jpegInfo.output_width;
+    imageHeight=jpegInfo.output_height;
+    imageChannel=jpegInfo.output_components;
+
+    // Setup [jpegBuffer]
+    jpegBuffer=malloc(imageWidth*imageHeight*imageChannel);
+
+    // Load data from [jpeg] into [jpegBuffer]
+    while(jpegInfo.output_scanline<imageHeight){
+      jpegRow[0]=jpegBuffer+jpegInfo.output_scanline*imageWidth*imageChannel;
+      jpeg_read_scanlines(&jpegInfo, jpegRow, 1);
+    }
+
+    jpeg_finish_decompress(&jpegInfo);
+
+    // Setup [texture] x2
+    glGenTextures(1, &texture[image->ID-1].texture);
+    glBindTexture(GL_TEXTURE_2D, texture[image->ID-1].texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, jpegBuffer);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  }
+
+  // Clean up
+  if(fileImage!=NULL){ fclose(fileImage); }
 
   return;
 }
@@ -722,7 +843,33 @@ void pSetup(bool debug, unsigned short int frameLimit){
   setlocale(LC_ALL, "");
 
   // Initialize FreeType
-  FT_Init_FreeType(&freeType);
+  if(FT_Init_FreeType(&freeType)){
+    if(przecinek.debug==true){
+      printf("[pSetup() Error]\n");
+      printf("FreeType2 library could not be initialized!\n");
+      printf("Try to reinstall FT2 package or recompile Przecinek,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
+  // Initialize libPNG
+  png=png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  pngInfo=png_create_info_struct(png);
+  if(setjmp(png_jmpbuf(png))){
+    if(przecinek.debug==true){
+      printf("[pSetup() Error]\n");
+      printf("libPNG library could not be initialized!\n");
+      printf("Try to reinstall libpng package or recompile Przecinek,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
+  // Initialize libJPEG
+  jpeg_create_decompress(&jpegInfo);
 
   // Update [przecinek] [debug] value
   przecinek.debug=debug;
@@ -732,27 +879,25 @@ void pSetup(bool debug, unsigned short int frameLimit){
   przecinek.keyCaps=false;
 
   // Update [przecinek] [frameLimit] value
-  if(frameLimit<FRAME_MIN){
+  if(frameLimit<PRZECINEK_FRAME_MIN){
     if(przecinek.debug==true){
-printf(
-  "[pWG01] \"Frame limit value is too low\" (changing from: %i to: %i),\n",
-  frameLimit, FRAME_MIN
-);
+      printf("[pSetup() Warning]\n");
+      printf("Value of przecinek.frameLimit is too small!\n");
+      printf("Value of przecinek.frameLimit was changed from %i to %i,\n", frameLimit, PRZECINEK_FRAME_MIN);
       fflush(stdout);
     }
 
-    frameLimit=FRAME_MIN;
+    frameLimit=PRZECINEK_FRAME_MIN;
   }
-  else if(frameLimit>FRAME_MAX){
+  else if(frameLimit>PRZECINEK_FRAME_MAX){
     if(przecinek.debug==true){
-printf(
-  "[pWG02] \"Frame limit value is too big\" (changing from: %i to: %i),\n",
-  frameLimit, FRAME_MAX
-);
+      printf("[pSetup() Warning]\n");
+      printf("Value of przecinek.frameLimit is too large!\n");
+      printf("Value of przecinek.frameLimit was changed from %i to %i,\n", frameLimit, PRZECINEK_FRAME_MAX);
       fflush(stdout);
     }
 
-    frameLimit=FRAME_MAX;
+    frameLimit=PRZECINEK_FRAME_MAX;
   }
   przecinek.frameLimit=frameLimit;
 
@@ -760,9 +905,9 @@ printf(
   display=XOpenDisplay(NULL);
   if(display==NULL){
     if(przecinek.debug==true){
-printf(
-  "[pEBx1] \"Could not open X11 display\",\n"
-);
+      printf("[pSetup() Error]\n");
+      printf("X11 library display is unavailable!\n");
+      printf("Try to reinstall X11 package or recompile Przecinek,\n");
       fflush(stdout);
     }
 
@@ -779,13 +924,20 @@ printf(
   przecinek.display.width=XDisplayWidth(display, screen);
   przecinek.display.height=XDisplayHeight(display, screen);
 
+  // Get [facebookConfig] value and create [visual]
+  facebookConfig=glXGetFBConfigs(display, screen, &facebookCount);
+  visual=glXGetVisualFromFBConfig(display, facebookConfig[0]);
+
+  // Create global [buffer]
+  buffer=glXCreateContext(display, visual, NULL, GL_TRUE);
+
   // Update [przecinek] [cursor] values
   if(XQueryPointer(
-      display, root, &root, &root, &cursorMain.x, &cursorMain.y,
-      &cursorLocal.x, &cursorLocal.y, &mask)){
+      display, root, &root, &root, &cursorMainX, &cursorMainY,
+      &cursorLocalX, &cursorLocalY, &mask)){
 
-    przecinek.cursor.x=cursorMain.x;
-    przecinek.cursor.y=cursorMain.y;
+    przecinek.cursor.x=cursorMainX;
+    przecinek.cursor.y=cursorMainY;
   }
   else{
     przecinek.cursor.x=0;
@@ -808,11 +960,24 @@ printf(
  ****************************************************************/
 void pEndup(){
   // End FreeType session
-  //FT_Done_FreeType(freeType);
+  FT_Done_FreeType(freeType);
 
-  // Destroy debug [display] and [root]
+  // Reset [pngBuffer] and [jpegBuffer]
+  if(pngBuffer){
+    for(unsigned long int current=0; current<imageHeight; current+=1){
+      free(pngBuffer[current]);
+    }
+    free(pngBuffer);
+  }
+  if(jpegBuffer){ free(jpegBuffer); }
+
+  // Destroy debug [buffer], [display] and [root]
+  glXMakeCurrent(display, None, NULL);
+  glXDestroyContext(display, buffer);
   XCloseDisplay(display);
   XDestroyWindow(display, root);
+
+  setup=false;
 
   return;
 }
@@ -829,6 +994,7 @@ void pEndup(){
 void pClear(){
   // Clear console
   system("clear");
+  fflush(stdout);
 
   return;
 }
@@ -957,6 +1123,7 @@ unsigned short int pKey(wchar_t *key){
  * It sets [ID] for local [window].
  * It checks if all given parameters are valid.
  * It fills all necessary values for [window] and [build].
+ * It creates [window] [buffer] for rendering purposes.
  * It sets [window] [title] to default value.
  * It setups [build] objects for later use.
  * It also saves time when [window] was created,
@@ -981,26 +1148,26 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
     }
     else if(current==WINDOW_MAX-1){
       if(przecinek.debug==true){
-printf(
-  "[pEB01] \"Too many windows were created\" (limit: %i),\n",
-  WINDOW_MAX
-);
+        printf("[pWindowCreate() Error]\n");
+        printf("Too many windows were created!\n");
+        printf("Current window limit is equal to %i.\n", WINDOW_MAX);
+        printf("Try to destroy unused windows or change Przecinek window limit,\n");
         fflush(stdout);
       }
 
-      // Reset and return [window]
-      pDebugWindowReset(&window);
-
+      // Return [window]
       window.ID=0;
+
       return window;
     }
   }
 
   // Check if Przecinek is initialized
   if(setup==false){
-printf(
-  "[pEG01] \"Could not create window\" (Przecinek is not initialized),\n"
-);
+    printf("[pWindowCreate() Error]\n");
+    printf("Could not create window!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
     fflush(stdout);
 
     // Reset and return [window]
@@ -1011,10 +1178,9 @@ printf(
   // Check [width] value
   if(width<WINDOW_WIDTH_MIN){
     if(przecinek.debug==true){
-printf(
-  "[pWB01] \"Window width value is too low\" (changing from: %i to %i),\n",
-  width, WINDOW_WIDTH_MIN
-);
+      printf("[pWindowCreate() Warning]\n");
+      printf("Value of window.width is too small!\n");
+      printf("Value of window.width was changed from %i to %i,\n", width, WINDOW_WIDTH_MIN);
       fflush(stdout);
     }
 
@@ -1023,10 +1189,9 @@ printf(
   }
   else if(width>WINDOW_WIDTH_MAX){
     if(przecinek.debug==true){
-printf(
-  "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
-  width, WINDOW_WIDTH_MAX
-);
+      printf("[pWindowCreate() Warning]\n");
+      printf("Value of window.width is too large!\n");
+      printf("Value of window.width was changed from %i to %i,\n", width, WINDOW_WIDTH_MAX);
       fflush(stdout);
     }
 
@@ -1037,10 +1202,9 @@ printf(
   // Check [height] value
   if(height<WINDOW_HEIGHT_MIN){
     if(przecinek.debug==true){
-printf(
-  "[pWB03] \"Window height value is too low\" (changing from: %i to %i),\n",
-  height, WINDOW_HEIGHT_MIN
-);
+      printf("[pWindowCreate() Warning]\n");
+      printf("Value of window.height is too small!\n");
+      printf("Value of window.height was changed from %i to %i,\n", height, WINDOW_HEIGHT_MIN);
       fflush(stdout);
     }
 
@@ -1049,10 +1213,9 @@ printf(
   }
   else if(height>WINDOW_HEIGHT_MAX){
     if(przecinek.debug==true){
-printf(
-  "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
-  height, WINDOW_HEIGHT_MAX
-);
+      printf("[pWindowCreate() Warning]\n");
+      printf("Value of window.height is too large!\n");
+      printf("Value of window.height was changed from %i to %i,\n", height, WINDOW_HEIGHT_MAX);
       fflush(stdout);
     }
 
@@ -1102,9 +1265,9 @@ printf(
   build[window.ID-1].display=XOpenDisplay(NULL);
   if(build[window.ID-1].display==NULL){
     if(przecinek.debug==true){
-printf(
-  "[pEBx1] \"Could not open X11 display\",\n"
-);
+      printf("[pWindowCreate() Error]\n");
+      printf("X11 library display is unavailable!\n");
+      printf("Try to reinstall X11 package or recompile Przecinek,\n");
       fflush(stdout);
     }
 
@@ -1123,6 +1286,10 @@ printf(
     build[window.ID-1].display, build[window.ID-1].screen
   );
 
+  // Setup [build] [visual]
+  facebookConfig=glXGetFBConfigs(build[window.ID-1].display, build[window.ID-1].screen, &facebookCount);
+  build[window.ID-1].visual=glXGetVisualFromFBConfig(build[window.ID-1].display, facebookConfig[0]);
+
   // Create [base] for [build]
   build[window.ID-1].base=XCreateWindow(
     build[window.ID-1].display,
@@ -1134,9 +1301,9 @@ printf(
   );
   if(build[window.ID-1].base==0){
     if(przecinek.debug==true){
-printf(
-  "[pEBx2] \"Could not create X11 window\",\n"
-);
+      printf("[pWindowCreate() Error]\n");
+      printf("X11 library window is unavailable!\n");
+      printf("Try to reinstall X11 package or recompile Przecinek,\n");
       fflush(stdout);
     }
 
@@ -1148,10 +1315,10 @@ printf(
   }
 
   // Set [title] value
-  XStoreName(build[window.ID-1].display, build[window.ID-1].base, TITLE_DEF);
-  mbstowcs(window.title, TITLE_DEF, TITLE_MAX);
-  strcpy(build[window.ID-1].title, TITLE_DEF);
-  mbstowcs(build[window.ID-1].titleW, TITLE_DEF, TITLE_MAX);
+  XStoreName(build[window.ID-1].display, build[window.ID-1].base, WINDOW_TITLE_DEF);
+  mbstowcs(window.title, WINDOW_TITLE_DEF, WINDOW_TITLE_CHAR);
+  strcpy(build[window.ID-1].title, WINDOW_TITLE_DEF);
+  mbstowcs(build[window.ID-1].titleW, WINDOW_TITLE_DEF, WINDOW_TITLE_CHAR);
 
   // Create [build] [delete] and [state]
   build[window.ID-1].delete=XInternAtom(build[window.ID-1].display, "WM_DELETE_WINDOW", False);
@@ -1185,12 +1352,19 @@ printf(
   // Set timer start value
   gettimeofday(&build[window.ID-1].frameStart, NULL);
 
-  // Create [build] [surface]
-  build[window.ID-1].surface=cairo_xlib_surface_create(
-    build[window.ID-1].display, build[window.ID-1].base,
-    DefaultVisual(build[window.ID-1].display, build[window.ID-1].screen),
-    width, height
+  // Create and setup [build] [buffer]
+  build[window.ID-1].buffer=glXCreateContext(
+    build[window.ID-1].display, build[window.ID-1].visual, buffer, GL_TRUE
   );
+  glXMakeCurrent(build[window.ID-1].display, build[window.ID-1].base, build[window.ID-1].buffer);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glViewport(0, 0, width, height);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0, width, height, 0, (-1), 1);
+  glMatrixMode(GL_MODELVIEW);
 
   // Return local [window]
   return window;
@@ -1199,29 +1373,177 @@ printf(
 /****************************************************************
  * |\_____/| pWindowDrawObject()
  * | .     | In: pWindow* [window], pObject* [object],
- * |     . |     pColor* [color]
+ * |     . |     pColor* [color], pImage* [image]
  * \ = , = / Out:
  *
  * This function draws [object] on [window].
- * It checks if [color] values are valid.
+ * It checks if [color] and [image] values are valid.
  * It checks for any changes in [object] values.
  * Then it does all the rendering stuff.
  ****************************************************************/
-void pWindowDrawObject(pWindow *window, pObject *object, pColor *color){
-  if(window->ID!=0){
-    if(object->ID!=0){
-      // Check [color] values
-      pDebugColorCheck(color);
+void pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image){
+  if(window==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDrawObject() Error]\n");
+      printf("Given window is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
 
-      // Update [figure] [vertice]
+    return;
+  }
+  if(object==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDrawObject() Error]\n");
+      printf("Given object is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
+  if(window->ID!=0){
+    if(object->ID!=0 && (image==NULL || (image!=NULL && image->ID!=0))){
+      if(color!=NULL){
+        // Check [color] values
+        if(color->red>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of color.red is too large!\n");
+            printf("Value of color.red was changed from %i to 255,\n", color->red);
+            fflush(stdout);
+          }
+
+          // Correct [color] [red] value
+          color->red=255;
+        }
+        if(color->green>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of color.green is too large!\n");
+            printf("Value of color.green was changed from %i to 255,\n", color->green);
+            fflush(stdout);
+          }
+
+          // Correct [color] [green] value
+          color->green=255;
+        }
+        if(color->blue>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of color.blue is too large!\n");
+            printf("Value of color.blue was changed from %i to 255,\n", color->blue);
+            fflush(stdout);
+          }
+
+          // Correct [color] [blue] value
+          color->blue=255;
+        }
+        if(color->alpha>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of color.alpha is too large!\n");
+            printf("Value of color.alpha was changed from %i to 255,\n", color->alpha);
+            fflush(stdout);
+          }
+
+          // Correct [color] [alpha] value
+          color->alpha=255;
+        }
+      }
+
+      if(image!=NULL){
+        if(wcscmp(image->directory, texture[image->ID-1].directoryW)!=0){
+          // Update [texture] [directory] and [directoryW] values
+          wcscpy(texture[image->ID-1].directoryW, image->directory);
+          wcstombs(texture[image->ID-1].directory, image->directory, IMAGE_DIRECTORY_CHAR);
+
+          // Check [directory] value
+          if((wcslen(image->directory)>=4 &&
+              (wcscmp(image->directory+wcslen(image->directory)-4, L".png")==0 ||
+               wcscmp(image->directory+wcslen(image->directory)-4, L".jpg")==0)) ||
+              (wcslen(image->directory)>=5 &&
+              wcscmp(image->directory+wcslen(image->directory)-5, L".jpeg")==0)){
+
+            // Check if [texture] [directory] exists
+            if(stat(texture[image->ID-1].directory, &status)!=0){
+              if(przecinek.debug==true){
+                printf("[pWindowDrawObject() Error]\n");
+                printf("Image located in image.directory doesn't exist!\n");
+                printf("Check if you gave the correct value,\n");
+
+                printf("[pWindowDrawObject() Error]\n");
+                printf("Could not draw image!\n");
+                printf("It wasn't initialized properly.\n");
+                printf("Try to recreate it using pImageCreate(),\n");
+                fflush(stdout);
+              }
+
+              // Reset [image]
+              pDebugImageReset(image);
+              image->ID=0;
+
+              return;
+            }
+          }
+          else{
+            if(przecinek.debug==true){
+              printf("[pWindowDrawObject() Error]\n");
+              printf("Value of image.directory doesn't include .png/.jpg/.jpeg extenstion!\n");
+              printf("Check if you gave the correct value,\n");
+
+              printf("[pWindowDrawObject() Error]\n");
+              printf("Could not draw image!\n");
+              printf("It wasn't initialized properly.\n");
+              printf("Try to recreate it using pImageCreate(),\n");
+              fflush(stdout);
+            }
+
+            // Reset [image]
+            pDebugImageReset(image);
+            image->ID=0;
+
+            return;
+          }
+
+          // Load [texture] [directory] to [fileImage]
+          fileImage=fopen(texture[image->ID-1].directory, "rb");
+          if(fileImage==false){
+            if(przecinek.debug==true){
+              printf("[pWindowDrawObject() Error]\n");
+              printf("libPNG/libJPEG library could not load texture!\n");
+              printf("Your image file might be corrupted,\n");
+
+              printf("[pWindowDrawObject() Error]\n");
+              printf("Could not draw image!\n");
+              printf("It wasn't initialized properly.\n");
+              printf("Try to recreate it using pImageCreate(),\n");
+              fflush(stdout);
+            }
+
+            // Reset [image]
+            pDebugImageReset(image);
+            image->ID=0;
+
+            return;
+          }
+
+          // Load [texture] x2
+          pDebugImageSetup(image);
+        }
+      }
+
       if(object->vertice!=figure[object->ID-1].vertice){
         // Check [object] [vertice] value
         if(object->vertice<OBJECT_VERTICE_MIN){
           if(przecinek.debug==true){
-printf(
-  "[pWO01] \"Object vertice value is too low\" (changing from: %i to %i),\n",
-  object->vertice, OBJECT_VERTICE_MIN
-);
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of object.vertice is too small!\n");
+            printf(
+              "Value of object.vertice was changed from %i to %i,\n",
+              object->vertice, OBJECT_VERTICE_MIN
+            );
             fflush(stdout);
           }
 
@@ -1230,10 +1552,12 @@ printf(
         }
         else if(object->vertice>OBJECT_VERTICE_MAX){
           if(przecinek.debug==true){
-printf(
-  "[pWO02] \"Object vertice value is too big\" (changing from: %i to %i),\n",
-  object->vertice, OBJECT_VERTICE_MIN
-);
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of object.vertice is too large!\n");
+            printf(
+              "Value of object.vertice was changed from %i to %i,\n",
+              object->vertice, OBJECT_VERTICE_MAX
+            );
             fflush(stdout);
           }
 
@@ -1247,88 +1571,35 @@ printf(
         figure[object->ID-1].change=true;
       }
 
-      // Update [figure] [width]
       if(object->width!=figure[object->ID-1].width){
-        // Check [object] [width] value
-        if(object->width<OBJECT_WIDTH_MIN){
-          if(przecinek.debug==true){
-printf(
-  "[pWO03] \"Object width value is too low\" (changing from: %i to %i),\n",
-  object->width, OBJECT_WIDTH_MIN
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [width] value
-          object->width=OBJECT_WIDTH_MIN;
-        }
-        else if(object->width>OBJECT_WIDTH_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO04] \"Object width value is too big\" (changing from: %i to %i),\n",
-  object->width, OBJECT_WIDTH_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [width] value
-          object->width=OBJECT_WIDTH_MAX;
-        }
-
         // Update [figure] [width]
         figure[object->ID-1].width=object->width;
 
         figure[object->ID-1].change=true;
       }
 
-      // Update [figure] [height]
       if(object->height!=figure[object->ID-1].height){
-        // Check [object] [height] value
-        if(object->height<OBJECT_HEIGHT_MIN){
-          if(przecinek.debug==true){
-printf(
-  "[pWO05] \"Object height value is too low\" (changing from: %i to %i),\n",
-  object->height, OBJECT_HEIGHT_MIN
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [height] value
-          object->height=OBJECT_HEIGHT_MIN;
-        }
-        else if(object->height>OBJECT_HEIGHT_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO06] \"Object height value is too big\" (changing from: %i to %i),\n",
-  object->height, OBJECT_HEIGHT_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [height] value
-          object->height=OBJECT_HEIGHT_MAX;
-        }
-
         // Update [figure] [height]
         figure[object->ID-1].height=object->height;
 
         figure[object->ID-1].change=true;
       }
 
-      // Update [figure] [rotation]
       if(object->rotation!=figure[object->ID-1].rotation){
         // Check [object] [rotation] value
-        if(object->rotation>OBJECT_ROTATION_MAX){
+        if(object->rotation>360){
           if(przecinek.debug==true){
-printf(
-  "[pWO07] \"Object rotation value is too big\" (changing from: %i to %i),\n",
-  object->rotation, OBJECT_ROTATION_MAX
-);
+            printf("[pWindowDrawObject() Warning]\n");
+            printf("Value of object.rotation is too large!\n");
+            printf(
+              "Value of object.rotation was changed from %i to 360,\n",
+              object->rotation
+            );
             fflush(stdout);
           }
 
           // Change [object] [rotation] value
-          object->rotation=OBJECT_ROTATION_MAX;
+          object->rotation=360;
         }
 
         // Update [figure] [rotation]
@@ -1337,34 +1608,7 @@ printf(
         figure[object->ID-1].change=true;
       }
 
-      // Update [figure] [x]
       if(object->x!=figure[object->ID-1].x){
-        // Check [object] [x] value
-        if(object->x<(-WINDOW_POS_MAX)){
-          if(przecinek.debug==true){
-printf(
-  "[pWO08] \"Object x value is too low\" (changing from: %i to %i),\n",
-  object->x, (-WINDOW_POS_MAX)
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [x] value
-          object->x=(-WINDOW_POS_MAX);
-        }
-        else if(object->x>WINDOW_POS_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO09] \"Object x value is too big\" (changing from: %i to %i),\n",
-  object->x, WINDOW_POS_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [x] value
-          object->x=WINDOW_POS_MAX;
-        }
-
         // Calculate [figure] [point] [x] position
         if(figure[object->ID-1].change==false){
           figure[object->ID-1].position=object->x-figure[object->ID-1].x;
@@ -1378,34 +1622,7 @@ printf(
         figure[object->ID-1].x=object->x;
       }
 
-      // Update [figure] [y]
       if(object->y!=figure[object->ID-1].y){
-        // Check [object] [y] value
-        if(object->y<(-WINDOW_POS_MAX)){
-          if(przecinek.debug==true){
-printf(
-  "[pWO10] \"Object y value is too low\" (changing from: %i to %i),\n",
-  object->y, (-WINDOW_POS_MAX)
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [y] value
-          object->y=(-WINDOW_POS_MAX);
-        }
-        else if(object->y>WINDOW_POS_MAX){
-          if(przecinek.debug==true){
-printf(
-  "[pWO11] \"Object y value is too big\" (changing from: %i to %i),\n",
-  object->y, WINDOW_POS_MAX
-);
-            fflush(stdout);
-          }
-
-          // Change [object] [y] value
-          object->y=WINDOW_POS_MAX;
-        }
-
         // Calculate [figure] [point] [y] position
         if(figure[object->ID-1].change==false){
           figure[object->ID-1].position=object->y-figure[object->ID-1].y;
@@ -1431,45 +1648,68 @@ printf(
         figure[object->ID-1].change=false;
       }
 
-      // Setup [build] [cairo]
-      build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
+      // Set current [build] [buffer]
+      glXMakeCurrent(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].buffer);
 
-      // Set [build] [cairo] [color] values
-      cairo_set_source_rgba(
-        build[window->ID-1].cairo,
-        (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
-      );
-
-      // Draw on [build] [cairo]
-      cairo_move_to(
-        build[window->ID-1].cairo,
-        figure[object->ID-1].point[0].x, figure[object->ID-1].point[0].y
-      );
-
-      for(unsigned short int current=1; current<object->vertice; current+=1){
-        cairo_line_to(
-          build[window->ID-1].cairo,
-          figure[object->ID-1].point[current].x, figure[object->ID-1].point[current].y
+      // Setup [build] [buffer]
+      if(color==NULL){
+        if(image==NULL){
+          glColor4f(
+            (float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
+            (float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
+          );
+        }
+        else{ glColor4f((float)1, (float)1, (float)1, (float)1); }
+      }
+      else{
+        glColor4f(
+          (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/255
         );
       }
 
-      cairo_close_path(build[window->ID-1].cairo);
-      cairo_fill(build[window->ID-1].cairo);
+      if(image!=NULL){
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texture[image->ID-1].texture);
+      }
 
-      // Clean [build] [cairo]
-      cairo_destroy(build[window->ID-1].cairo);
+      // Draw on [build] [buffer]
+      glBegin(GL_POLYGON);
+
+      for(unsigned short int current=0; current<object->vertice; current+=1){
+        if(image!=NULL){
+          glTexCoord2f(
+            figure[object->ID-1].textureX[current],
+            figure[object->ID-1].textureY[current]
+          );
+        }
+        glVertex2i(figure[object->ID-1].point[current].x, figure[object->ID-1].point[current].y);
+      }
+
+      glEnd();
+
+      if(image!=NULL){ glDisable(GL_TEXTURE_2D); }
     }
     else if(przecinek.debug==true){
-printf(
-  "[pEG03] \"Could not draw object\" (object is closed),\n"
-);
+      if(object->ID==0){
+        printf("[pWindowDrawObject() Error]\n");
+        printf("Could not draw object!\n");
+        printf("It wasn't initialized properly.\n");
+        printf("Try to recreate it using pObjectCreate(),\n");
+      }
+      if(texture->ID==0){
+        printf("[pWindowDrawObject() Error]\n");
+        printf("Could not draw image!\n");
+        printf("It wasn't initialized properly.\n");
+        printf("Try to recreate it using pImageCreate(),\n");
+      }
       fflush(stdout);
     }
   }
   else if(przecinek.debug==true){
-printf(
-  "[pEG02] \"Could not draw object\" (window is closed),\n"
-);
+    printf("[pWindowDrawObject() Error]\n");
+    printf("Could not draw object on window!\n");
+    printf("Window wasn't initialized properly.\n");
+    printf("Try to recreate it using pWindowCreate(),\n");
     fflush(stdout);
   }
 
@@ -1488,78 +1728,122 @@ printf(
  * Then it does all the rendering stuff.
  ****************************************************************/
 void pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color){
+  if(window==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDrawText() Error]\n");
+      printf("Given window is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+  if(font==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDrawText() Error]\n");
+      printf("Given font is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+  if(text==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDrawText() Error]\n");
+      printf("Given text is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(window->ID!=0){
-    if(font->ID!=0){
-      // Check [color] values
-      pDebugColorCheck(color);
+    if(font->ID!=0 && text->ID!=0){
+      if(color!=NULL){
+        // Check [color] values
+        if(color->red>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of color.red is too large!\n");
+            printf("Value of color.red was changed from %i to 255,\n", color->red);
+            fflush(stdout);
+          }
 
-      // Check [text] [x] value
-      if(text->x<(-WINDOW_POS_MAX)){
-        if(przecinek.debug==true){
-printf(
-  "[pWT01] \"Text x value is too low\" (changing from: %i to %i),\n",
-  text->x, (-WINDOW_POS_MAX)
-);
-          fflush(stdout);
+          // Correct [color] [red] value
+          color->red=255;
         }
+        if(color->green>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of color.green is too large!\n");
+            printf("Value of color.green was changed from %i to 255,\n", color->green);
+            fflush(stdout);
+          }
 
-        // Change [text] [x] value
-        text->x=(-WINDOW_POS_MAX);
-      }
-      else if(text->x>WINDOW_POS_MAX){
-        if(przecinek.debug==true){
-printf(
-  "[pWT02] \"Text x value is too big\" (changing from: %i to %i),\n",
-  text->x, WINDOW_POS_MAX
-);
-          fflush(stdout);
+          // Correct [color] [green] value
+          color->green=255;
         }
+        if(color->blue>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of color.blue is too large!\n");
+            printf("Value of color.blue was changed from %i to 255,\n", color->blue);
+            fflush(stdout);
+          }
 
-        // Change [text] [x] value
-        text->x=WINDOW_POS_MAX;
-      }
-
-      // Check [text] [y] value
-      if(text->y<(-WINDOW_POS_MAX)){
-        if(przecinek.debug==true){
-printf(
-  "[pWT03] \"Text y value is too low\" (changing from: %i to %i),\n",
-  text->y, (-WINDOW_POS_MAX)
-);
-          fflush(stdout);
+          // Correct [color] [blue] value
+          color->blue=255;
         }
+        if(color->alpha>255){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of color.alpha is too large!\n");
+            printf("Value of color.alpha was changed from %i to 255,\n", color->alpha);
+            fflush(stdout);
+          }
 
-        // Change [text] [y] value
-        text->y=(-WINDOW_POS_MAX);
-      }
-      else if(text->y>WINDOW_POS_MAX){
-        if(przecinek.debug==true){
-printf(
-  "[pWT04] \"Text y value is too big\" (changing from: %i to %i),\n",
-  text->y, WINDOW_POS_MAX
-);
-          fflush(stdout);
+          // Correct [color] [alpha] value
+          color->alpha=255;
         }
-
-        // Change [text] [y] value
-        text->y=WINDOW_POS_MAX;
       }
 
-      // Update [code] [value]
       if(wcscmp(text->value, code[text->ID-1].valueW)!=0){
+        // Check [text] [value]
+        if(wcscmp(text->value, L"")==0){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Error]\n");
+            printf("Value of text.title can't be empty!\n");
+            printf("Try to fill it with something,\n");
+
+            printf("[pWindowDrawText() Error]\n");
+            printf("Could not draw text!\n");
+            printf("It wasn't initialized properly.\n");
+            printf("Try to recreate it using pTextCreate(),\n");
+            fflush(stdout);
+          }
+
+          // Reset [text]
+          pDebugTextReset(text);
+          text->ID=0;
+
+          return;
+        }
+
+        // Update [code] [value]
         wcscpy(code[text->ID-1].valueW, text->value);
-        wcstombs(code[text->ID-1].value, text->value, sizeof(code[text->ID-1].value));
+
+        code[text->ID-1].change=true;
       }
 
-      // Update [view] [size]
       if(font->size!=view[font->ID-1].size){
         // Check [font] [size] value
         if(font->size<FONT_SIZE_MIN){
           if(przecinek.debug==true){
-printf(
-  "[pWF01] \"Font size value is too low\" (changing from: %i to %i),\n",
-  font->size, FONT_SIZE_MIN
-);
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of font.size is too small!\n");
+            printf("Value of font.size was changed from %i to %i,\n", font->size, FONT_SIZE_MIN);
             fflush(stdout);
           }
 
@@ -1568,10 +1852,9 @@ printf(
         }
         else if(font->size>FONT_SIZE_MAX){
           if(przecinek.debug==true){
-printf(
-  "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
-  font->size, FONT_SIZE_MAX
-);
+            printf("[pWindowDrawText() Warning]\n");
+            printf("Value of font.size is too large!\n");
+            printf("Value of font.size was changed from %i to %i,\n", font->size, FONT_SIZE_MAX);
             fflush(stdout);
           }
 
@@ -1584,25 +1867,51 @@ printf(
         view[font->ID-1].change=true;
       }
 
-      // Update [view] [directory] value
       if(wcscmp(font->directory, view[font->ID-1].directoryW)!=0){
+        // Update [view] [directory] value
         wcscpy(view[font->ID-1].directoryW, font->directory);
         wcstombs(view[font->ID-1].directory, font->directory, sizeof(view[font->ID-1].directory));
 
         view[font->ID-1].change=true;
       }
 
-      // Update [view] font
       if(view[font->ID-1].change==true){
-        // Check if [view] [directory] exists
-        if(stat(view[font->ID-1].directory, &status)!=0){
+        // Check [view] [directory] value
+        if(wcslen(view[font->ID-1].directoryW)>=4 &&
+            (wcscmp(view[font->ID-1].directoryW+wcslen(view[font->ID-1].directoryW)-4, L".ttf")==0 ||
+             wcscmp(view[font->ID-1].directoryW+wcslen(view[font->ID-1].directoryW)-4, L".otf")==0)){
+
+          // Check if [view] [directory] exists
+          if(stat(view[font->ID-1].directory, &status)!=0){
+            if(przecinek.debug==true){
+              printf("[pWindowDrawText() Error]\n");
+              printf("Font located in font.directory doesn't exist!\n");
+              printf("Check if you gave the correct value,\n");
+
+              printf("[pWindowDrawText() Error]\n");
+              printf("Could not draw text!\n");
+              printf("Given font wasn't initialized properly.\n");
+              printf("Try to recreate it using pFontCreate(),\n");
+              fflush(stdout);
+            }
+
+            // Reset [font]
+            pDebugFontReset(font);
+            font->ID=0;
+
+            return;
+          }
+        }
+        else{
           if(przecinek.debug==true){
-printf(
-  "[pEF02] \"Could not load font\",\n"
-);
-printf(
-  "[pEG04] \"Could not draw text\" (font is closed),\n"
-);
+            printf("[pWindowDrawText() Error]\n");
+            printf("Value of font.directory doesn't include .ttf/.otf extenstion!\n");
+            printf("Check if you gave the correct value,\n");
+
+            printf("[pWindowDrawText() Error]\n");
+            printf("Could not draw text!\n");
+            printf("Given font wasn't initialized properly.\n");
+            printf("Try to recreate it using pFontCreate(),\n");
             fflush(stdout);
           }
 
@@ -1614,94 +1923,122 @@ printf(
         }
 
         // Reset [view] [face]
-        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-          FT_Done_Face(view[font->ID-1].face[current]);
-        }
+        FT_Done_Face(view[font->ID-1].face);
 
-        // Load [view] [face] and check if font loads properly
-        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-          if(FT_New_Face(freeType, view[font->ID-1].directory, 0, &view[font->ID-1].face[current])){
-            if(przecinek.debug==true){
-printf(
-  "[pEFx1] \"Could not create X11 font\",\n"
-);
-printf(
-  "[pEG04] \"Could not draw text\" (font is closed),\n"
-);
-              fflush(stdout);
-            }
+        // Load [view] [face] and check if [font] loads properly
+        if(FT_New_Face(freeType, view[font->ID-1].directory, 0, &view[font->ID-1].face)){
+          if(przecinek.debug==true){
+            printf("[pWindowDrawText() Error]\n");
+            printf("FreeType2 library could not load font!\n");
+            printf("Your font file might be corrupted,\n");
 
-            // Reset [font]
-            pDebugFontReset(font);
-            font->ID=0;
-
-            return;
+            printf("[pWindowDrawText() Error]\n");
+            printf("Could not draw text!\n");
+            printf("Given font wasn't initialized properly.\n");
+            printf("Try to recreate it using pFontCreate(),\n");
+            fflush(stdout);
           }
+
+          // Reset [font]
+          pDebugFontReset(font);
+          font->ID=0;
+
+          return;
         }
 
-        // Load [view] [cairoFace]
-        for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-          view[font->ID-1].cairoFace[current]=cairo_ft_font_face_create_for_ft_face(
-            view[font->ID-1].face[current], FT_LOAD_NO_HINTING
-          );
-          FT_Set_Pixel_Sizes(view[font->ID-1].face[current], 0, view[font->ID-1].size);
-        }
+        FT_Set_Pixel_Sizes(view[font->ID-1].face, 0, view[font->ID-1].size);
+      }
+
+      if(view[font->ID-1].change==true || code[text->ID-1].change==true ||
+          (code[text->ID-1].textureSize[font->ID-1][0].width==0 &&
+           code[text->ID-1].textureSize[font->ID-1][0].height==0)){
+
+        // Create [code] [texture]
+        pDebugTextSetup(text, font);
 
         view[font->ID-1].change=false;
+        code[text->ID-1].change=false;
       }
 
-      // Update [code] [xFix] and [yFix] value
-      code[text->ID-1].xFix=(view[font->ID-1].size*48)/512;
-      code[text->ID-1].yFix=(view[font->ID-1].size*352)/512;
+      // Set current [build] [buffer]
+      glXMakeCurrent(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].buffer);
 
-      // Setup [build] [cairo]
-      build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
+      // Setup [build] [buffer]
+      glEnable(GL_TEXTURE_2D);
 
-      // Setup [build] [cairo] font
-      cairo_set_font_face(build[window->ID-1].cairo, view[font->ID-1].cairoFace[window->ID-1]);
-      cairo_set_font_size(build[window->ID-1].cairo, view[font->ID-1].size);
-      cairo_font_extents(build[window->ID-1].cairo, &fontExtents);
-
-      // Set [build] [cairo] [color] values
-      cairo_set_source_rgba(
-        build[window->ID-1].cairo,
-        (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
-      );
-
-      // Load [code] [value] [segment]
-      segment=strtok_r(code[text->ID-1].value, "\n", &token);
-      while(segment!=NULL){
-        // Draw on [build] [cairo]
-        cairo_move_to(
-          build[window->ID-1].cairo,
-          text->x-code[text->ID-1].xFix, text->y+code[text->ID-1].yFix
+      if(color!=NULL){
+        glColor4f(
+          (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/255
+	      );
+	    }
+      else{
+        glColor4f(
+          (float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
+          (float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
         );
-        cairo_show_text(build[window->ID-1].cairo, segment);
+	    }
 
-        // Update [code] [yFix]
-        code[text->ID-1].yFix+=fontExtents.height;
+      for(unsigned short int current=0; current<wcslen(text->value); current+=1){
+        // Bind [code] [texture]
+        glBindTexture(GL_TEXTURE_2D, code[text->ID-1].texture[font->ID-1][current]);
 
-        // Load next [segment]
-        segment=strtok_r(NULL, "\n", &token);
+        // Draw on [build] [buffer]
+        glBegin(GL_QUADS);
+
+        glTexCoord2f(0.0, 1.0);
+        glVertex2i(
+          code[text->ID-1].texturePosition[font->ID-1][current].x,
+          code[text->ID-1].texturePosition[font->ID-1][current].y+
+          code[text->ID-1].textureSize[font->ID-1][current].height
+        );
+
+        glTexCoord2f(1.0, 1.0);
+        glVertex2i(
+          code[text->ID-1].texturePosition[font->ID-1][current].x+
+          code[text->ID-1].textureSize[font->ID-1][current].width,
+          code[text->ID-1].texturePosition[font->ID-1][current].y+
+          code[text->ID-1].textureSize[font->ID-1][current].height
+        );
+
+        glTexCoord2f(1.0, 0.0);
+        glVertex2i(
+          code[text->ID-1].texturePosition[font->ID-1][current].x+
+          code[text->ID-1].textureSize[font->ID-1][current].width,
+          code[text->ID-1].texturePosition[font->ID-1][current].y
+        );
+
+        glTexCoord2f(0.0, 0.0);
+        glVertex2i(
+          code[text->ID-1].texturePosition[font->ID-1][current].x,
+          code[text->ID-1].texturePosition[font->ID-1][current].y
+        );
+
+        glEnd();
       }
 
-      // Update [code] [value]
-      wcstombs(code[text->ID-1].value, text->value, sizeof(code[text->ID-1].value));
-
-      // Clean [build] [cairo]
-      cairo_destroy(build[window->ID-1].cairo);
+      glDisable(GL_TEXTURE_2D);
     }
     else if(przecinek.debug==true){
-printf(
-  "[pEG04] \"Could not draw text\" (font is closed),\n"
-);
+      if(font->ID==0){
+        printf("[pWindowDrawText() Error]\n");
+        printf("Could not draw text!\n");
+        printf("Given font wasn't initialized properly.\n");
+        printf("Try to recreate it using pFontCreate(),\n");
+      }
+      if(text->ID==0){
+        printf("[pWindowDrawText() Error]\n");
+        printf("Could not draw text!\n");
+        printf("It wasn't initialized properly.\n");
+        printf("Try to recreate it using pTextCreate(),\n");
+      }
       fflush(stdout);
     }
   }
   else if(przecinek.debug==true){
-printf(
-  "[pEG02] \"Could not draw text\" (window is closed),\n"
-);
+    printf("[pWindowDrawText() Error]\n");
+    printf("Could not draw text on window!\n");
+    printf("Window wasn't initialized properly.\n");
+    printf("Try to recreate it using pWindowCreate(),\n");
     fflush(stdout);
   }
 
@@ -1710,7 +2047,7 @@ printf(
 
 /****************************************************************
  * |\_____/| pWindowClear()
- * | .     | In: pWindow* [window], int [x], [y],
+ * | .     | In: pWindow* [window], s_int [x], [y],
  * |     . |     us_int [width], [height], pColor* [color]
  * \ = , = / Out:
  *
@@ -1718,34 +2055,101 @@ printf(
  * Cleared area depends on given position and size values.
  ****************************************************************/
 void pWindowClear(
-  pWindow *window, int x, int y,
+  pWindow *window, short int x, short int y,
   unsigned short int width, unsigned short int height, pColor *color
 ){
 
+  if(window==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowClear() Error]\n");
+      printf("Given window is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(window->ID!=0){
-    // Check [color] values
-    pDebugColorCheck(color);
+    if(color!=NULL){
+      // Check [color] values
+      if(color->red>255){
+        if(przecinek.debug==true){
+          printf("[pWindowClear() Warning]\n");
+          printf("Value of color.red is too large!\n");
+          printf("Value of color.red was changed from %i to 255,\n", color->red);
+          fflush(stdout);
+        }
 
-    // Setup [build] [cairo]
-    build[window->ID-1].cairo=cairo_create(build[window->ID-1].surface);
+        // Correct [color] [red] value
+        color->red=255;
+      }
+      if(color->green>255){
+        if(przecinek.debug==true){
+          printf("[pWindowClear() Warning]\n");
+          printf("Value of color.green is too large!\n");
+          printf("Value of color.green was changed from %i to 255,\n", color->green);
+          fflush(stdout);
+        }
 
-    // Set [build] [cairo] [color] values
-    cairo_set_source_rgba(
-      build[window->ID-1].cairo,
-      (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/100
-    );
+        // Correct [color] [green] value
+        color->green=255;
+      }
+      if(color->blue>255){
+        if(przecinek.debug==true){
+          printf("[pWindowClear() Warning]\n");
+          printf("Value of color.blue is too large!\n");
+          printf("Value of color.blue was changed from %i to 255,\n", color->blue);
+          fflush(stdout);
+        }
 
-    // Draw on [build] [cairo]
-    cairo_rectangle(build[window->ID-1].cairo, x, y, width, height);
-    cairo_fill(build[window->ID-1].cairo);
+        // Correct [color] [blue] value
+        color->blue=255;
+      }
+      if(color->alpha>255){
+        if(przecinek.debug==true){
+          printf("[pWindowClear() Warning]\n");
+          printf("Value of color.alpha is too large!\n");
+          printf("Value of color.alpha was changed from %i to 255,\n", color->alpha);
+          fflush(stdout);
+        }
 
-    // Clean [build] [cairo]
-    cairo_destroy(build[window->ID-1].cairo);
+        // Correct [color] [alpha] value
+        color->alpha=255;
+      }
+    }
+
+    // Set current [build] [buffer]
+    glXMakeCurrent(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].buffer);
+
+    // Setup [build] [buffer]
+    if(color!=NULL){
+      glColor4f(
+        (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/255
+      );
+    }
+    else{
+      glColor4f(
+        (float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
+        (float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
+      );
+    }
+
+    // Draw on [build] [buffer]
+    glBegin(GL_POLYGON);
+
+    glVertex2i(x, y);
+    glVertex2i(x, y+height);
+    glVertex2i(x+width, y+height);
+    glVertex2i(x+width, y);
+
+    glEnd();
   }
   else if(przecinek.debug==true){
-printf(
-  "[pEG02] \"Could not clear screen\" (window is closed),\n"
-);
+    printf("[pWindowClear() Error]\n");
+    printf("Could not clear window!\n");
+    printf("Window wasn't initialized properly.\n");
+    printf("Try to recreate it using pWindowCreate(),\n");
     fflush(stdout);
   }
 
@@ -1767,22 +2171,74 @@ printf(
  * It also updates frame count.
  ****************************************************************/
 void pWindowHandle(pWindow *window){
+  if(window==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowHandle() Error]\n");
+      printf("Given window is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(window->ID!=0){
     // Update [windowMainID]
     if(build[windowMainID].exist==false){
       for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
         if(build[current].exist==true){
           windowMainID=current;
+          break;
         }
       }
     }
 
-    // Change [przecinek] [key] values from `1` to `2`
+    // Set current [build] [buffer]
+    glXMakeCurrent(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].buffer);
+
     if((window->ID-1)==windowMainID){
-      for(unsigned short int button=0; button<KEY_MAX; button+=1){
+      // Change [przecinek] [key] values from `1` to `2`
+      for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
         if(input[button]!=0){ przecinek.key[input[button]]=2; }
         else{ break; }
       }
+
+      // Update [przecinek] [display] values
+      przecinek.display.width=DisplayWidth(build[window->ID-1].display, build[window->ID-1].screen);
+      przecinek.display.height=DisplayHeight(build[window->ID-1].display, build[window->ID-1].screen);
+
+      // Update [przecinek] [cursor] values
+      root=DefaultRootWindow(build[window->ID-1].display);
+
+      if(XQueryPointer(
+          build[window->ID-1].display, root, &root, &root,
+          &cursorMainX, &cursorMainY, &cursorLocalX, &cursorLocalY, &mask)){
+        przecinek.cursor.x=cursorMainX;
+        przecinek.cursor.y=cursorMainY;
+      }
+      else{
+        przecinek.cursor.x=0;
+        przecinek.cursor.y=0;
+      }
+
+      // Update [przecinek] [windowCount]
+      przecinek.windowCount=windowCount;
+
+      // Update [przecinek] [keyCaps]
+      XGetKeyboardControl(build[window->ID-1].display, &keyboardState);
+      przecinek.keyCaps=(keyboardState.led_mask&(1<<1)!=0);
+    }
+
+    // Update [window] [resizable]
+    window->resizable=build[window->ID-1].resizable;
+
+    if(wcscmp(window->title, build[window->ID-1].titleW)!=0){
+      // Update [build] [title] value
+      wcscpy(build[window->ID-1].titleW, window->title);
+      wcstombs(build[window->ID-1].title, window->title, WINDOW_TITLE_CHAR);
+
+      // Change [window] [title]
+      XStoreName(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].title);
     }
 
     while(XPending(build[window->ID-1].display)){
@@ -1800,40 +2256,12 @@ void pWindowHandle(pWindow *window){
         return;
       }
 
-      // Update [przecinek] [display] values
-      przecinek.display.width=DisplayWidth(build[window->ID-1].display, build[window->ID-1].screen);
-      przecinek.display.height=DisplayHeight(build[window->ID-1].display, build[window->ID-1].screen);
-
-      // Update [przecinek] [cursor] values
-      root=DefaultRootWindow(build[window->ID-1].display);
-
-      if(XQueryPointer(
-          build[window->ID-1].display, root, &root, &root,
-          &cursorMain.x, &cursorMain.y, &cursorLocal.x, &cursorLocal.y, &mask)){
-        przecinek.cursor.x=cursorMain.x;
-        przecinek.cursor.y=cursorMain.y;
-      }
-      else{
-        przecinek.cursor.x=0;
-        przecinek.cursor.y=0;
-      }
-
-      // Update [przecinek] [windowCount]
-      przecinek.windowCount=windowCount;
-
-      // Update [window] [resizable]
-      window->resizable=build[window->ID-1].resizable;
-
-      // Update [przecinek] [keyCaps]
-      XGetKeyboardControl(build[window->ID-1].display, &keyboardState);
-      przecinek.keyCaps=(keyboardState.led_mask&(1<<1)!=0);
-
       // Manage key press [currentEvent]
       if(currentEvent.type==KeyPress){
         if(przecinek.key[currentEvent.xkey.keycode]==0){
           przecinek.key[currentEvent.xkey.keycode]=1;
 
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]==0){
               input[button]=currentEvent.xkey.keycode;
               break;
@@ -1848,7 +2276,7 @@ void pWindowHandle(pWindow *window){
         if(przecinek.key[currentEvent.xbutton.button]==0){
           przecinek.key[currentEvent.xbutton.button]=1;
 
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]==0){
               input[button]=currentEvent.xbutton.button;
               break;
@@ -1867,7 +2295,7 @@ void pWindowHandle(pWindow *window){
               currentReport.xkey.keycode==currentEvent.xkey.keycode){
 
             // System released [key]
-            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
               if(input[button]==currentEvent.xkey.keycode){
                 przecinek.key[currentEvent.xkey.keycode]=2;
                 break;
@@ -1883,7 +2311,7 @@ void pWindowHandle(pWindow *window){
             przecinek.key[currentEvent.xkey.keycode]=0;
 
             inputChange=false;
-            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
               if(input[button]==currentEvent.xkey.keycode || inputChange==true){
                 input[button]=input[button+1];
                 inputChange=true; 
@@ -1898,7 +2326,7 @@ void pWindowHandle(pWindow *window){
           przecinek.key[currentEvent.xkey.keycode]=0;
 
           inputChange=false;
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]==currentEvent.xkey.keycode || inputChange==true){
               input[button]=input[button+1];
               inputChange=true;
@@ -1920,7 +2348,7 @@ void pWindowHandle(pWindow *window){
               currentReport.xbutton.button==currentEvent.xbutton.button){
 
             // System released [key]
-            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
               if(input[button]==currentEvent.xbutton.button){
                 przecinek.key[currentEvent.xbutton.button]=2;
                 break;
@@ -1936,7 +2364,7 @@ void pWindowHandle(pWindow *window){
             przecinek.key[currentEvent.xbutton.button]=0;
 
             inputChange=false;
-            for(unsigned short int button=0; button<KEY_MAX; button+=1){
+            for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
               if(input[button]==currentEvent.xbutton.button || inputChange==true){
                 input[button]=input[button+1];
                 inputChange=true;
@@ -1951,7 +2379,7 @@ void pWindowHandle(pWindow *window){
           przecinek.key[currentEvent.xbutton.button]=0;
 
           inputChange=false;
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]==currentEvent.xbutton.button || inputChange==true){
               input[button]=input[button+1];
               inputChange=true;
@@ -1982,12 +2410,11 @@ void pWindowHandle(pWindow *window){
         );
 
         // Update [build] [surface]
-        cairo_surface_destroy(build[window->ID-1].surface);
-        build[window->ID-1].surface=cairo_xlib_surface_create(
-          build[window->ID-1].display, build[window->ID-1].base,
-          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-          window->width, window->height
-        );
+        glViewport(0, 0, window->width, window->height);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, window->width, window->height, 0, (-1), 1);
+        glMatrixMode(GL_MODELVIEW);
 
         // Update [window] and [build] position parameters
         window->x=0;
@@ -2014,12 +2441,11 @@ void pWindowHandle(pWindow *window){
         );
 
         // Update [build] [surface]
-        cairo_surface_destroy(build[window->ID-1].surface);
-        build[window->ID-1].surface=cairo_xlib_surface_create(
-          build[window->ID-1].display, build[window->ID-1].base,
-          DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-          window->width, window->height
-        );
+        glViewport(0, 0, window->width, window->height);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, window->width, window->height, 0, (-1), 1);
+        glMatrixMode(GL_MODELVIEW);
 
         // Change [window] and [build] position parameters to the backuped ones
         window->x=build[window->ID-1].xBac;
@@ -2039,55 +2465,51 @@ void pWindowHandle(pWindow *window){
         // Manage position change [currentEvent]
         if(build[window->ID-1].x!=window->x || build[window->ID-1].y!=window->y){
           // Check [window] [x] value
-          if(window->x<(-WINDOW_POS_MAX)){
+          if(window->x<WINDOW_X_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB05] \"Window x value is too low\" (changing from: %i to %i),\n",
-  window->x, (-WINDOW_POS_MAX)
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.x is too small!\n");
+              printf("Value of window.x was changed from %i to %i,\n", window->x, WINDOW_X_MIN);
               fflush(stdout);
             }
 
             // Change [window] [x] value
-            window->x=(-WINDOW_POS_MAX);
+            window->x=WINDOW_X_MIN;
           }
-          else if(window->x>WINDOW_POS_MAX){
+          else if(window->x>WINDOW_X_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB06] \"Window x value is too big\" (changing from: %i to %i),\n",
-  window->x, WINDOW_POS_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.x is too large!\n");
+              printf("Value of window.x was changed from %i to %i,\n", window->x, WINDOW_X_MAX);
               fflush(stdout);
             }
 
             // Change [window] [x] value
-            window->x=WINDOW_POS_MAX;
+            window->x=WINDOW_X_MAX;
           }
 
           // Check [window] [y] value
-          if(window->y<(-WINDOW_POS_MAX)){
+          if(window->y<WINDOW_Y_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB07] \"Window y value is too low\" (changing from: %i to %i),\n",
-  window->y, (-WINDOW_POS_MAX)
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.y is too small!\n");
+              printf("Value of window.y was changed from %i to %i,\n", window->y, WINDOW_Y_MIN);
               fflush(stdout);
             }
 
             // Change [window] [y] value
-            window->y=(-WINDOW_POS_MAX);
+            window->y=WINDOW_Y_MIN;
           }
-          else if(window->y>WINDOW_POS_MAX){
+          else if(window->y>WINDOW_Y_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB08] \"Window y value is too big\" (changing from: %i to %i),\n",
-  window->y, WINDOW_POS_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.y is too large!\n");
+              printf("Value of window.y was changed from %i to %i,\n", window->y, WINDOW_Y_MAX);
               fflush(stdout);
             }
 
             // Change [window] [y] value
-            window->y=WINDOW_POS_MAX;
+            window->y=WINDOW_Y_MAX;
           }
 
           // Update [build] position parameters
@@ -2095,7 +2517,7 @@ printf(
           build[window->ID-1].y=window->y;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2106,7 +2528,9 @@ printf(
           // Move [window]
           XMoveWindow(build[window->ID-1].display, build[window->ID-1].base, window->x, window->y);
         }
-        else if(currentEvent.type==ConfigureNotify && window->x!=currentEvent.xconfigure.x){
+        else if(currentEvent.type==ConfigureNotify &&
+            (window->x!=currentEvent.xconfigure.x || window->y!=currentEvent.xconfigure.y)){
+
           // Update [build] and [window] position parameters
           window->x=currentEvent.xconfigure.x;
           window->y=currentEvent.xconfigure.y;
@@ -2114,7 +2538,7 @@ printf(
           build[window->ID-1].y=window->y;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2128,10 +2552,9 @@ printf(
           // Check [window] [width] value
           if(window->width<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB01] \"Window width value is too low\" (changing from: %i to %i),\n",
-  window->width, WINDOW_WIDTH_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.width is too small!\n");
+              printf("Value of window.width was changed from %i to %i,\n", window->width, WINDOW_WIDTH_MIN);
               fflush(stdout);
             }
 
@@ -2140,10 +2563,9 @@ printf(
           }
           else if(window->width>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB02] \"Window width value is too big\" (changing from: %i to %i),\n",
-  window->width, WINDOW_WIDTH_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.width is too large!\n");
+              printf("Value of window.width was changed from %i to %i,\n", window->width, WINDOW_WIDTH_MAX);
               fflush(stdout);
             }
 
@@ -2154,10 +2576,9 @@ printf(
           // Check [window] [height] value
           if(window->height<WINDOW_HEIGHT_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB03] \"Window height value is too low\" (changing from: %i to %i),\n",
-  window->height, WINDOW_HEIGHT_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.height is too small!\n");
+              printf("Value of window.height was changed from %i to %i,\n", window->height, WINDOW_HEIGHT_MIN);
               fflush(stdout);
             }
 
@@ -2166,10 +2587,9 @@ printf(
           }
           else if(window->height>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB04] \"Window height value is too big\" (changing from: %i to %i),\n",
-  window->height, WINDOW_HEIGHT_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.height is too large!\n");
+              printf("Value of window.height was changed from %i to %i,\n", window->height, WINDOW_HEIGHT_MAX);
               fflush(stdout);
             }
 
@@ -2182,7 +2602,7 @@ printf(
           build[window->ID-1].height=window->height;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2197,16 +2617,17 @@ printf(
           );
 
           // Update [build] [surface]
-          cairo_surface_destroy(build[window->ID-1].surface);
-          build[window->ID-1].surface=cairo_xlib_surface_create(
-            build[window->ID-1].display, build[window->ID-1].base,
-            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-            window->width, window->height
-          );
+          glViewport(0, 0, window->width, window->height);
+          glMatrixMode(GL_PROJECTION);
+          glLoadIdentity();
+          glOrtho(0, window->width, window->height, 0, (-1), 1);
+          glMatrixMode(GL_MODELVIEW);
 
           build[window->ID-1].sizeRefresh=true;
         }
-        else if(currentEvent.type==ConfigureNotify && window->width!=currentEvent.xconfigure.width){
+        else if(currentEvent.type==ConfigureNotify &&
+            (window->width!=currentEvent.xconfigure.width || window->height!=currentEvent.xconfigure.height)){
+
           // Update [window] and [build] size parameters
           window->width=currentEvent.xconfigure.width;
           window->height=currentEvent.xconfigure.height;
@@ -2214,7 +2635,7 @@ printf(
           build[window->ID-1].height=currentEvent.xconfigure.height;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2223,12 +2644,11 @@ printf(
           }
 
           // Update [build] [surface]
-          cairo_surface_destroy(build[window->ID-1].surface);
-          build[window->ID-1].surface=cairo_xlib_surface_create(
-            build[window->ID-1].display, build[window->ID-1].base,
-            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-            window->width, window->height
-          );
+          glViewport(0, 0, window->width, window->height);
+          glMatrixMode(GL_PROJECTION);
+          glLoadIdentity();
+          glOrtho(0, window->width, window->height, 0, (-1), 1);
+          glMatrixMode(GL_MODELVIEW);
 
           build[window->ID-1].sizeRefresh=true;
         }
@@ -2257,7 +2677,7 @@ printf(
         window->focus=build[window->ID-1].focus;
 
         // Change [przecinek] [key] values to `0`
-        for(unsigned short int button=0; button<KEY_MAX; button+=1){
+        for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
           if(input[button]!=0){
             przecinek.key[input[button]]=0;
             input[button]=0;
@@ -2266,24 +2686,17 @@ printf(
         }
       }
 
-      if(wcscmp(window->title, build[window->ID-1].titleW)!=0){
-        // Update [build] [title] value
-        wcscpy(build[window->ID-1].titleW, window->title);
-        wcstombs(build[window->ID-1].title, window->title, TITLE_MAX);
-
-        // Change [window] [title]
-        XStoreName(build[window->ID-1].display, build[window->ID-1].base, build[window->ID-1].title);
-      }
-
       if(window->resizable==true){
         // Check [window] [widthMin] value
         if(build[window->ID-1].widthMin!=window->widthMin){
           if(window->widthMin<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB09] \"Window widthMin value is too low\" (changing from: %i to %i),\n",
-  window->widthMin, WINDOW_WIDTH_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.widthMin is too small!\n");
+              printf(
+                "Value of window.widthMin was changed from %i to %i,\n",
+                window->widthMin, WINDOW_WIDTH_MIN
+              );
               fflush(stdout);
             }
 
@@ -2292,10 +2705,12 @@ printf(
           }
           else if(window->widthMin>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB10] \"Window widthMin value is too big\" (changing from: %i to %i),\n",
-  window->widthMin, WINDOW_WIDTH_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.widthMin is too large!\n");
+              printf(
+                "Value of window.widthMin was changed from %i to %i,\n",
+                window->widthMin, WINDOW_WIDTH_MAX
+              );
               fflush(stdout);
             }
 
@@ -2313,10 +2728,12 @@ printf(
         if(build[window->ID-1].heightMin!=window->heightMin){
           if(window->heightMin<WINDOW_HEIGHT_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB11] \"Window heightMin value is too low\" (changing from: %i to %i),\n",
-  window->heightMin, WINDOW_HEIGHT_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.heightMin is too small!\n");
+              printf(
+                "Value of window.heightMin was changed from %i to %i,\n",
+                window->heightMin, WINDOW_HEIGHT_MIN
+              );
               fflush(stdout);
             }
 
@@ -2325,10 +2742,12 @@ printf(
           }
           else if(window->heightMin>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB12] \"Window heightMin value is too big\" (changing from: %i to %i),\n",
-  window->heightMin, WINDOW_HEIGHT_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.heightMin is too large!\n");
+              printf(
+                "Value of window.heightMin was changed from %i to %i,\n",
+                window->heightMin, WINDOW_HEIGHT_MAX
+              );
               fflush(stdout);
             }
 
@@ -2346,10 +2765,12 @@ printf(
         if(build[window->ID-1].widthMax!=window->widthMax){
           if(window->widthMax<WINDOW_WIDTH_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB13] \"Window widthMax value is too low\" (changing from: %i to %i),\n",
-  window->widthMax, WINDOW_WIDTH_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.widthMax is too small!\n");
+              printf(
+                "Value of window.widthMax was changed from %i to %i,\n",
+                window->widthMax, WINDOW_WIDTH_MIN
+              );
               fflush(stdout);
             }
 
@@ -2358,10 +2779,12 @@ printf(
           }
           else if(window->widthMax>WINDOW_WIDTH_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB14] \"Window widthMax value is too big\" (changing from: %i to %i),\n",
-  window->widthMax, WINDOW_WIDTH_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.widthMax is too large!\n");
+              printf(
+                "Value of window.widthMax was changed from %i to %i,\n",
+                window->widthMax, WINDOW_WIDTH_MAX
+              );
               fflush(stdout);
             }
 
@@ -2379,10 +2802,12 @@ printf(
         if(build[window->ID-1].heightMax!=window->heightMax){
           if(window->heightMax<WINDOW_HEIGHT_MIN){
             if(przecinek.debug==true){
-printf(
-  "[pWB15] \"Window heightMax value is too low\" (changing from: %i to %i),\n",
-  window->heightMax, WINDOW_HEIGHT_MIN
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.heightMax is too small!\n");
+              printf(
+                "Value of window.heightMax was changed from %i to %i,\n",
+                window->heightMax, WINDOW_HEIGHT_MIN
+              );
               fflush(stdout);
             }
 
@@ -2391,10 +2816,12 @@ printf(
           }
           else if(window->heightMax>WINDOW_HEIGHT_MAX){
             if(przecinek.debug==true){
-printf(
-  "[pWB16] \"Window heightMax value is too big\" (changing from: %i to %i),\n",
-  window->heightMax, WINDOW_HEIGHT_MAX
-);
+              printf("[pWindowHandle() Warning]\n");
+              printf("Value of window.heightMax is too large!\n");
+              printf(
+                "Value of window.heightMax was changed from %i to %i,\n",
+                window->heightMax, WINDOW_HEIGHT_MAX
+              );
               fflush(stdout);
             }
 
@@ -2408,14 +2835,15 @@ printf(
           build[window->ID-1].sizeHint.max_height=window->heightMax;
         }
 
-
         // Check [window] [widthMin] and [widthMax] values
         if(build[window->ID-1].widthMin>build[window->ID-1].widthMax){
           if(przecinek.debug==true){
-printf(
-  "[pWB17] \"Window widthMin value is bigger than widthMax\" (changing from: %i to %i),\n",
-  window->widthMin, window->widthMax
-);
+            printf("[pWindowHandle() Warning]\n");
+            printf("Value of window.widthMin is larger than window.widthMax!\n");
+            printf(
+              "Value of window.widthMin was changed from %i to %i,\n",
+              window->widthMin, window->widthMax
+            );
             fflush(stdout);
           }
 
@@ -2427,10 +2855,12 @@ printf(
         // Check [window] [heightMin] and [heightMax] values
         if(build[window->ID-1].heightMin>build[window->ID-1].heightMax){
           if(przecinek.debug==true){
-printf(
-  "[pWB18] \"Window heightMin value is bigger than heightMax\" (changing from: %i to %i),\n",
-  window->heightMin, window->heightMax
-);
+            printf("[pWindowHandle() Warning]\n");
+            printf("Value of window.heightMin is larger than window.heightMax!\n");
+            printf(
+              "Value of window.heightMin was changed from %i to %i,\n",
+              window->heightMin, window->heightMax
+            );
             fflush(stdout);
           }
 
@@ -2447,7 +2877,7 @@ printf(
           build[window->ID-1].width=build[window->ID-1].widthMin;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2461,12 +2891,11 @@ printf(
           );
 
           // Update [build] [surface]
-          cairo_surface_destroy(build[window->ID-1].surface);
-          build[window->ID-1].surface=cairo_xlib_surface_create(
-            build[window->ID-1].display, build[window->ID-1].base,
-            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-            window->width, window->height
-          );
+          glViewport(0, 0, window->width, window->height);
+          glMatrixMode(GL_PROJECTION);
+          glLoadIdentity();
+          glOrtho(0, window->width, window->height, 0, (-1), 1);
+          glMatrixMode(GL_MODELVIEW);
         }
 
         // Correct [window] and [build] [height] value
@@ -2477,7 +2906,7 @@ printf(
           build[window->ID-1].height=build[window->ID-1].heightMin;
 
           // Change [przecinek] [key] values to `0`
-          for(unsigned short int button=0; button<KEY_MAX; button+=1){
+          for(unsigned short int button=0; button<PRZECINEK_KEY_MAX; button+=1){
             if(input[button]!=0){
               przecinek.key[input[button]]=0;
               input[button]=0;
@@ -2491,12 +2920,11 @@ printf(
           );
 
           // Update [build] [surface]
-          cairo_surface_destroy(build[window->ID-1].surface);
-          build[window->ID-1].surface=cairo_xlib_surface_create(
-            build[window->ID-1].display, build[window->ID-1].base,
-            DefaultVisual(build[window->ID-1].display, build[window->ID-1].screen),
-            window->width, window->height
-          );
+          glViewport(0, 0, window->width, window->height);
+          glMatrixMode(GL_PROJECTION);
+          glLoadIdentity();
+          glOrtho(0, window->width, window->height, 0, (-1), 1);
+          glMatrixMode(GL_MODELVIEW);
         }
       }
       else{
@@ -2509,7 +2937,7 @@ printf(
 
     // Switch [window] buffers
     if(currentEvent.type!=ConfigureNotify){
-      cairo_surface_show_page(build[window->ID-1].surface);
+      glXSwapBuffers(build[window->ID-1].display, build[window->ID-1].base);
     }
 
     // Refresh [window]
@@ -2524,29 +2952,96 @@ printf(
       build[window->ID-1].limitChange=false;
     }
 
-    // Update [frameCount] and sleep
+    // Check [przecinek] [frameLimit] value
+    if(przecinek.frameLimit<PRZECINEK_FRAME_MIN){
+      if(przecinek.debug==true){
+        printf("[pWindowHandle() Warning]\n");
+        printf("Value of przecinek.frameLimit is too small!\n");
+        printf(
+          "Value of przecinek.frameLimit was changed from %i to %i,\n",
+          przecinek.frameLimit, PRZECINEK_FRAME_MIN
+        );
+        fflush(stdout);
+      }
+
+      przecinek.frameLimit=PRZECINEK_FRAME_MIN;
+    }
+    else if(przecinek.frameLimit>PRZECINEK_FRAME_MAX){
+      if(przecinek.debug==true){
+        printf("[pWindowHandle() Warning]\n");
+        printf("Value of przecinek.frameLimit is too large!\n");
+        printf(
+          "Value of przecinek.frameLimit was changed from %i to %i,\n",
+          przecinek.frameLimit, PRZECINEK_FRAME_MAX
+        );
+        fflush(stdout);
+      }
+
+      przecinek.frameLimit=PRZECINEK_FRAME_MAX;
+    }
+
+    // Set [currentFrameLimit] first value
+    if((window->ID-1)==windowMainID && window->frameCount==0){ currentFrameLimit=przecinek.frameLimit; }
+
+    // Reset [frameOverHead] value
+    frameOverHead=0;
+
+    // Update [build] [frameCount], sleep and calculate [frameMax]
     build[window->ID-1].frameCount+=1;
-    usleep((1000000/windowCount)/przecinek.frameLimit);
+    if(build[window->ID-1].frameCount==przecinek.frameLimit){
+      while(frameMax<1.0){
+        usleep((1000000/windowCount)/currentFrameLimit);
+        frameOverHead+=1;
 
-    // Set and calculate current time
-    gettimeofday(&build[window->ID-1].frameEnd, NULL);
-    build[window->ID-1].frameMax=
-      (double)((build[window->ID-1].frameEnd.tv_sec-build[window->ID-1].frameStart.tv_sec)+
-      (build[window->ID-1].frameEnd.tv_usec-build[window->ID-1].frameStart.tv_usec)/1000000.0);
+        // Set and calculate current time
+        gettimeofday(&build[window->ID-1].frameEnd, NULL);
+        frameMax=(double)(
+          (build[window->ID-1].frameEnd.tv_sec-build[window->ID-1].frameStart.tv_sec)+
+          (build[window->ID-1].frameEnd.tv_usec-build[window->ID-1].frameStart.tv_usec)/1000000.0
+        );
+      }
+    }
+    else{
+      usleep((1000000/windowCount)/currentFrameLimit);
 
-    if(build[window->ID-1].frameMax>=1.0){
+      // Set and calculate current time
+      gettimeofday(&build[window->ID-1].frameEnd, NULL);
+      frameMax=
+        (double)((build[window->ID-1].frameEnd.tv_sec-build[window->ID-1].frameStart.tv_sec)+
+        (build[window->ID-1].frameEnd.tv_usec-build[window->ID-1].frameStart.tv_usec)/1000000.0);
+    }
+
+    if(frameMax>=1.0){
       // Set [window] [frameCount] and reset loop
       window->frameCount=build[window->ID-1].frameCount;
 
       build[window->ID-1].frameCount=0;
-      build[window->ID-1].frameMax=0;
+      frameMax=0;
       build[window->ID-1].frameStart=build[window->ID-1].frameEnd;
+
+      if(window->ID==1){
+        // Correct [currentFrameLimit] value
+        if(frameOverHead>0){
+          currentFrameLimit-=frameOverHead+1;
+        }
+        else if(currentFrameLimit>=przecinek.frameLimit*4){
+          currentFrameLimit/=2;
+        }
+        else if((window->frameCount<(przecinek.frameLimit-3))){
+          // Calculate [frameAdjust]
+          frameAdjust=(float)((przecinek.frameLimit-window->frameCount)/1.5);
+
+          if(frameAdjust<2 && frameAdjust>=0){ currentFrameLimit+=2; }
+          else{ currentFrameLimit+=frameAdjust; }
+        }
+      }
     }
   }
   else if(przecinek.debug==true){
-printf(
-  "[pEG02] \"Could not handle window\" (window is closed),\n"
-);
+    printf("[pWindowHandle() Error]\n");
+    printf("Could not handle window!\n");
+    printf("Window wasn't initialized properly.\n");
+    printf("Try to recreate it using pWindowCreate(),\n");
     fflush(stdout);
   }
 
@@ -2565,6 +3060,17 @@ printf(
  * It also resets [window] `ID` to `0`.
  ****************************************************************/
 void pWindowDestroy(pWindow *window){
+  if(window==NULL){
+    if(przecinek.debug==true){
+      printf("[pWindowDestroy() Error]\n");
+      printf("Given window is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(window->ID!=0){
     // Send kill [currentAction]
     currentAction.type=ClientMessage;
@@ -2577,9 +3083,9 @@ void pWindowDestroy(pWindow *window){
     XSendEvent(build[window->ID-1].display, build[window->ID-1].base, False, NoEventMask, &currentAction);
   }
   else if(przecinek.debug==true){
-printf(
-  "[pWG03] \"Window is already closed\",\n"
-);
+    printf("[pWindowDestroy() Warning]\n");
+    printf("Could not destroy window!\n");
+    printf("It's already closed,\n");
     fflush(stdout);
   }
 
@@ -2602,7 +3108,7 @@ pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsi
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
     if(figure[current].exist==false){
-      // Set [object] [ID] and reset [object]
+      // Set [object] [ID] and reset it
       object.ID=current+1;
       pDebugObjectReset(&object);
 
@@ -2610,15 +3116,14 @@ pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsi
     }
     else if(current==OBJECT_MAX-1){
       if(przecinek.debug==true){
-printf(
-  "[pEO01] \"Too many objects were created\" (limit: %i),\n",
-  OBJECT_MAX
-);
+        printf("[pObjectCreate() Error]\n");
+        printf("Too many objects were created!\n");
+        printf("Current object limit is equal to %i.\n", OBJECT_MAX);
+        printf("Try to destroy unused objects or change Przecinek object limit,\n");
         fflush(stdout);
       }
 
-      // Reset and return [object]
-      pDebugObjectReset(&object);
+      // Return [object]
       object.ID=0;
 
       return object;
@@ -2627,9 +3132,10 @@ printf(
 
   // Check if Przecinek is initialized
   if(setup==false){
-printf(
-  "[pEG01] \"Could not create object\" (Przecinek is not initialized),\n"
-);
+    printf("[pObjectCreate() Error]\n");
+    printf("Could not create object!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
     fflush(stdout);
 
     // Reset and return [object]
@@ -2642,10 +3148,9 @@ printf(
   // Check [vertice] value
   if(vertice<OBJECT_VERTICE_MIN){
     if(przecinek.debug==true){
-printf(
-  "[pWO01] \"Object vertice value is too low\" (changing from: %i to %i),\n",
-  vertice, OBJECT_VERTICE_MIN
-);
+      printf("[pObjectCreate() Warning]\n");
+      printf("Value of object.vertice is too small!\n");
+      printf("Value of object.vertice was changed from %i to %i,\n", vertice, OBJECT_VERTICE_MIN);
       fflush(stdout);
     }
 
@@ -2654,67 +3159,14 @@ printf(
   }
   else if(vertice>OBJECT_VERTICE_MAX){
     if(przecinek.debug==true){
-printf(
-  "[pWO02] \"Object vertice value is too big\" (changing from: %i to %i),\n",
-  vertice, OBJECT_VERTICE_MIN
-);
+      printf("[pObjectCreate() Warning]\n");
+      printf("Value of object.vertice is too large!\n");
+      printf("Value of object.vertice was changed from %i to %i,\n", vertice, OBJECT_VERTICE_MAX);
       fflush(stdout);
     }
 
     // Change [vertice] value
     vertice=OBJECT_VERTICE_MAX;
-  }
-
-  // Check [width] value
-  if(width<OBJECT_WIDTH_MIN){
-    if(przecinek.debug==true){
-printf(
-  "[pWO03] \"Object width value is too low\" (changing from: %i to %i),\n",
-  width, OBJECT_WIDTH_MIN
-);
-      fflush(stdout);
-    }
-
-    // Change [width] value
-    width=OBJECT_WIDTH_MIN;
-  }
-  else if(width>OBJECT_WIDTH_MAX){
-    if(przecinek.debug==true){
-printf(
-  "[pWO04] \"Object width value is too big\" (changing from: %i to %i),\n",
-  width, OBJECT_WIDTH_MAX
-);
-      fflush(stdout);
-    }
-
-    // Change [width] value
-    width=OBJECT_WIDTH_MAX;
-  }
-
-  // Check [height] value
-  if(height<OBJECT_HEIGHT_MIN){
-    if(przecinek.debug==true){
-printf(
-  "[pWO05] \"Object height value is too low\" (changing from: %i to %i),\n",
-  height, OBJECT_HEIGHT_MIN
-);
-      fflush(stdout);
-    }
-
-    // Change [height] value
-    height=OBJECT_HEIGHT_MIN;
-  }
-  else if(height>OBJECT_HEIGHT_MAX){
-    if(przecinek.debug==true){
-printf(
-  "[pWO06] \"Object height value is too big\" (changing from: %i to %i),\n",
-  height, OBJECT_HEIGHT_MAX
-);
-      fflush(stdout);
-    }
-
-    // Change [height] value
-    height=OBJECT_HEIGHT_MAX;
   }
 
   // Set [object] values
@@ -2753,6 +3205,17 @@ printf(
  * Then it returns value based on earlier calculations.
  ****************************************************************/
 bool pObjectCollision(pObject *object1, pObject *object2){
+  if(object1==NULL || object2==NULL){
+    if(przecinek.debug==true){
+      printf("[pObjectCollision() Error]\n");
+      printf("Given object is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return false;
+  }
+
   // Simple collision check on two squares
   if(figure[object1->ID-1].vertice==4 && figure[object2->ID-1].vertice==4 &&
       figure[object1->ID-1].rotation==0 && figure[object2->ID-1].rotation==0){
@@ -2766,11 +3229,11 @@ bool pObjectCollision(pObject *object1, pObject *object2){
   }
 
   // Reset some variables
-  distanceMin.x=OBJECT_WIDTH_MAX;
-  distanceMin.y=OBJECT_HEIGHT_MAX;
-  distanceMax.x=(-OBJECT_WIDTH_MAX);
-  distanceMax.y=(-OBJECT_HEIGHT_MAX);
-  distance=OBJECT_TRIANGLE;
+  distanceMinX=SHRT_MAX;
+  distanceMinY=SHRT_MAX;
+  distanceMaxX=SHRT_MIN;
+  distanceMaxY=SHRT_MIN;
+  distance=1000000;
 
   // Calculate [object1] [centerA]
   centerA.x=figure[object1->ID-1].x+(figure[object1->ID-1].width/2);
@@ -2781,20 +3244,20 @@ bool pObjectCollision(pObject *object1, pObject *object2){
   centerB.y=figure[object2->ID-1].y+(figure[object2->ID-1].height/2);
 
   for(unsigned short int current=0; current<figure[object1->ID-1].vertice; current+=1){
-    // Calculate [distanceMin] values
-    if(distanceMin.x>figure[object1->ID-1].point[current].x){
-      distanceMin.x=figure[object1->ID-1].point[current].x;
+    // Calculate [distanceMinX] and [distanceMinY] values
+    if(distanceMinX>figure[object1->ID-1].point[current].x){
+      distanceMinX=figure[object1->ID-1].point[current].x;
     }
-    if(distanceMin.y>figure[object1->ID-1].point[current].y){
-      distanceMin.y=figure[object1->ID-1].point[current].y;
+    if(distanceMinY>figure[object1->ID-1].point[current].y){
+      distanceMinY=figure[object1->ID-1].point[current].y;
     }
 
-    // Calculate [distanceMax] values
-    if(distanceMax.x<figure[object1->ID-1].point[current].x){
-      distanceMax.x=figure[object1->ID-1].point[current].x;
+    // Calculate [distanceMaxX] and [distanceMaxY] values
+    if(distanceMaxX<figure[object1->ID-1].point[current].x){
+      distanceMaxX=figure[object1->ID-1].point[current].x;
     }
-    if(distanceMin.y<figure[object1->ID-1].point[current].y){
-      distanceMax.y=figure[object1->ID-1].point[current].y;
+    if(distanceMinY<figure[object1->ID-1].point[current].y){
+      distanceMaxY=figure[object1->ID-1].point[current].y;
     }
 
     // Calculate [ratio] value
@@ -2834,27 +3297,27 @@ bool pObjectCollision(pObject *object1, pObject *object2){
   }
 
   // Reset some variables
-  distanceMin.x=OBJECT_WIDTH_MAX;
-  distanceMin.y=OBJECT_HEIGHT_MAX;
-  distanceMax.x=(-OBJECT_WIDTH_MAX);
-  distanceMax.y=(-OBJECT_HEIGHT_MAX);
-  distance=OBJECT_TRIANGLE;
+  distanceMinX=SHRT_MAX;
+  distanceMinY=SHRT_MAX;
+  distanceMaxX=SHRT_MIN;
+  distanceMaxY=SHRT_MIN;
+  distance=1000000;
 
   for(unsigned short int current=0; current<figure[object2->ID-1].vertice; current+=1){
-    // Calculate [distanceMin] values
-    if(distanceMin.x>figure[object2->ID-1].point[current].x){
-      distanceMin.x=figure[object2->ID-1].point[current].x;
+    // Calculate [distanceMinX] and [distanceMinY] values
+    if(distanceMinX>figure[object1->ID-1].point[current].x){
+      distanceMinX=figure[object1->ID-1].point[current].x;
     }
-    if(distanceMin.y>figure[object2->ID-1].point[current].y){
-      distanceMin.y=figure[object2->ID-1].point[current].y;
+    if(distanceMinY>figure[object1->ID-1].point[current].y){
+      distanceMinY=figure[object1->ID-1].point[current].y;
     }
 
-    // Calculate [distanceMax] values
-    if(distanceMax.x<figure[object2->ID-1].point[current].x){
-      distanceMax.x=figure[object2->ID-1].point[current].x;
+    // Calculate [distanceMaxX] and [distanceMaxY] values
+    if(distanceMaxX<figure[object1->ID-1].point[current].x){
+      distanceMaxX=figure[object1->ID-1].point[current].x;
     }
-    if(distanceMax.y<figure[object2->ID-1].point[current].y){
-      distanceMax.y=figure[object2->ID-1].point[current].y;
+    if(distanceMinY<figure[object1->ID-1].point[current].y){
+      distanceMaxY=figure[object1->ID-1].point[current].y;
     }
 
     // Calculate [ratio] value
@@ -3058,15 +3521,26 @@ pDebugObjectTriangle(
  * It also resets [object] `ID` to `0`.
  ****************************************************************/
 void pObjectDestroy(pObject *object){
+  if(object==NULL){
+    if(przecinek.debug==true){
+      printf("[pObjectDestroy() Error]\n");
+      printf("Given object is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(object->ID!=0){
     // Fully reset [object]
     pDebugObjectReset(object);
     object->ID=0;
   }
   else if(przecinek.debug==true){
-printf(
-  "[pWG08] \"Object is already closed\",\n"
-);
+    printf("[pObjectDestroy() Warning]\n");
+    printf("Could not destroy object!\n");
+    printf("It's already closed,\n");
     fflush(stdout);
   }
 
@@ -3090,7 +3564,7 @@ pFont pFontCreate(wchar_t *directory, unsigned short int size){
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
     if(view[current].exist==false){
-      // Set [font] [ID] and reset [font]
+      // Set [font] [ID] and reset it
       font.ID=current+1;
       pDebugFontReset(&font);
 
@@ -3098,15 +3572,14 @@ pFont pFontCreate(wchar_t *directory, unsigned short int size){
     }
     else if(current==FONT_MAX-1){
       if(przecinek.debug==true){
-printf(
-  "[pEF01] \"Too many fonts were created\" (limit: %i),\n",
-  FONT_MAX
-);
+        printf("[pFontCreate() Error]\n");
+        printf("Too many fonts were created!\n");
+        printf("Current font limit is equal to %i.\n", FONT_MAX);
+        printf("Try to destroy unused fonts or change Przecinek font limit,\n");
         fflush(stdout);
       }
 
-      // Reset and return [font]
-      pDebugFontReset(&font);
+      // Return [font]
       font.ID=0;
 
       return font;
@@ -3115,9 +3588,10 @@ printf(
 
   // Check if Przecinek is initialized
   if(setup==false){
-printf(
-  "[pEG01] \"Could not create font\" (Przecinek is not initialized),\n"
-);
+    printf("[pFontCreate() Error]\n");
+    printf("Could not create font!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
     fflush(stdout);
 
     // Reset and return [font]
@@ -3130,10 +3604,9 @@ printf(
   // Check [size] value
   if(size<FONT_SIZE_MIN){
     if(przecinek.debug==true){
-printf(
-  "[pWF01] \"Font size value is too low\" (changing from: %i to %i),\n",
-  size, FONT_SIZE_MIN
-);
+      printf("[pFontCreate() Warning]\n");
+      printf("Value of font.size is too small!\n");
+      printf("Value of font.size was changed from %i to %i,\n", size, FONT_SIZE_MIN);
       fflush(stdout);
     }
 
@@ -3142,10 +3615,9 @@ printf(
   }
   else if(size>FONT_SIZE_MAX){
     if(przecinek.debug==true){
-printf(
-  "[pWF02] \"Font size value is too big\" (changing from: %i to %i),\n",
-  size, FONT_SIZE_MAX
-);
+      printf("[pFontCreate() Warning]\n");
+      printf("Value of font.size is too large!\n");
+      printf("Value of font.size was changed from %i to %i,\n", size, FONT_SIZE_MAX);
       fflush(stdout);
     }
 
@@ -3162,31 +3634,18 @@ printf(
 
   view[font.ID-1].size=size;
   wcscpy(view[font.ID-1].directoryW, directory);
-  wcstombs(view[font.ID-1].directory, directory, FONT_NAME_MAX);
+  wcstombs(view[font.ID-1].directory, directory, FONT_DIRECTORY_CHAR);
 
-  // Check if [directory] exists
-  if(stat(view[font.ID-1].directory, &status)!=0){
-    if(przecinek.debug==true){
-printf(
-  "[pEF02] \"Could not load font\",\n"
-);
-      fflush(stdout);
-    }
+  // Check [directory] value
+  if(wcslen(directory)>=4 &&
+      (wcscmp(directory+wcslen(directory)-4, L".ttf")==0 || wcscmp(directory+wcslen(directory)-4, L".otf")==0)){
 
-    // Reset and return [font]
-    pDebugFontReset(&font);
-    font.ID=0;
-
-    return font;
-  }
-
-  // Load [view] [face] and check if font loads properly
-  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-    if(FT_New_Face(freeType, view[font.ID-1].directory, 0, &view[font.ID-1].face[current])){
+    // Check if [view] [directory] exists
+    if(stat(view[font.ID-1].directory, &status)!=0){
       if(przecinek.debug==true){
-printf(
-  "[pEFx1] \"Could not create X11 font\",\n"
-);
+        printf("[pFontCreate() Error]\n");
+        printf("Font located in font.directory doesn't exist!\n");
+        printf("Check if you gave the correct value,\n");
         fflush(stdout);
       }
 
@@ -3197,14 +3656,38 @@ printf(
       return font;
     }
   }
+  else{
+    if(przecinek.debug==true){
+      printf("[pFontCreate() Error]\n");
+      printf("Value of font.directory doesn't include .ttf/.otf extenstion!\n");
+      printf("Check if you gave the correct value,\n");
+      fflush(stdout);
+    }
 
-  // Load [view] [cairoFace]
-  for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-    view[font.ID-1].cairoFace[current]=cairo_ft_font_face_create_for_ft_face(
-      view[font.ID-1].face[current], FT_LOAD_NO_HINTING
-    );
-    FT_Set_Pixel_Sizes(view[font.ID-1].face[current], 0, view[font.ID-1].size);
+    // Reset and return [font]
+    pDebugFontReset(&font);
+    font.ID=0;
+
+    return font;
   }
+
+  // Load [view] [face] and check if [font] loads properly
+  if(FT_New_Face(freeType, view[font.ID-1].directory, 0, &view[font.ID-1].face)){
+    if(przecinek.debug==true){
+      printf("[pFontCreate() Error]\n");
+      printf("FreeType2 library could not load font!\n");
+      printf("Your font file might be corrupted,\n");
+      fflush(stdout);
+    }
+
+    // Reset and return [font]
+    pDebugFontReset(&font);
+    font.ID=0;
+
+    return font;
+  }
+
+  FT_Set_Pixel_Sizes(view[font.ID-1].face, 0, view[font.ID-1].size);
 
   // Return local [font]
   return font;
@@ -3220,15 +3703,26 @@ printf(
  * It also resets [font] `ID` to `0`.
  ****************************************************************/
 void pFontDestroy(pFont *font){
+  if(font==NULL){
+    if(przecinek.debug==true){
+      printf("[pFontDestroy() Error]\n");
+      printf("Given font is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(font->ID!=0){
     // Fully reset [font]
     pDebugFontReset(font);
     font->ID=0;
   }
   else if(przecinek.debug==true){
-printf(
-  "[pWG09] \"Font is already closed\",\n"
-);
+    printf("[pFontDestroy() Warning]\n");
+    printf("Could not destroy font!\n");
+    printf("It's already closed,\n");
     fflush(stdout);
   }
 
@@ -3250,7 +3744,7 @@ pText pTextCreate(wchar_t *value){
 
   for(unsigned short int current=0; current<TEXT_MAX; current+=1){
     if(code[current].exist==false){
-      // Set [text] [ID] and reset [text]
+      // Set [text] [ID] and reset it
       text.ID=current+1;
       pDebugTextReset(&text);
 
@@ -3258,15 +3752,14 @@ pText pTextCreate(wchar_t *value){
     }
     else if(current==TEXT_MAX-1){
       if(przecinek.debug==true){
-printf(
-  "[pET01] \"Too many texts were created\" (limit: %i),\n",
-  TEXT_MAX
-);
+        printf("[pTextCreate() Error]\n");
+        printf("Too many texts were created!\n");
+        printf("Current text limit is equal to %i.\n", TEXT_MAX);
+        printf("Try to destroy unused texts or change Przecinek text limit,\n");
         fflush(stdout);
       }
 
-      // Reset and return [text]
-      pDebugTextReset(&text);
+      // Return [text]
       text.ID=0;
 
       return text;
@@ -3275,10 +3768,27 @@ printf(
 
   // Check if Przecinek is initialized
   if(setup==false){
-printf(
-  "[pEG01] \"Could not create text\" (Przecinek is not initialized),\n"
-);
+    printf("[pTextCreate() Error]\n");
+    printf("Could not create text!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
     fflush(stdout);
+
+    // Reset and return [text]
+    pDebugTextReset(&text);
+    text.ID=0;
+
+    return text;
+  }
+
+  // Check [value]
+  if(wcscmp(value, L"")==0){
+    if(przecinek.debug==true){
+      printf("[pTextCreate() Error]\n");
+      printf("Value of text.title can't be empty!\n");
+      printf("Try to fill it with something,\n");
+      fflush(stdout);
+    }
 
     // Reset and return [text]
     pDebugTextReset(&text);
@@ -3294,7 +3804,6 @@ printf(
   code[text.ID-1].exist=true;
 
   wcscpy(code[text.ID-1].valueW, value);
-  wcstombs(code[text.ID-1].value, value, sizeof(code[text.ID-1].value));
 
   // Return local [text]
   return text;
@@ -3310,15 +3819,185 @@ printf(
  * It also resets [text] `ID` to `0`.
  ****************************************************************/
 void pTextDestroy(pText *text){
+  if(text==NULL){
+    if(przecinek.debug==true){
+      printf("[pTextDestroy() Error]\n");
+      printf("Given text is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
   if(text->ID!=0){
     // Fully reset [text]
     pDebugTextReset(text);
     text->ID=0;
   }
   else if(przecinek.debug==true){
-printf(
-  "[pWG10] \"Text is already closed\",\n"
-);
+    printf("[pTextDestroy() Warning]\n");
+    printf("Could not destroy text!\n");
+    printf("It's already closed,\n");
+    fflush(stdout);
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pImageCreate()
+ * | .     |
+ * |     . | In: wchar_t* [directory]
+ * \ = , = / Out: pImage
+ *
+ * This function creates [image] object. It sets [ID]
+ * for local [image]. It fills all [image] variables.
+ ****************************************************************/
+pImage pImageCreate(wchar_t *directory){
+  // Create local [image]
+  pImage image;
+
+  for(unsigned short int current=0; current<IMAGE_MAX; current+=1){
+    if(texture[current].exist==false){
+      // Set [image] [ID] and reset it
+      image.ID=current+1;
+      pDebugImageReset(&image);
+
+      break;
+    }
+    else if(current==IMAGE_MAX-1){
+      if(przecinek.debug==true){
+        printf("[pImageCreate() Error]\n");
+        printf("Too many images were created!\n");
+        printf("Current image limit is equal to %i.\n", IMAGE_MAX);
+        printf("Try to destroy unused images or change Przecinek image limit,\n");
+        fflush(stdout);
+      }
+
+      // Return [image]
+      image.ID=0;
+
+      return image;
+    }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+    printf("[pImageCreate() Error]\n");
+    printf("Could not create image!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
+    fflush(stdout);
+
+    // Reset and return [image]
+    pDebugImageReset(&image);
+    image.ID=0;
+
+    return image;
+  }
+
+  // Set [image] values
+  wcscpy(image.directory, directory);
+
+  // Set [code] values
+  texture[image.ID-1].exist=true;
+
+  wcscpy(texture[image.ID-1].directoryW, directory);
+  wcstombs(texture[image.ID-1].directory, directory, IMAGE_DIRECTORY_CHAR);
+
+  // Check [directory] value
+  if((wcslen(directory)>=4 &&
+      (wcscmp(directory+wcslen(directory)-4, L".png")==0 ||
+       wcscmp(directory+wcslen(directory)-4, L".jpg")==0)) ||
+      (wcslen(directory)>=5 &&
+      wcscmp(directory+wcslen(directory)-5, L".jpeg")==0)){
+
+    // Check if [texture] [directory] exists
+    if(stat(texture[image.ID-1].directory, &status)!=0){
+      if(przecinek.debug==true){
+        printf("[pImageCreate() Error]\n");
+        printf("Image located in image.directory doesn't exist!\n");
+        printf("Check if you gave the correct value,\n");
+        fflush(stdout);
+      }
+
+      // Reset and return [image]
+      pDebugImageReset(&image);
+      image.ID=0;
+
+      return image;
+    }
+  }
+  else{
+    if(przecinek.debug==true){
+      printf("[pImageCreate() Error]\n");
+      printf("Value of image.directory doesn't include .png/.jpg/.jpeg extenstion!\n");
+      printf("Check if you gave the correct value,\n");
+      fflush(stdout);
+    }
+
+    // Reset and return [image]
+    pDebugImageReset(&image);
+    image.ID=0;
+
+    return image;
+  }
+
+  // Load [texture] [directory] to [fileImage]
+  fileImage=fopen(texture[image.ID-1].directory, "rb");
+  if(fileImage==false){
+    if(przecinek.debug==true){
+      printf("[pImageCreate() Error]\n");
+      printf("libPNG/libJPEG library could not load texture!\n");
+      printf("Your image file might be corrupted,\n");
+      fflush(stdout);
+    }
+
+    // Reset and return [image]
+    pDebugImageReset(&image);
+    image.ID=0;
+
+    return image;
+  }
+
+  // Load [texture] x2
+  pDebugImageSetup(&image);
+
+  // Return local [image]
+  return image;
+}
+
+/****************************************************************
+ * |\_____/| pImageDestroy()
+ * | .     |
+ * |     . | In: pImage* [image]
+ * \ = , = / Out:
+ *
+ * This function destroys given [image].
+ * It also resets [image] `ID` to `0`.
+ ****************************************************************/
+void pImageDestroy(pImage *image){
+  if(image==NULL){
+    if(przecinek.debug==true){
+      printf("[pImageDestroy() Error]\n");
+      printf("Given image is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    return;
+  }
+
+  if(image->ID!=0){
+    // Fully reset [image]
+    pDebugImageReset(image);
+    image->ID=0;
+  }
+  else if(przecinek.debug==true){
+    printf("[pImageDestroy() Warning]\n");
+    printf("Could not destroy image!\n");
+    printf("It's already closed,\n");
     fflush(stdout);
   }
 

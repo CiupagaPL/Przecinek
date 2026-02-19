@@ -25,8 +25,8 @@ It's under active development.
 
 | Feature                     | WIN | X11 |
 |-----------------------------|-----|-----|
-| Loading images              | ❌  | ❌  |
-| Rendering images            | ❌  | ❌  |
+| Loading images              | ❌  | ✅  |
+| Rendering images            | ❌  | ✅  |
 | Loading audio               | ❌  | ❌  |
 | Managing audio              | ❌  | ❌  |
 | Playing audio               | ❌  | ❌  |
@@ -41,7 +41,7 @@ It's under active development.
 | GDI+ Flat                                         | **WIN**  | Loading fonts, Rendering complex graphics                       |
 | [X11 lib](https://github.com/mirror/libX11)       | **X11**  | Managing X11 session, Creating windows and managing events      |
 | [FreeType2](https://github.com/freetype/freetype) | **X11**  | Loading fonts                                                   |
-| [Cairo](https://github.com/s-u/Cairo)             | **X11**  | Rendering complex graphics                                      |
+| [GLX](https://dri.freedesktop.org/wiki/GLX)       | **X11**  | Rendering complex graphics                                      |
 
 ### External
 
@@ -50,11 +50,14 @@ Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki)
 
 ### Version
 
-> Newest Version (Alpha): **[a5,0]**;<br>
-> Newest Version (Unstable): **[u,17]**;<br>
-> Last Updated: **08-02-2026**;
+> Newest Version (Alpha): **[None]**;<br>
+> Newest Version (Unstable): **[u,18]**;<br>
+> Last Updated: **19-02-2026**;
 
 ### LICENSE
+
+> [!CAUTION]
+> License has been updated for the newest version **[u,18]**!
 
 ```
 Copyright(C) 2025-2026 Ciupaga
@@ -65,16 +68,21 @@ By obtaining this software, you are allowed to use it for any
 project you create and to fork it.
 
 1. Contributors are encouraged to submit improvements or modifications
-to the original project.
+   to the original project.
 2. For programs that are made in this software you don't need to
-mention that you have used it.
+   mention that you have used it.
 3. You may fork and publish the source code as your own, but you must
-retain the original author, license, and website information
-located in the comments.
-4.:
+   retain the original author, license, and website information
+   located in the comments.
+4. Consequences of Non-Compliance:
+a) If you fail to comply with any of the terms outlined in this license,
+   you may lose the rights to use, modify, and distribute this software.
+b) The author reserves the right to take legal action against any party
+   that does not adhere to the conditions of this license.
+5.:
 a) "Fork" refers to creating a derivative work based on the
-original software.
-b) "Comments" refer to any messages in the source code.
+   original software.
+b) "Comments" refer to messages located in the source code.
 
 This software is provided "as-is" without any warranties. The author
 is not liable for any damages arising from its use.
