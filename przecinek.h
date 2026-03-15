@@ -41,7 +41,7 @@ extern "C"{
   #define PRZECINEK_VERSION_MAJOR 5
   #define PRZECINEK_VERSION_MINOR 0
   //#define PRZECINEK_VERSION_PATCH L"a"
-  #define PRZECINEK_UNSTABLE 18
+  #define PRZECINEK_UNSTABLE 19
   #define PRZECINEK_EXPERIMENTAL false
 
   #define PRZECINEK_KEY_MAX 256
@@ -52,42 +52,31 @@ extern "C"{
   #define COLOR_DEFAULT_FOREGROUND (pColor){ 50, 50, 60, 255 }
 
   #define WINDOW_MAX 4
+  #define OBJECT_MAX 512
+  #define FONT_MAX 32
+  #define TEXT_MAX 128
+  #define IMAGE_MAX 128
 
-  #define WINDOW_WIDTH_MIN 256
-  #define WINDOW_HEIGHT_MIN 256
-  #define WINDOW_WIDTH_MAX 7680
-  #define WINDOW_HEIGHT_MAX 4320
-
-  #define WINDOW_X_DEF 128
-  #define WINDOW_Y_DEF 128
-  #define WINDOW_X_MIN SHRT_MIN+WINDOW_WIDTH_MAX
-  #define WINDOW_X_MAX SHRT_MAX-WINDOW_WIDTH_MAX
-  #define WINDOW_Y_MIN SHRT_MIN+WINDOW_HEIGHT_MAX
-  #define WINDOW_Y_MAX SHRT_MAX-WINDOW_HEIGHT_MAX
-
+  #define WINDOW_WIDTH_MIN 128
+  #define WINDOW_HEIGHT_MIN 128
+  #define WINDOW_WIDTH_MAX SHRT_MAX
+  #define WINDOW_HEIGHT_MAX SHRT_MAX
+  #define WINDOW_X_DEF 256
+  #define WINDOW_Y_DEF 256
   #define WINDOW_TITLE_CHAR 256
   #define WINDOW_TITLE_DEF "{,} Window"
-
-  #define OBJECT_MAX 512
 
   #define OBJECT_WIDTH_MIN 4
   #define OBJECT_HEIGHT_MIN 4
 
   #define OBJECT_VERTICE_MIN 3
-  #define OBJECT_VERTICE_MAX 300
-
-  #define FONT_MAX 32
+  #define OBJECT_VERTICE_MAX 1024
 
   #define FONT_SIZE_MIN 4
   #define FONT_SIZE_MAX 1024
-
   #define FONT_DIRECTORY_CHAR 256
 
-  #define TEXT_MAX 128
-
-  #define TEXT_CHAR 512
-
-  #define IMAGE_MAX 128
+  #define TEXT_CHAR 2048
 
   #define IMAGE_DIRECTORY_CHAR 256
 
@@ -153,6 +142,7 @@ extern "C"{
     unsigned short int ID;
 
     unsigned short int size;
+    short int letterSpacing, spaceSpacing, lineSpacing;
     wchar_t directory[FONT_DIRECTORY_CHAR];
   } pFont;
 
@@ -231,7 +221,7 @@ extern "C"{
   /****************************************************************
    * |\_____/| pWindowCreate()
    * | .     |
-   * |     . | In: us_int [width], [height], bool [resize]
+   * |     . | In: us_int [width], [height], bool [resizable]
    * \ = , = / Out: pWindow
    *
    * This function creates Przecinek window.
@@ -244,7 +234,7 @@ extern "C"{
    * It also saves time when [window] was created,
    * to later calculate frame count.
    ****************************************************************/
-  pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resize);
+  pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool resizable);
 
   /****************************************************************
    * |\_____/| pWindowDrawObject()
@@ -274,16 +264,16 @@ extern "C"{
 
   /****************************************************************
    * |\_____/| pWindowClear()
-   * | .     | In: pWindow* [window], s_int [x], [y],
-   * |     . |     us_int [width], [height], pColor* [color]
+   * | .     | In: pWindow* [window], s_int [x], [y], us_int [width],
+   * |     . |     [height], pColor* [color], pImage* [image]
    * \ = , = / Out:
    *
-   * This function clears [window] with given color.
+   * This function clears [window] with given [color] with/or [image].
    * Cleared area depends on given position and size values.
    ****************************************************************/
   void pWindowClear(
-    pWindow *window, short int x, short int y,
-    unsigned short int width, unsigned short int height, pColor *color
+    pWindow *window, short int x, short int y, unsigned short int width,
+    unsigned short int height, pColor *color, pImage *image
   );
 
   /****************************************************************

@@ -1,0 +1,52 @@
+html{
+  overflow: hidden;
+  user-select: none;
+}
+
+body{
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+
+  background-image: url("https://raw.githubusercontent.com/CiupagaPL/CiupagaPL/refs/heads/main/przecinek_wiki/background_1.png");
+  background-color: #ebebeb;
+  background-size: 211px;
+  background-repeat: repeat;
+  background-position: 0 0;
+
+  animation-fill-mode: both;
+  animation: background 2s infinite linear;
+}
+
+main{
+  position: absolute;
+  left: 20%;
+  top: -8px;
+  width: 60%;
+  height: 100%;
+
+  border-left: 0.35vw solid #32323c;
+  border-right: 0.35vw solid #32323c;
+
+  background-color: #ffffff;
+
+  text-align: center;
+  padding-top: 20vh;
+}
+
+h1{
+  font-size: 8vmin;
+  color: #32323c;
+}
+
+h2{
+  font-size: 6vmin;
+  color: #32323c;
+}
+
+@keyframes background{
+  0%{ background-position: 0% 0%; }
+  100%{ background-position: 211px -206px; }
+}

@@ -3,10 +3,13 @@
 
 ### General
 
-**Przecinek is a minimal multimedia library** for Windows and Linux being developed in C.
-Its purpose is to make it easier for game/app developers to create window applications while keeping their projects small in size and easy to read.
-Przecinek uses minimal amount of libraries.
+**Przecinek is a minimal multimedia library for Windows(WIN) and Linux(X11)** being developed in *C*.
+It allows you to create window applications that are fast, optimized, minimal and easy to read.
+Przecinek uses a minimal number of libraries, focusing primarily on built-in and OpenGL ones.<br>
 It's under active development.
+When everything on the TODO list is completed, Przecinek will enter the **Beta** stage.
+By then, the documentation will also be finished.
+*In the future I also hope to implement Wayland support*.
 
 ### Stable Features
 
@@ -25,8 +28,8 @@ It's under active development.
 
 | Feature                     | WIN | X11 |
 |-----------------------------|-----|-----|
-| Loading images              | ❌  | ✅  |
-| Rendering images            | ❌  | ✅  |
+| Loading images              | ✅  | ✅  |
+| Rendering images            | ✅  | ✅  |
 | Loading audio               | ❌  | ❌  |
 | Managing audio              | ❌  | ❌  |
 | Playing audio               | ❌  | ❌  |
@@ -35,29 +38,24 @@ It's under active development.
 
 ### Used libraries
 
-| Library                                           | In       | Purpose                                                         |
-|---------------------------------------------------|----------|-----------------------------------------------------------------|
-| WIN API                                           | **WIN**  | Managing Windows session, Creating windows and managing events  |
-| GDI+ Flat                                         | **WIN**  | Loading fonts, Rendering complex graphics                       |
-| [X11 lib](https://github.com/mirror/libX11)       | **X11**  | Managing X11 session, Creating windows and managing events      |
-| [FreeType2](https://github.com/freetype/freetype) | **X11**  | Loading fonts                                                   |
-| [GLX](https://dri.freedesktop.org/wiki/GLX)       | **X11**  | Rendering complex graphics                                      |
-
-### External
-
-You can find all the information about managing, configuring and setting up Przecinek in the **Wiki**.
-Start using it by clicking [[this]](https://github.com/CiupagaPL/Przecinek/wiki) link.<br>
+| Library                                                                                    | In       | Purpose                                                         |
+|--------------------------------------------------------------------------------------------|----------|-----------------------------------------------------------------|
+| [WIN API](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-api-list)       | **WIN**  | Managing Windows session, Creating windows and managing events  |
+| [GDI+ Flat](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat) | **WIN**  | Loading fonts and images                                        |
+| [GL/GLU](https://learn.microsoft.com/en-us/windows/win32/opengl/opengl-reference)          | **WIN**  | Rendering complex graphics                                      |
+| [X11 LIB](https://x.org/releases/current/doc/libX11/libX11/libX11.html)                    | **X11**  | Managing X11 session, Creating windows and managing events      |
+| [FreeType2](https://freetype.org/freetype2/docs/documentation.html)                        | **X11**  | Loading fonts                                                   |
+| [PNG LIB](https://www.libpng.org/pub/png/pngdocs.html)                                     | **X11**  | Loading .png images                                             |
+| [JPEG TURBO LIB](https://libjpeg-turbo.org/)                                               | **X11**  | Loading .jpeg images                                            |
+| [GL/GLX](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)                          | **X11**  | Rendering complex graphics                                      |
 
 ### Version
 
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,18]**;<br>
-> Last Updated: **19-02-2026**;
+> Newest Version (Unstable): **[u,19]**;<br>
+> Last Updated: **15-03-2026**;
 
 ### LICENSE
-
-> [!CAUTION]
-> License has been updated for the newest version **[u,18]**!
 
 ```
 Copyright(C) 2025-2026 Ciupaga

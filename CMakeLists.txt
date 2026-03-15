@@ -29,6 +29,9 @@ if(X11)
   include_directories(${FREETYPE_INCLUDE_DIRS})
   target_link_libraries(${PROJECT_NAME} m X11 GL GLX png jpeg freetype)
 else()
+  # Check for packages
+  find_package(OpenGL REQUIRED)
+
   # Set WIN location
   add_executable(${PROJECT_NAME} ${CODE} "src/win.c" ${HEADERS})
 
@@ -40,7 +43,7 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
 
   # Set target libraries
-  target_link_libraries(${PROJECT_NAME} m user32 gdi32 msimg32 winmm gdiplus)
+  target_link_libraries(${PROJECT_NAME} m user32 gdi32 msimg32 winmm gdiplus opengl32 glu32)
 endif()
 
 # Set compile options

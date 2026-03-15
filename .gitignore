@@ -1,4 +1,6 @@
 build/
 add/
+example/
 main.c
 main.cpp
+script.sh
