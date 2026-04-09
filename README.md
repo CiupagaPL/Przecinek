@@ -30,30 +30,34 @@ By then, the documentation will also be finished.
 |-----------------------------|-----|-----|
 | Loading images              | ✅  | ✅  |
 | Rendering images            | ✅  | ✅  |
-| Loading audio               | ❌  | ❌  |
-| Managing audio              | ❌  | ❌  |
-| Playing audio               | ❌  | ❌  |
+| Loading audio               | ✅  | ❌  |
+| Managing audio              | ✅  | ❌  |
+| Playing audio               | ✅  | ❌  |
+| Threads support             | ✅  | ❌  |
+| Creating custom shapes      | ❌  | ❌  |
+| Rendering color gradients   | ❌  | ❌  |
 
 `*` > Unfinished Features
 
 ### Used libraries
 
-| Library                                                                                    | In       | Purpose                                                         |
-|--------------------------------------------------------------------------------------------|----------|-----------------------------------------------------------------|
-| [WIN API](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-api-list)       | **WIN**  | Managing Windows session, Creating windows and managing events  |
-| [GDI+ Flat](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat) | **WIN**  | Loading fonts and images                                        |
-| [GL/GLU](https://learn.microsoft.com/en-us/windows/win32/opengl/opengl-reference)          | **WIN**  | Rendering complex graphics                                      |
-| [X11 LIB](https://x.org/releases/current/doc/libX11/libX11/libX11.html)                    | **X11**  | Managing X11 session, Creating windows and managing events      |
-| [FreeType2](https://freetype.org/freetype2/docs/documentation.html)                        | **X11**  | Loading fonts                                                   |
-| [PNG LIB](https://www.libpng.org/pub/png/pngdocs.html)                                     | **X11**  | Loading .png images                                             |
-| [JPEG TURBO LIB](https://libjpeg-turbo.org/)                                               | **X11**  | Loading .jpeg images                                            |
-| [GL/GLX](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)                          | **X11**  | Rendering complex graphics                                      |
+| Library                                                                                    | In      | Purpose                                                         |
+|--------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------|
+| [WIN API](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-api-list)       | **WIN** | Managing Windows session, Creating windows and managing events  |
+| [GDI+ Flat](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat) | **WIN** | Loading fonts and images                                        |
+| [CoreAudio API](https://learn.microsoft.com/en-us/windows/win32/api/_coreaudio)            | **WIN** | Loading, managing and playing sounds                            |
+| [GL/GLU](https://learn.microsoft.com/en-us/windows/win32/opengl/opengl-reference)          | **WIN** | Rendering complex graphics                                      |
+| [X11 LIB](https://x.org/releases/current/doc/libX11/libX11/libX11.html)                    | **X11** | Managing X11 session, Creating windows and managing events      |
+| [FreeType2](https://freetype.org/freetype2/docs/documentation.html)                        | **X11** | Loading fonts                                                   |
+| [PNG LIB](https://www.libpng.org/pub/png/pngdocs.html)                                     | **X11** | Loading .png images                                             |
+| [JPEG TURBO LIB](https://libjpeg-turbo.org/)                                               | **X11** | Loading .jpeg images                                            |
+| [GL/GLX](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)                          | **X11** | Rendering complex graphics                                      |
 
 ### Version
 
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,19]**;<br>
-> Last Updated: **15-03-2026**;
+> Newest Version (Unstable): **[u,20]**;<br>
+> Last Updated: **09-04-2026**;
 
 ### LICENSE
 

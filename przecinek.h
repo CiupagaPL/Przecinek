@@ -12,6 +12,7 @@
 // Standard C libraries
 #include <limits.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifndef PRZECINEK_H
@@ -41,7 +42,7 @@ extern "C"{
   #define PRZECINEK_VERSION_MAJOR 5
   #define PRZECINEK_VERSION_MINOR 0
   //#define PRZECINEK_VERSION_PATCH L"a"
-  #define PRZECINEK_UNSTABLE 19
+  #define PRZECINEK_UNSTABLE 20
   #define PRZECINEK_EXPERIMENTAL false
 
   #define PRZECINEK_KEY_MAX 256
@@ -53,9 +54,10 @@ extern "C"{
 
   #define WINDOW_MAX 4
   #define OBJECT_MAX 512
-  #define FONT_MAX 32
+  #define FONT_MAX 16
   #define TEXT_MAX 128
   #define IMAGE_MAX 128
+  #define AUDIO_MAX 32
 
   #define WINDOW_WIDTH_MIN 128
   #define WINDOW_HEIGHT_MIN 128
@@ -79,6 +81,10 @@ extern "C"{
   #define TEXT_CHAR 2048
 
   #define IMAGE_DIRECTORY_CHAR 256
+
+  #define AUDIO_VOLUME_MAX 200
+  #define AUDIO_REFRESH_RATE 200000
+  #define AUDIO_SLEEP_RATE 40
 
   /********************************
    *  ,______,  Define [pPrzecinek]
@@ -407,6 +413,54 @@ extern "C"{
    * It also resets [image] `ID` to `0`.
    ****************************************************************/
   void pImageDestroy(pImage *image);
+
+  /******************************************
+   *  ,______,  [pAudio] structure
+   *  |      |
+   *  |______|  [DEBUG]
+   * (--------)
+   ******************************************/
+  typedef struct{
+    uint16_t ID;
+
+    // Volume percentage (`0` -> AUDIO_VOLUME_MAX)
+    uint16_t volume;
+    // Audio pause state
+    bool pause;
+
+    // Audio length (current, max)
+    uint32_t frame, frameMax;
+  } pAudio;
+
+  /****************************************************************
+   * |\_____/| pAudioCreate()
+   * | .     |
+   * |     . | In: pAudio* [audio], wchar_t* [directory]
+   * \ = , = / Out: uint8_t (`0` -> finished succesfully)
+   *
+   * Parameters:
+   * [audio] - which sound object should be initialized. If
+   * given sound is already created, then it will be overwritten.
+   * [directory] - from where the sound should be loaded.
+   *
+   * Additional Description:
+   * This function choses [ID] for given [audio], then
+   * it setups all needed values, loads file from given [directory]
+   * and creates sound thread.
+   ****************************************************************/
+  uint8_t pAudioCreate(pAudio *audio, wchar_t *directory);
+
+  /****************************************************************
+   * |\_____/| pAudioDestroy()
+   * | .     |
+   * |     . | In: pAudio* [audio]
+   * \ = , = / Out: uint8_t (`0` -> finished succesfully)
+   *
+   * Parameters:
+   * [audio] - which sound object should be destroyed.
+   * Removed debug values will depend on [audio] [ID].
+   ****************************************************************/
+  uint8_t pAudioDestroy(pAudio *audio);
 
   #ifdef __cplusplus
 }

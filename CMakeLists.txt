@@ -43,7 +43,7 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
 
   # Set target libraries
-  target_link_libraries(${PROJECT_NAME} m user32 gdi32 msimg32 winmm gdiplus opengl32 glu32)
+  target_link_libraries(${PROJECT_NAME} m winmm gdiplus user32 gdi32 msimg32 opengl32 glu32 ole32)
 endif()
 
 # Set compile options

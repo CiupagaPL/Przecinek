@@ -19,9 +19,19 @@
 #include <math.h>
 #include <locale.h>
 
+// WIN threads library
+#include <process.h>
+
+// GUID library
+#include <initguid.h>
+
 // WIN and GDI+ libraries
 #include <windows.h>
 #include <gdiplus.h>
+
+// CoreAudio libraries
+#include <mmdeviceapi.h>
+#include <audioclient.h>
 
 // GL and GLU libraries
 #include <GL/gl.h>
@@ -109,7 +119,7 @@ typedef struct{
   unsigned short int widthBac, heightBac, widthFix, heightFix;
 
   wchar_t title[WINDOW_TITLE_CHAR];
-  DWORD frameStart;
+  uint32_t frameStart;
   unsigned short int frameCount;
 
   bool resizable, focus, fullScreen;
@@ -119,7 +129,7 @@ typedef struct{
   HDC hdc;
   HGLRC buffer;
   HWND hwnd;
-  DWORD style;
+  uint32_t style;
   GpGraphics *graphics;
 
   bool DESTROY, FOCUSIN, FOCUSOUT;
@@ -147,7 +157,7 @@ typedef struct{
   unsigned short int vertice, rotation;
 
   GpPoint point[OBJECT_VERTICE_MAX];
-  BYTE type[OBJECT_VERTICE_MAX];
+  unsigned char type[OBJECT_VERTICE_MAX];
   pPosition center;
   float sourceX[OBJECT_VERTICE_MAX], sourceY[OBJECT_VERTICE_MAX];
   unsigned short int rotationFix;
@@ -279,7 +289,7 @@ short int xFix;
 GpGraphics* charGraphics;
 GpStringFormat* stringFormat;
 GpRectF checkBox;
-BYTE* charData;
+unsigned char* charData;
 
 // Image
 pTextureWIN texture[IMAGE_MAX];
@@ -1008,7 +1018,7 @@ void pDebugTextSetup(pText *text, pFont *font){
     imageHeight=tempImageHeight;
 
     // Create [imageBuffer] and [charGraphics] based on [charData]
-    charData=(BYTE*)malloc(imageWidth*imageHeight*4);
+    charData=(unsigned char *)malloc(imageWidth*imageHeight*4);
     memset(charData, 0, imageWidth*imageHeight*4);
     GdipCreateBitmapFromScan0(
       imageWidth, imageHeight, imageWidth*4, PixelFormat32bppARGB,
@@ -3968,7 +3978,7 @@ pImage pImageCreate(wchar_t *directory){
   // Check [directory] value
   if((wcslen(directory)>=4 &&
       (wcscmp(directory+wcslen(directory)-4, L".png")==0 ||
-       wcscmp(directory+wcslen(directory)-4, L".jpg")==0)) ||
+      wcscmp(directory+wcslen(directory)-4, L".jpg")==0)) ||
       (wcslen(directory)>=5 &&
       wcscmp(directory+wcslen(directory)-5, L".jpeg")==0)){
 
@@ -4044,4 +4054,826 @@ void pImageDestroy(pImage *image){
   }
 
   return;
+}
+
+/******************************************
+ *  ,______,  [pSound] structure
+ *  |      |
+ *  |______|  [DEBUG]
+ * (--------)
+ ******************************************/
+typedef struct{
+  HANDLE thread;
+  bool stop;
+  long int prepare, play, pause;
+
+  IAudioClient *audioClient;
+  IAudioRenderClient *renderClient;
+  ISimpleAudioVolume *volumeClient;
+
+  uint32_t frameCount, frameByte, frameTotal, frameWrite;
+  uint32_t frameAvail, baseAvail, baseTotal;
+
+  uint16_t *volumePoint;
+  bool *pausePoint;
+  uint32_t *framePoint, *frameMaxPoint;
+
+  bool exist;
+} pSound;
+
+pSound sound[AUDIO_MAX];
+
+/******************************************
+ *  ,______,  [pAudioPoint] structure
+ *  |      |
+ *  |______|  [DEBUG]
+ * (--------)
+ ******************************************/
+typedef struct{
+  uint16_t ID;
+  wchar_t *directory;
+} pAudioPoint;
+
+pAudioPoint audioPoint[AUDIO_MAX];
+
+/****************************************************************
+ * |\_____/| pDebugAudioReset()
+ * | .     |
+ * |     . | [DEBUG]
+ * \ = , = / Out:
+ ****************************************************************/
+void pDebugAudioReset(pAudio *audio){
+  // Reset [audio] values
+  audio->volume=0;
+  audio->pause=false;
+
+  audio->frame=0;
+  audio->frameMax=0;
+
+  // Reset [sound] values
+  sound[audio->ID].exist=false;
+
+  if(sound[audio->ID].thread!=NULL){
+    sound[audio->ID].stop=true;
+
+    WaitForSingleObject(sound[audio->ID].thread, INFINITE);
+    CloseHandle(sound[audio->ID].thread);
+    sound[audio->ID].thread=NULL;
+  }
+
+  return;
+}
+
+/****************************************************************
+ * |\_____/| pDebugAudioProc()
+ * | .     |
+ * |     . | [DEBUG]
+ * \ = , = / Out: uint8_t (`0` -> finished succesfully)
+ *
+ * Additional Description:
+ * This function uses CoreAudio library to load [audioPoint]
+ * file, setup environment for playing sounds, and create
+ * loop, which then receives diffrent signals (pause, play, end).
+ ****************************************************************/
+unsigned int __stdcall pDebugAudioProc(void *argument){
+  // Load local [audioPoint] from [argument]
+  pAudioPoint *audioPoint=(pAudioPoint*)argument;
+
+  // Try to initialize multithread
+  if(FAILED(CoInitializeEx(NULL, COINIT_MULTITHREADED))){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not be initialized!\n");
+      printf("Try to update your Windows machine or recompile Przecinek,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    free(audioPoint->directory);
+
+    // Return `1`, finished with error
+    return 1;
+  }
+
+  // Create local [fileHandle] and load [audioPoint] [directory]
+  HANDLE fileHandle=CreateFileW(
+    audioPoint->directory, GENERIC_READ, FILE_SHARE_READ, NULL,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL
+  );
+  if(fileHandle==INVALID_HANDLE_VALUE){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if you gave the correct value of directory and if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    free(audioPoint->directory);
+
+    // Return `2`, finished with error
+    return 2;
+  }
+
+  // Create local [fileSize]
+  size_t fileSize=GetFileSize(fileHandle, NULL);
+  if(fileSize==INVALID_FILE_SIZE){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't too big or corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    CloseHandle(fileHandle);
+    free(audioPoint->directory);
+
+    // Return `3`, finished with error
+    return 3;
+  }
+
+  // Create local [fileBuffer] and setup it
+  uint8_t *fileBuffer=(uint8_t*)malloc(fileSize);
+  if(fileBuffer==NULL){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("Could not allocate enough memory!\n");
+      printf("Try to close some background applications,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    CloseHandle(fileHandle);
+    free(audioPoint->directory);
+
+    // Return `4`, finished with error
+    return 4;
+  }
+
+  // Create local [fileRead]
+  DWORD fileRead=0;
+  if(ReadFile(fileHandle, fileBuffer, fileSize, &fileRead, NULL)==false || fileRead!=fileSize){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    CloseHandle(fileHandle);
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    // Return `5`, finished with error
+    return 5;
+  }
+
+  // Safely close local [fileHandle]
+  CloseHandle(fileHandle);
+
+  // Create local [fileEnd] and set its value
+  uint8_t *fileEnd=fileBuffer+fileSize;
+  if(fileEnd-fileBuffer<12 || memcmp(fileBuffer, "RIFF", 4) || memcmp(fileBuffer+8, "WAVE", 4)){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    // Return `6`, finished with error
+    return 6;
+  }
+
+  // Create local [fileFormat], [dataPoint], [fileOffset], [dataSize] and [chunkSize]
+  WAVEFORMATEX *fileFormat=NULL;
+  uint8_t *dataPoint=NULL;
+  uint32_t fileOffset=12, dataSize=0, chunkSize=0;
+
+  while(fileBuffer+fileOffset+8<=fileEnd){
+    // Create and setup local [wavID] times 5
+    char wavID[5]={0};
+    memcpy(wavID, fileBuffer+fileOffset, 4);
+
+    // Update [fileOffset] value
+    fileOffset+=8;
+
+    // Update local [chunkSize]
+    chunkSize=*(uint32_t*)(fileBuffer+fileOffset-4);
+
+    if(fileBuffer+fileOffset+chunkSize>fileEnd){ break; }
+
+    if(memcmp(wavID, "fmt ", 4)==false){
+      if(chunkSize>=16){
+          // Create local [wavFormat]
+          WAVEFORMATEX *wavFormat=(WAVEFORMATEX*)malloc(sizeof(WAVEFORMATEX)+300);
+          if(wavFormat==NULL){
+            if(przecinek.debug==true){
+              printf("[pDebugAudioProc() Error]\n");
+              printf("Could not allocate enough memory!\n");
+              printf("Try to close some background applications,\n");
+              fflush(stdout);
+            }
+
+            // Clean up
+            free(fileBuffer);
+            free(audioPoint->directory);
+
+            // Return `7`, finished with error
+            return 7;
+          }
+          memset(wavFormat, 0, sizeof(WAVEFORMATEX)+300);
+
+          // Setup local [wavFormat]
+          wavFormat->wFormatTag=*(uint16_t*)(fileBuffer+fileOffset);
+          wavFormat->nChannels=*(uint16_t*)(fileBuffer+fileOffset+2);
+          wavFormat->nSamplesPerSec=*(uint16_t*)(fileBuffer+fileOffset+4);
+          wavFormat->nAvgBytesPerSec=*(uint32_t*)(fileBuffer+fileOffset+8);
+          wavFormat->nBlockAlign=*(uint16_t*)(fileBuffer+fileOffset+12);
+          wavFormat->wBitsPerSample=*(uint16_t*)(fileBuffer+fileOffset+14);
+          if(chunkSize>16){
+            wavFormat->cbSize=(uint16_t)(chunkSize-16);
+            if(wavFormat->cbSize>0){
+              memcpy(
+                ((uint8_t*)wavFormat)+sizeof(WAVEFORMATEX), fileBuffer+fileOffset+18, wavFormat->cbSize
+              );
+            }
+          }
+
+          // Update local [fileForat]
+          fileFormat=wavFormat;
+      }
+    }
+    else if(memcmp(wavID, "data", 4)==false){
+      // Copy some local stuff
+      dataSize=chunkSize;
+      dataPoint=(uint8_t*)malloc(dataSize);
+      if(dataPoint!=NULL){
+        memcpy(dataPoint, fileBuffer+fileOffset, dataSize);
+      }
+    }
+
+    // Update [fileOffset] value
+    fileOffset+=chunkSize+(chunkSize&1);
+  }
+
+  // Check for any errors in the meantime
+  if(fileFormat==NULL || dataPoint==NULL){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    // Return `8`, finished with error
+    return 8;
+  }
+
+  // Create local [enumerator] and [device]
+  IMMDeviceEnumerator *enumerator=NULL;
+  IMMDevice *device=NULL;
+
+  if(FAILED(CoCreateInstance(
+      &CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&enumerator))){
+
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `9`, finished with error
+    return 9;
+  }
+  if(FAILED(enumerator->lpVtbl->GetDefaultAudioEndpoint(enumerator, eRender, eConsole, &device))){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    enumerator->lpVtbl->Release(enumerator);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `10`, finished with error
+    return 10;
+  }
+
+  // Safely release local [enumerator]
+  enumerator->lpVtbl->Release(enumerator);
+
+  // Create local [audioClient] and [renderClient]
+  IAudioClient *audioClient=NULL;
+  IAudioRenderClient *renderClient=NULL;
+
+  if(FAILED(device->lpVtbl->Activate(device, &IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&audioClient))){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    device->lpVtbl->Release(device);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `11`, finished with error
+    return 11;
+  }
+
+  if(FAILED(audioClient->lpVtbl->Initialize(
+      audioClient, AUDCLNT_SHAREMODE_SHARED,
+      AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+      (REFERENCE_TIME)AUDIO_REFRESH_RATE, 0, fileFormat, NULL))){
+
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    audioClient->lpVtbl->Release(audioClient);
+    device->lpVtbl->Release(device);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `12`, finished with error
+    return 12;
+  }
+
+  if(FAILED(audioClient->lpVtbl->GetService(audioClient, &IID_IAudioRenderClient, (void**)&renderClient))){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    audioClient->lpVtbl->Release(audioClient);
+    device->lpVtbl->Release(device);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `13`, finished with error
+    return 13;
+  }
+
+  if(FAILED(audioClient->lpVtbl->GetService(
+      audioClient, &IID_ISimpleAudioVolume, (void**)&sound[audioPoint->ID].volumeClient))){
+
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    renderClient->lpVtbl->Release(renderClient);
+    audioClient->lpVtbl->Release(audioClient);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `14`, finished with error
+    return 14;
+  }
+
+  // Safely release local [device]
+  device->lpVtbl->Release(device);
+
+  if(FAILED(audioClient->lpVtbl->GetBufferSize(audioClient, &sound[audioPoint->ID].frameCount))){
+    if(przecinek.debug==true){
+      printf("[pDebugAudioProc() Error]\n");
+      printf("CoreAudio library could not load audio!\n");
+      printf("Check if your file isn't corruped,\n");
+      fflush(stdout);
+    }
+
+    // Clean up
+    renderClient->lpVtbl->Release(renderClient);
+    audioClient->lpVtbl->Release(audioClient);
+    if(fileFormat!=NULL){ free(fileFormat); }
+    if(dataPoint!=NULL){ free(dataPoint); }
+
+    free(fileBuffer);
+    free(audioPoint->directory);
+
+    CoUninitialize();
+
+    // Return `15`, finished with error
+    return 15;
+  }
+
+  // Setup [sound] [frameByte] and [frameTotal]
+  sound[audioPoint->ID].frameByte=fileFormat->nBlockAlign;
+  sound[audioPoint->ID].frameTotal=dataSize/sound[audioPoint->ID].frameByte;
+
+  // Setup [sound] [audioClient] and [renderClient]
+  sound[audioPoint->ID].audioClient=audioClient;
+  sound[audioPoint->ID].renderClient=renderClient;
+
+  // Change other [sound] values
+  sound[audioPoint->ID].frameWrite=0;
+  InterlockedExchange(&sound[audioPoint->ID].prepare, 1);
+  InterlockedExchange(&sound[audioPoint->ID].play, 0);
+  InterlockedExchange(&sound[audioPoint->ID].pause, 1);
+
+  // Sound loop
+  while(sound[audioPoint->ID].stop==false){
+    // Update [sound] [frameMaxPoint] pointer
+    *sound[audioPoint->ID].frameMaxPoint=sound[audioPoint->ID].baseTotal;
+
+    // Do nothing if [sound] is paused
+    if(sound[audioPoint->ID].prepare==false || sound[audioPoint->ID].play==false ||
+        sound[audioPoint->ID].pause==true ||
+        sound[audioPoint->ID].frameWrite>=sound[audioPoint->ID].frameTotal){
+
+      // Unpause [sound]
+      if(*sound[audioPoint->ID].pausePoint==false){
+        // Update and check [sound] [frameWrite] value
+        sound[audioPoint->ID].frameWrite=*sound[audioPoint->ID].framePoint*sound[audioPoint->ID].baseAvail;
+        if(sound[audioPoint->ID].frameWrite>=sound[audioPoint->ID].frameTotal-sound[audioPoint->ID].baseAvail){
+          sound[audioPoint->ID].frameWrite=0;
+        }
+
+        InterlockedExchange(&sound[audioPoint->ID].pause, 0);
+        sound[audioPoint->ID].audioClient->lpVtbl->Start(sound[audioPoint->ID].audioClient);
+        InterlockedExchange(&sound[audioPoint->ID].play, 1);
+
+        continue;
+      }
+
+      Sleep(AUDIO_SLEEP_RATE);
+      continue;
+    }
+
+    // Check [sound] [volumePoint] value
+    if(*sound[audioPoint->ID].volumePoint>AUDIO_VOLUME_MAX){
+      if(przecinek.debug==true){
+        printf("[pDebugAudioProc() Warning]\n");
+        printf("Value of audio.volume is too large!\n");
+        printf(
+          "Value of audio.volume was changed from %i to %i,\n",
+          *sound[audioPoint->ID].volumePoint, AUDIO_VOLUME_MAX
+        );
+        fflush(stdout);
+      }
+
+      *sound[audioPoint->ID].volumePoint=AUDIO_VOLUME_MAX;
+    }
+
+    // Create local [percent] variable
+    float percent=(float)*sound[audioPoint->ID].volumePoint/100;
+
+    // Update [sound] [volume] value
+    sound[audioPoint->ID].volumeClient->lpVtbl->SetMasterVolume(
+      sound[audioPoint->ID].volumeClient, percent, NULL
+    );
+
+    // Create and check local [padding]
+    uint32_t padding=0;
+    if(FAILED(audioClient->lpVtbl->GetCurrentPadding(audioClient, &padding))){ break; }
+
+    // Load and check [frameAvail]
+    sound[audioPoint->ID].frameAvail=sound[audioPoint->ID].frameCount-padding;
+    if(sound[audioPoint->ID].frameAvail==0){
+      Sleep(10);
+      continue;
+    }
+    if(sound[audioPoint->ID].frameAvail>sound[audioPoint->ID].frameTotal-sound[audioPoint->ID].frameWrite){
+      sound[audioPoint->ID].frameAvail=sound[audioPoint->ID].frameTotal-sound[audioPoint->ID].frameWrite;
+
+      // Update [sound] [framePoint] pointer
+      *sound[audioPoint->ID].framePoint=sound[audioPoint->ID].baseTotal;
+
+      // Pause [sound]
+      *sound[audioPoint->ID].pausePoint=true;
+    }
+
+    // Create and check local [checkData]
+    uint8_t *checkData=NULL;
+    if(FAILED(renderClient->lpVtbl->GetBuffer(renderClient, sound[audioPoint->ID].frameAvail, &checkData))){
+      break;
+    }
+
+    // Pause [sound]
+    if(*sound[audioPoint->ID].pausePoint==true){
+      InterlockedExchange(&sound[audioPoint->ID].play, 0);
+      InterlockedExchange(&sound[audioPoint->ID-1].pause, 1);
+
+      // Clear [sound]
+      memset(checkData, 0, sound[audioPoint->ID].frameAvail*sound[audioPoint->ID].frameByte);
+      sound[audioPoint->ID].renderClient->lpVtbl->ReleaseBuffer(
+        sound[audioPoint->ID].renderClient, sound[audioPoint->ID].frameAvail, 0
+      );
+
+      continue;
+    }
+
+    // Create and setup local [data]
+    uint8_t *data=
+      (dataPoint+(sound[audioPoint->ID].frameWrite*sound[audioPoint->ID].frameByte));
+
+    if(fileFormat->wBitsPerSample==8){
+      // 8-bit format
+      for(uint32_t current=0;
+          current<sound[audioPoint->ID].frameAvail*sound[audioPoint->ID].frameByte; current+=1){
+
+        // Create local [calculation]
+        int8_t calculation=(((int)data[current]-128)*percent)+128;
+        if(calculation<0){ calculation=0; }
+        if(calculation>255){ calculation=255; }
+
+        checkData[current]=(uint8_t)calculation;
+      }
+    }
+    else if(fileFormat->wBitsPerSample==16){
+      // 16-bit format
+      for(uint32_t current=0;
+          current<sound[audioPoint->ID].frameAvail*(sound[audioPoint->ID].frameByte/2); current+=1){
+
+        // Create local [calculation]
+        float calculation=((int16_t*)data)[current]*percent;
+        if(calculation>32767){ calculation=32767; }
+        if(calculation<(-32768)){ calculation=(-32768); }
+        ((int16_t*)checkData)[current]=(int16_t)calculation;
+      }
+    }
+    else if(fileFormat->wBitsPerSample==24){
+      // 24-bit format
+      for(uint32_t frame=0; frame<sound[audioPoint->ID].frameAvail; frame+=1){
+        for(uint32_t current=0; current<fileFormat->nChannels; current+=1){
+          // Change [fileOffset] value
+          fileOffset=(frame*sound[audioPoint->ID].frameByte)+(current*3);
+
+          // Create local [sample]
+          int32_t sample=(int32_t)((data+fileOffset)[0] | ((data+fileOffset)[1]<<8) | ((data+fileOffset)[2]<<16));
+          if(sample & 0x800000){ sample|=~0xFFFFFF; }
+
+          // Create local [calculation]
+          float calculation=sample*percent;
+          if(calculation>8388607){ calculation=8388607; }
+          if(calculation<(-8388608)){ calculation=(-8388608); }
+
+          (checkData+fileOffset)[0]=(uint8_t)((int32_t)calculation & 0xFF);
+          (checkData+fileOffset)[1]=(uint8_t)(((int32_t)calculation >> 8) & 0xFF);
+          (checkData+fileOffset)[2]=(uint8_t)(((int32_t)calculation >> 16) & 0xFF);
+        }
+      }
+    }
+    else{
+      // Any other-bit format
+      memcpy(checkData, data, sound[audioPoint->ID].frameAvail*sound[audioPoint->ID].frameByte);
+    }
+
+    // Check for any errors
+    if(FAILED(renderClient->lpVtbl->ReleaseBuffer(renderClient, sound[audioPoint->ID].frameAvail, 0))){
+      break;
+    }
+
+    if(sound[audioPoint->ID].baseAvail==0){
+      // Setup [sound] [baseAvail]
+      sound[audioPoint->ID].baseAvail=sound[audioPoint->ID].frameAvail;
+
+      // Create local [calculation]
+      float calculation=ceil(sound[audioPoint->ID].frameTotal/sound[audioPoint->ID].baseAvail);
+
+      // Initialize [sound] [baseTotal]
+      sound[audioPoint->ID].baseTotal=(uint32_t)calculation;
+    }
+
+    // Modify [sound] [frameWrite] value
+    sound[audioPoint->ID].frameWrite+=sound[audioPoint->ID].frameAvail;
+
+    // Create local [calculation]
+    float calculation=ceil(sound[audioPoint->ID].frameWrite/sound[audioPoint->ID].baseAvail);
+
+    // Update [sound] [framePoint] pointer
+    *sound[audioPoint->ID].framePoint=(uint32_t)calculation;
+  }
+
+  // Clean up
+  if(sound[audioPoint->ID].audioClient!=NULL){
+    sound[audioPoint->ID].audioClient->lpVtbl->Stop(sound[audioPoint->ID].audioClient);
+  }
+  InterlockedExchange(&sound[audioPoint->ID].prepare, 0);
+  InterlockedExchange(&sound[audioPoint->ID].play, 0);
+  InterlockedExchange(&sound[audioPoint->ID].pause, 0);
+
+  if(sound[audioPoint->ID].renderClient!=NULL){
+    sound[audioPoint->ID].renderClient->lpVtbl->Release(sound[audioPoint->ID].renderClient);
+    sound[audioPoint->ID].renderClient=NULL;
+  }
+  if(sound[audioPoint->ID].audioClient!=NULL){
+    sound[audioPoint->ID].audioClient->lpVtbl->Release(sound[audioPoint->ID].audioClient);
+    sound[audioPoint->ID].audioClient=NULL;
+  }
+  if(sound[audioPoint->ID].volumeClient!=NULL){
+    sound[audioPoint->ID].volumeClient->lpVtbl->Release(sound[audioPoint->ID].volumeClient);
+    sound[audioPoint->ID].volumeClient=NULL;
+  }
+
+  if(fileFormat!=NULL){ free(fileFormat); }
+  if(dataPoint!=NULL){ free(dataPoint); }
+  if(fileBuffer!=NULL){ free(fileBuffer); }
+  free(audioPoint->directory);
+
+  CoUninitialize();
+
+  // Return `0`, finished succesfully
+  return 0;
+}
+
+/****************************************************************
+ * |\_____/| pAudioCreate()
+ * | .     |
+ * |     . | In: pAudio* [audio], wchar_t* [directory]
+ * \ = , = / Out: uint8_t (`0` -> finished succesfully)
+ *
+ * Parameters:
+ * [audio] - which sound object should be initialized. If
+ * given sound is already created, then it will be overwritten.
+ * [directory] - from where the sound should be loaded.
+ *
+ * Additional Description:
+ * This function choses [ID] for given [audio], then
+ * it setups all needed values, loads file from given [directory]
+ * and creates sound thread.
+ ****************************************************************/
+uint8_t pAudioCreate(pAudio *audio, wchar_t *directory){
+  for(unsigned short int current=0; current<AUDIO_MAX; current+=1){
+    if(sound[current].exist==false){
+      // Set [audio] [ID] and reset it
+      audio->ID=current;
+      pDebugAudioReset(audio);
+
+      break;
+    }
+    else if(current==AUDIO_MAX-1){
+      if(przecinek.debug==true){
+        printf("[pAudioCreate() Error]\n");
+        printf("Too many audios were created!\n");
+        printf("Current audio limit is equal to %i.\n", AUDIO_MAX);
+        printf("Try to destroy unused sounds or change Przecinek audio limit,\n");
+        fflush(stdout);
+      }
+
+      // Return `1`, finished with error
+      return 1;
+    }
+  }
+
+  // Check if Przecinek is initialized
+  if(setup==false){
+    printf("[pAudioCreate() Error]\n");
+    printf("Could not create audio!\n");
+    printf("Przecinek is not initialized.\n");
+    printf("Try to run pSetup() first,\n");
+    fflush(stdout);
+
+    // Reset [audio]
+    pDebugAudioReset(audio);
+
+    // Return `2`, finished with error
+    return 2;
+  }
+
+  // Set [audio] values
+  audio->pause=true;
+  audio->volume=100;
+
+  audio->frame=0;
+  audio->frameMax=0;
+
+  // Set [sound] values
+  sound[audio->ID].exist=true;
+
+  // Set [sound] pointers
+  sound[audio->ID].volumePoint=&audio->volume;
+  sound[audio->ID].pausePoint=&audio->pause;
+
+  sound[audio->ID].framePoint=&audio->frame;
+  sound[audio->ID].frameMaxPoint=&audio->frameMax;
+
+  // Check [directory] value
+  if(wcslen(directory)<4 || wcscmp(directory+wcslen(directory)-4, L".wav")!=0){
+    if(przecinek.debug==true){
+      printf("[pAudioCreate() Error]\n");
+      printf("Value of audio.directory doesn't include .wav extenstion!\n");
+      printf("Check if you gave the correct value,\n");
+      fflush(stdout);
+    }
+
+    // Reset [audio]
+    pDebugAudioReset(audio);
+
+    // Return `3`, finished with error
+    return 3;
+  }
+
+  // Prepare several [sound] variables
+  sound[audio->ID].stop=false;
+  InterlockedExchange(&sound[audio->ID].prepare, 0);
+  InterlockedExchange(&sound[audio->ID].play, 0);
+  InterlockedExchange(&sound[audio->ID].pause, 1);
+
+  // Setup [audioPoint] for [audio]
+  audioPoint[audio->ID].ID=audio->ID;
+  audioPoint[audio->ID].directory=_wcsdup(directory);
+
+  // Create local [threadID]
+  unsigned int threadID;
+
+  // Initialize [sound] [thread]
+  sound[audio->ID].thread=(HANDLE)_beginthreadex(NULL, 0, pDebugAudioProc, &audioPoint[audio->ID], 0, &threadID);
+
+  // Return `0`, finished succesfully
+  return 0;
+}
+
+/****************************************************************
+ * |\_____/| pAudioDestroy()
+ * | .     |
+ * |     . | In: pAudio* [audio]
+ * \ = , = / Out: uint8_t (`0` -> finished succesfully)
+ *
+ * Parameters:
+ * [audio] - which sound object should be destroyed.
+ * Removed debug values will depend on [audio] [ID].
+ ****************************************************************/
+uint8_t pAudioDestroy(pAudio *audio){
+  if(audio==NULL){
+    if(przecinek.debug==true){
+      printf("[pAudioDestroy() Error]\n");
+      printf("Given audio is NULL!\n");
+      printf("Make sure to use your brain once in a while,\n");
+      fflush(stdout);
+    }
+
+    // Return `1`, finished with error
+    return 1;
+  }
+
+  // Fully reset [audio]
+  if(sound[audio->ID].exist==true){ pDebugAudioReset(audio); }
+
+  // Return `0`, finished succesfully
+  return 0;
 }
