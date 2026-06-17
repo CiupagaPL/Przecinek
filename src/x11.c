@@ -308,7 +308,7 @@ void pDebugWindowReset(pWindow *window){
   build[window->ID-1].delete=None;
   build[window->ID-1].state=None;
 
-  build[window->ID-1].exist=false;
+  build[window->ID-1].exists=false;
 
   // Change [windowCount]
   windowCount-=1;
@@ -353,7 +353,7 @@ void pDebugObjectReset(pObject *object){
 
   figure[object->ID-1].change=false;
 
-  figure[object->ID-1].exist=false;
+  figure[object->ID-1].exists=false;
 
   return;
 }
@@ -558,7 +558,7 @@ void pDebugFontReset(pFont *font){
 
   view[font->ID-1].change=false;
 
-  view[font->ID-1].exist=false;
+  view[font->ID-1].exists=false;
 
   return;
 }
@@ -595,7 +595,7 @@ void pDebugTextReset(pText *text){
 
   code[text->ID-1].change=false;
 
-  code[text->ID-1].exist=false;
+  code[text->ID-1].exists=false;
 
   return;
 }
@@ -712,7 +712,7 @@ void pDebugImageReset(pImage *image){
   glDeleteTextures(1, &texture[image->ID-1].source);
   glGenTextures(1, &texture[image->ID-1].source);
 
-  texture[image->ID-1].exist=false;
+  texture[image->ID-1].exists=false;
 
   return;
 }
@@ -1153,7 +1153,7 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
   windowCount+=1;
 
   for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-    if(build[current].exist==false){
+    if(build[current].exists==false){
       // Set [window] [ID] and reset [window]
       window.ID=current+1;
       pDebugWindowReset(&window);
@@ -1262,7 +1262,7 @@ pWindow pWindowCreate(unsigned short int width, unsigned short int height, bool 
   window.resizable=resizable;
 
   // Update [build] values
-  build[window.ID-1].exist=true;
+  build[window.ID-1].exists=true;
 
   build[window.ID-1].x=window.x;
   build[window.ID-1].y=window.y;
@@ -1975,14 +1975,14 @@ void pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color){
       if(color!=NULL){
         glColor4f(
           (float)color->red/255, (float)color->green/255, (float)color->blue/255, (float)color->alpha/255
-	      );
-	    }
+          );
+        }
       else{
         glColor4f(
           (float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
           (float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
         );
-	    }
+        }
 
       for(unsigned short int current=0; current<wcslen(text->value); current+=1){
         // Bind [code] [source]
@@ -2296,9 +2296,9 @@ void pWindowHandle(pWindow *window){
 
   if(window->ID!=0){
     // Update [windowMainID]
-    if(build[windowMainID].exist==false){
+    if(build[windowMainID].exists==false){
       for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
-        if(build[current].exist==true){
+        if(build[current].exists==true){
           windowMainID=current;
           break;
         }
@@ -2722,7 +2722,7 @@ void pWindowHandle(pWindow *window){
         for(unsigned short int current=0; current<WINDOW_MAX; current+=1){
           if(current==window->ID-1){ continue; }
 
-          if(build[current].exist==true){
+          if(build[current].exists==true){
             if(build[current].focus==true){ build[current].focus=false; }
           }
           else{ break; }
@@ -3027,7 +3027,7 @@ pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsi
   pObject object;
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
-    if(figure[current].exist==false){
+    if(figure[current].exists==false){
       // Set [object] [ID] and reset it
       object.ID=current+1;
       pDebugObjectReset(&object);
@@ -3096,7 +3096,7 @@ pObject pObjectCreate(unsigned short int vertice, unsigned short int width, unsi
   object.rotation=0;
 
   // Set [figure] values
-  figure[object.ID-1].exist=true;
+  figure[object.ID-1].exists=true;
 
   figure[object.ID-1].width=width;
   figure[object.ID-1].height=height;
@@ -3487,7 +3487,7 @@ pFont pFontCreate(wchar_t *directory, unsigned short int size){
   pFont font;
 
   for(unsigned short int current=0; current<FONT_MAX; current+=1){
-    if(view[current].exist==false){
+    if(view[current].exists==false){
       // Set [font] [ID] and reset it
       font.ID=current+1;
       pDebugFontReset(&font);
@@ -3554,7 +3554,7 @@ pFont pFontCreate(wchar_t *directory, unsigned short int size){
   wcscpy(font.directory, directory);
 
   // Set [view] values
-  view[font.ID-1].exist=true;
+  view[font.ID-1].exists=true;
 
   view[font.ID-1].size=size;
   wcscpy(view[font.ID-1].directoryW, directory);
@@ -3667,7 +3667,7 @@ pText pTextCreate(wchar_t *value){
   pText text;
 
   for(unsigned short int current=0; current<TEXT_MAX; current+=1){
-    if(code[current].exist==false){
+    if(code[current].exists==false){
       // Set [text] [ID] and reset it
       text.ID=current+1;
       pDebugTextReset(&text);
@@ -3709,7 +3709,7 @@ pText pTextCreate(wchar_t *value){
   wcscpy(text.value, value);
 
   // Set [code] values
-  code[text.ID-1].exist=true;
+  code[text.ID-1].exists=true;
 
   wcscpy(code[text.ID-1].valueW, value);
 
@@ -3767,7 +3767,7 @@ pImage pImageCreate(wchar_t *directory){
   pImage image;
 
   for(unsigned short int current=0; current<IMAGE_MAX; current+=1){
-    if(texture[current].exist==false){
+    if(texture[current].exists==false){
       // Set [image] [ID] and reset it
       image.ID=current+1;
       pDebugImageReset(&image);
@@ -3809,7 +3809,7 @@ pImage pImageCreate(wchar_t *directory){
   wcscpy(image.directory, directory);
 
   // Set [texture] values
-  texture[image.ID-1].exist=true;
+  texture[image.ID-1].exists=true;
 
   wcscpy(texture[image.ID-1].directoryW, directory);
   wcstombs(texture[image.ID-1].directory, directory, IMAGE_DIRECTORY_CHAR);
