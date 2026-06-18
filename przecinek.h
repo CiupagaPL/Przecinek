@@ -40,12 +40,6 @@ extern "C"{
 	*  `-   -`
 	******************************************/
 
-	/******************************************
-	*  ,______,  Default values and
-	*  |      |  Global limits
-	*  |______|
-	* (--------)
-	******************************************/
 	// Przecinek branch (alpha / beta / release)
 	#define PRZECINEK_VERSION L"a"
 	// Last major release

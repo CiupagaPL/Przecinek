@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Wiki</title>
+
+	<meta name="description" content="Documentation">
+	<meta name="author" content="Ciupaga">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link href="style.css" rel="stylesheet">
+
+	<link rel="icon" id="icon" href="local/icon_red.png">
+
+	<link href="https://fonts.googleapis.com" rel="preconnect">
+	<link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400&display=swap" rel="stylesheet">
+</head>
+
+<body id="body">
+	<header id="header">
+		<a href="https://github.com/CiupagaPL/Przecinek/tree/unstable" id="logo"></a>
+
+		<a data-key="homeButton" href="index.html"></a>
+		<p data-key="structuresButton"></p>
+		<a data-key="functionsButton" href="functions.html"></a>
+		<a data-key="examplesButton" href="examples.html"></a>
+	</header>
+
+	<nav id="nav">
+		<a data-key="pageDefinitionList0" href="#pageDefinitionList"></a><br>
+		<a data-key="pageStructureList0" href="#pageStructureList"></a><br>
+
+		<br>
+
+		<button
+			data-key="animationsButton" onclick="animationsPress()" id="animationsSetting">
+		</button><br>
+		<button
+			data-key="themeButton" onclick="themePress()" id="themeSetting">
+		</button><br>
+		<button
+			data-key="languageButton" onclick="languagePress()" id="languageSetting">
+		</button><br>
+	</nav>
+
+	<main id="main">
+		<h1 data-key="pageTitle"></h1>
+
+		<h2 data-key="pageDefinitionList0" id="pageDefinitionList"></h2>
+		<pre>
+// Przecinek branch (alpha / beta / release)
+#define PRZECINEK_VERSION L"a"
+// Last major release
+#define PRZECINEK_VERSION_MAJOR 5
+#define PRZECINEK_VERSION_MINOR 0
+#define PRZECINEK_VERSION_PATCH L"a"
+// Last unstable version
+#define PRZECINEK_UNSTABLE 21
+
+// Frame limits for all windows
+#define PRZECINEK_FRAME_MIN 10 // `<=480` safe
+#define PRZECINEK_FRAME_MAX 120 // `<=480` safe
+
+// Maximal amount of pressed keys at one time
+#define PRZECINEK_KEY_PRESS_MAX 8 // `uint8_t`
+
+// Default color pallet
+#define COLOR_DEFAULT_BACKGROUND (pColor){ 255, 255, 255, 255 }
+#define COLOR_DEFAULT_FOREGROUND (pColor){ 50, 50, 60, 255 }
+
+// Structures amount limits
+#define WINDOW_MAX 1 // `uint8_t`
+#define OBJECT_MAX 512 // `uint16_t`
+#define IMAGE_MAX 128 // `uint16_t`
+#define FONT_MAX 4 // `uint16_t`
+#define TEXT_MAX 64 // `uint16_t`
+#define AUDIO_MAX 32 // `uint16_t`
+
+// Window size limits
+#define WINDOW_WIDTH_MIN 128 // `uint16_t`
+#define WINDOW_HEIGHT_MIN 128 // `uint16_t`
+#define WINDOW_WIDTH_MAX (SHRT_MAX+1)/2 // DEBUG
+#define WINDOW_HEIGHT_MAX (SHRT_MAX+1)/2 // DEBUG
+// Window default position
+#define WINDOW_X_DEF 256 // `int16_t`
+#define WINDOW_Y_DEF 256 // `int16_t`
+// Window default title
+#define WINDOW_CHAR_TITLE_DEF "{,} Window"
+#define WINDOW_WIDE_TITLE_DEF L"{,} Window"
+// Window title max length
+// Is decreased by `1`
+#define WINDOW_TITLE_LENGTH_MAX 256 // DEBUG
+
+// Object minimal and maximal rotation value
+#define OBJECT_ROTATION_MIN (-360) // `int16_t`
+#define OBJECT_ROTATION_MAX 360 // `int16_t`
+
+// Object vertice amount limits
+#define OBJECT_VERTICE_MIN 3 // `uint16_t`
+#define OBJECT_VERTICE_MAX 1024 // `uint16_t`
+
+// Text minimal length
+#define TEXT_LENGTH_MIN 2 // `uint16_t`
+
+// Text default space width in pt
+#define TEXT_DEFAULT_SPACE 32 // `int32_t`
+
+// Font size limits in pt
+#define FONT_SIZE_MIN 4 // `uint16_t`
+#define FONT_SIZE_MAX 1024 // `uint16_t`
+
+// Maximal audio volume
+#define AUDIO_VOLUME_MAX 200 // uint16_t
+// Audio refresh rate
+#define AUDIO_REFRESH_RATE 200000 // DEBUG
+// Audio thread delay
+#define AUDIO_SLEEP_RATE 40 // DEBUG
+#define AUDIO_PROCESS_RATE 10 // DEBUG
+		</pre>
+
+		<h2 data-key="pageStructureList0" id="pageStructureList"></h2>
+		<pre>
+/******************************************
+*  ,______,  [pPrzecinek] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	// Console mode
+	// `true` for enabled console
+	bool debug;
+	// Frame limit and current count for all windows
+	uint16_t frameLimit, frameCount;
+
+	// Screen size in pixels
+	pSize display;
+	// Current cursor position in pixels
+	pPosition cursor;
+} pPrzecinek;
+
+extern pPrzecinek przecinek;
+
+/******************************************
+*  ,______,  [pWindow] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint8_t ID, exists;
+
+	// Pixel position on the screen
+	int16_t x, y;
+	// Pixel size of the window
+	uint16_t width, height;
+	// Size limits of the window
+	uint16_t widthMin, heightMin, widthMax, heightMax;
+
+	// Window title
+	wchar_t *title;
+
+	// Window focus and fullScreen status
+	bool focus, fullScreen;
+} pWindow;
+
+/******************************************
+*  ,______,  [pObject] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint16_t ID;
+
+	// Vertice count of the object
+	uint16_t verticeCount;
+	// Vertice positions array
+	// Equal to the vertice count
+	pPosition *vertice;
+} pObject;
+
+/******************************************
+*  ,______,  [pImage] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint16_t ID;
+} pImage;
+
+/******************************************
+*  ,______,  [pFont] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint16_t ID;
+
+	// Font size in pt
+	uint16_t size;
+} pFont;
+
+/******************************************
+*  ,______,  [pText] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint16_t ID;
+
+	// Pixel position on the window
+	int32_t x, y;
+
+	// Text max length
+	// Should be decreased by `1`
+	uint16_t length;
+	// Text value
+	wchar_t *value;
+
+	// Text spacing and space size in pt
+	int32_t letterSpacing, lineSpacing, spaceSize;
+} pText;
+
+/******************************************
+*  ,______,  [pAudio] structure
+*  |      |
+*  |______|
+* (--------)
+******************************************/
+typedef struct{
+	uint16_t ID;
+
+	// Volume percentage
+	// Value range from `0` to the AUDIO_VOLUME_MAX
+	uint16_t volume;
+	// Audio pause state
+	bool pause;
+
+	// Audio current and max frame
+	uint32_t frame, frameMax;
+} pAudio;
+		</pre>
+	</main>
+</body>
+
+<script type="application/json" id="data">
+{
+
+"en":{
+	"homeButton": "Home page",
+	"structuresButton": "Structures",
+	"functionsButton": "Functions",
+	"examplesButton": "Examples",
+
+	"animationsButton": "Animations: ",
+	"themeButton": "Theme: ",
+	"languageButton": "Language: en",
+
+	"pageTitle": "Definitions and structures",
+
+	"pageDefinitionList0": "Definitions from przecinek.h",
+
+	"pageStructureList0": "Structures from przecinek.h"
+},
+
+"pl":{
+	"homeButton": "Strona główna",
+	"structuresButton": "Struktury",
+	"functionsButton": "Funkcje",
+	"examplesButton": "Przykłady",
+
+	"animationsButton": "Animacje: ",
+	"themeButton": "Motyw: ",
+	"languageButton": "Język: pl",
+
+	"pageTitle": "Definicje i struktury",
+
+	"pageDefinitionList0": "Definicje z przecinek.h",
+
+	"pageStructureList0": "Struktury z przecinek.h"
+}
+
+}
+</script>
+
+<script src="script.js"></script>
+</html>
