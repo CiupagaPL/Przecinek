@@ -6,9 +6,9 @@
 
 @media(max-width: 1299px){
     :root{
-		--nav-width: calc(96vw + 8px);
-		--main-width: calc(96vw + 8px);
-		--main-margin: 5vmin;
+		--nav-width: calc(100% - 4vw + 0.6vmin);
+		--main-width: calc(100% - 4vw + 0.6vmin);
+		--main-margin: 10vh;
 	}
 }
 
@@ -171,6 +171,9 @@
 
 	float: left;
 
+	overflow-wrap: break-word;
+	hyphens: auto;
+
 	border: 0.3vmin solid;
 }
 #main.light{
@@ -187,11 +190,17 @@
 }
 
 #main>h1{ text-align: center; }
-#main>h1{ font-size: 42pt; }
+#main>h1{ font-size: 48pt; }
 #main>h2{ font-size: 24pt; }
 #main>p{ font-size: 18pt; }
 
 pre{
+	width: max-content;
+	max-width: 100%;
+
+	overflow-x: auto;
+    overflow-y: auto;
+
 	padding: 1vw;
 
 	font-size: 18pt;

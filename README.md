@@ -59,8 +59,8 @@ By then, the documentation will also be finished.
 ### Version
 
 > Newest Version (Alpha): **[None]**;<br>
-> Newest Version (Unstable): **[u,21]**;<br>
-> Last Updated: **17-06-2026**;
+> Newest Version (Unstable): **[u,22]**;<br>
+> Last Updated: **18-06-2026**;
 
 ### LICENSE
 

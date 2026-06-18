@@ -47,7 +47,7 @@ extern "C"{
 	#define PRZECINEK_VERSION_MINOR 0
 	#define PRZECINEK_VERSION_PATCH L"a"
 	// Last unstable version
-	#define PRZECINEK_UNSTABLE 21
+	#define PRZECINEK_UNSTABLE 22
 
 	// Frame limits for all windows
 	#define PRZECINEK_FRAME_MIN 10 // `<=480` safe
