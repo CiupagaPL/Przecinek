@@ -1,4 +1,6 @@
 build/
 add/
-main.c
-main.cpp
+debug.c
+debug.cpp
+script.sh
+przecinek.code-workspace

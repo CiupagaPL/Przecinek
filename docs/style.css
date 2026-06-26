@@ -1,0 +1,215 @@
+:root{
+	--nav-x: 2vw;
+	--nav-width: 18vw;
+	--main-x: 0.5vw;
+	--main-width: 73.5vw;
+	--main-margin: 25vh;
+}
+
+@media(max-width: 1299px){
+    :root{
+		--nav-x: 8px;
+		--nav-width: calc(100% - 0.6vmin - 8px - 2vw);
+		--main-x: 8px;
+		--main-width: calc(100% - 0.6vmin - 8px - 2vw);
+		--main-margin: 10vh;
+	}
+}
+
+#body{
+	margin-left: -8px;
+	width: calc(100% + 8px);
+	height: calc(100% + 8px);
+
+	font-family: "Fira Mono", monospace;
+	font-style: normal;
+
+	background-size: 211px;
+	background-repeat: repeat;
+	background-position: 0 0;
+}
+@keyframes body{
+	0%{ background-position: 0 0; }
+	100%{ background-position: 211px -206px; }
+}
+#body.on{ animation: body 2s infinite linear; }
+#body.off{ animation: 0; }
+#body.light{
+	background-image: url(local/background_light.png);
+	background-color: #e1e1eb;
+}
+#body.dark{
+	background-image: url(local/background_dark.png);
+	background-color: #464650;
+}
+
+#header{
+	position: fixed;
+	top: -8px;
+	left: -8px;
+	width: calc(100% + 8px);
+	height: 10vh;
+
+	float: left;
+
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+
+	border-bottom: 0.3vmin solid;
+
+	background-color: #ffffff;
+}
+#header.light{
+	border-color: #32323c;
+
+	background-color: #ffffff;
+}
+#header.dark{
+	border-color: #ffffff;
+
+	background-color: #32323c;
+}
+
+#header>a, #header>p{
+	font-size: 4vmin;
+
+	text-decoration: none;
+
+	color: #7d7dff;
+}
+#header>a:hover, #header>p:hover{ text-decoration: underline; }
+
+#logo{
+	margin-top: 14vmin;
+	width: 24vmin;
+	height: 24vmin;
+
+	background-image: url(local/icon_red.png);
+	background-size: 90%;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+#logo:hover{ background-size: 100%; }
+
+@keyframes logo{
+	0%{ transform: rotate(0deg); }
+	100%{ transform: rotate(360deg); }
+}
+@keyframes logo-red-green{
+	0%{ background-image: url(local/icon_red.png); }
+	100%{ background-image: url(local/icon_green.png); }
+}
+@keyframes logo-green-blue{
+	0%{ background-image: url(local/icon_green.png); }
+	100%{ background-image: url(local/icon_blue.png); }
+}
+@keyframes logo-blue-red{
+	0%{ background-image: url(local/icon_blue.png); }
+	100%{ background-image: url(local/icon_red.png); }
+}
+
+#logo.red-green-on{
+	animation: logo 10s infinite linear,
+		logo-red-green 0s forwards;
+}
+#logo.green-blue-on{
+	animation: logo 10s infinite linear,
+		logo-green-blue 0s forwards;
+}
+#logo.blue-red-on{
+	animation: logo 10s infinite linear,
+		logo-blue-red 0s forwards;
+}
+#logo.red-green-off{ animation: logo-red-green 0s forwards; }
+#logo.green-blue-off{ animation: logo-green-blue 0s forwards; }
+#logo.blue-red-off{ animation: logo-blue-red 0s forwards; }
+
+#nav{
+	margin-left: var(--nav-x);
+	margin-top: 25vh;
+	margin-bottom: -16px;
+	width: var(--nav-width);
+	padding: 1vw;
+
+	float: left;
+
+	border: 0.3vmin solid #32323c;
+
+	background-color: #ffffff;
+}
+#nav.light{
+	border-color: #32323c;
+
+	color: #32323c;
+	background-color: #ffffff;
+}
+#nav.dark{
+	border-color: #ffffff;
+
+	color: #ffffff;
+	background-color: #32323c;
+}
+
+#nav>a, #nav>button{ font-size: 18pt; }
+#nav>a:hover, #nav>button:hover{ text-decoration: underline; }
+
+#nav>a{
+	text-decoration: none;
+
+	color: #7d7dff;
+}
+
+#nav>button{
+	border: 0;
+	background: 0;
+}
+#animationsSetting.light, #themeSetting.light, #languageSetting.light{ color: #32323c; }
+#animationsSetting.dark, #themeSetting.dark, #languageSetting.dark{ color: #ffffff; }
+
+#main{
+	margin-left: var(--main-x);
+	margin-top: var(--main-margin);
+	margin-bottom: -16px;
+	width: var(--main-width);
+	padding: 1vw;
+
+	float: left;
+
+	overflow-wrap: break-word;
+	hyphens: auto;
+
+	border: 0.3vmin solid;
+}
+#main.light{
+	border-color: #32323c;
+
+	color: #32323c;
+	background-color: #ffffff;
+}
+#main.dark{
+	border-color: #ffffff;
+
+	color: #ffffff;
+	background-color: #32323c;
+}
+
+#main>h1{ text-align: center; }
+#main>h1{ font-size: 48pt; }
+#main>h2{ font-size: 24pt; }
+#main>p{ font-size: 18pt; }
+
+pre{
+	width: max-content;
+	max-width: calc(100% - 2vw);
+
+	overflow-x: auto;
+    overflow-y: auto;
+
+	padding: 1vw;
+
+	font-size: 18pt;
+
+	background-color: #7d7d91;
+	color: #ffffff;
+}
