@@ -1,13 +1,17 @@
 :root{
+	--nav-x: 2vw;
 	--nav-width: 18vw;
-	--main-width: 75vw;
+	--main-x: 0.5vw;
+	--main-width: 73.5vw;
 	--main-margin: 25vh;
 }
 
 @media(max-width: 1299px){
     :root{
-		--nav-width: calc(100% - 4vw + 0.6vmin);
-		--main-width: calc(100% - 4vw + 0.6vmin);
+		--nav-x: 8px;
+		--nav-width: calc(100% - 0.6vmin - 8px - 2vw);
+		--main-x: 8px;
+		--main-width: calc(100% - 0.6vmin - 8px - 2vw);
 		--main-margin: 10vh;
 	}
 }
@@ -74,7 +78,7 @@
 
 	color: #7d7dff;
 }
-#header>a:hover, #header>p:hover{ font-size: 4.25vmin; }
+#header>a:hover, #header>p:hover{ text-decoration: underline; }
 
 #logo{
 	margin-top: 14vmin;
@@ -122,7 +126,7 @@
 #logo.blue-red-off{ animation: logo-blue-red 0s forwards; }
 
 #nav{
-	margin-left: 1vw;
+	margin-left: var(--nav-x);
 	margin-top: 25vh;
 	margin-bottom: -16px;
 	width: var(--nav-width);
@@ -148,6 +152,7 @@
 }
 
 #nav>a, #nav>button{ font-size: 18pt; }
+#nav>a:hover, #nav>button:hover{ text-decoration: underline; }
 
 #nav>a{
 	text-decoration: none;
@@ -163,7 +168,7 @@
 #animationsSetting.dark, #themeSetting.dark, #languageSetting.dark{ color: #ffffff; }
 
 #main{
-	margin-left: 1vw;
+	margin-left: var(--main-x);
 	margin-top: var(--main-margin);
 	margin-bottom: -16px;
 	width: var(--main-width);
@@ -196,7 +201,7 @@
 
 pre{
 	width: max-content;
-	max-width: 100%;
+	max-width: calc(100% - 2vw);
 
 	overflow-x: auto;
     overflow-y: auto;

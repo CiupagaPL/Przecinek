@@ -21,13 +21,14 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-
 	/******************************************
-	*  ,______,  Base structures
-	*  |      |  [pSize], [pPosition], [pColor]
-	*  |______|
-	* (--------)
+	*  ,_   _,
+	*  |     |
+	* (   ,   )  GLOBAL STRUCTURES
+	*  |     |
+	*  `-   -`
 	******************************************/
+
 	typedef struct{ uint16_t width, height; } pSize;
 	typedef struct{ int32_t x, y; } pPosition;
 	typedef struct{ uint8_t red, green, blue, alpha; } pColor;
@@ -40,89 +41,87 @@ extern "C"{
 	*  `-   -`
 	******************************************/
 
-	// Przecinek branch (alpha / beta / release)
-	#define PRZECINEK_VERSION L"a"
-	// Last major release
-	#define PRZECINEK_VERSION_MAJOR 5
-	#define PRZECINEK_VERSION_MINOR 0
-	#define PRZECINEK_VERSION_PATCH L"a"
-	// Last unstable version
-	#define PRZECINEK_UNSTABLE 22
+	// Przecinek version
+	#define PRZECINEK_STABLE_BRANCH L"a"
+	#define PRZECINEK_STABLE_MAJOR 5
+	#define PRZECINEK_STABLE_MINOR 0
+	#define PRZECINEK_STABLE_PATCH L"a"
+	#define PRZECINEK_UNSTABLE 23
 
-	// Frame limits for all windows
-	#define PRZECINEK_FRAME_MIN 10 // `<=480` safe
-	#define PRZECINEK_FRAME_MAX 120 // `<=480` safe
+	// Frame limit for all windows
+	// Value higher than `480` is very unsafe!
+	#define PRZECINEK_FRAME_MIN (uint16_t)10
+	#define PRZECINEK_FRAME_MAX (uint16_t)120
 
 	// Maximal amount of pressed keys at one time
-	#define PRZECINEK_KEY_PRESS_MAX 8 // `uint8_t`
+	#define PRZECINEK_KEY_PRESS_MAX (uint8_t)8
 
 	// Default color pallet
 	#define COLOR_DEFAULT_BACKGROUND (pColor){ 255, 255, 255, 255 }
 	#define COLOR_DEFAULT_FOREGROUND (pColor){ 50, 50, 60, 255 }
 
-	// Structures amount limits
-	#define WINDOW_MAX 1 // `uint8_t`
-	#define OBJECT_MAX 512 // `uint16_t`
-	#define IMAGE_MAX 128 // `uint16_t`
-	#define FONT_MAX 4 // `uint16_t`
-	#define TEXT_MAX 64 // `uint16_t`
-	#define AUDIO_MAX 32 // `uint16_t`
+	// Structures count
+	#define WINDOW_MAX (uint8_t)1
+	#define OBJECT_MAX (uint16_t)512
+	#define IMAGE_MAX (uint16_t)128
+	#define FONT_MAX (uint16_t)4
+	#define TEXT_MAX (uint16_t)64
+	#define AUDIO_MAX (uint16_t)32
 
-	// Window size limits
-	#define WINDOW_WIDTH_MIN 128 // `uint16_t`
-	#define WINDOW_HEIGHT_MIN 128 // `uint16_t`
-	#define WINDOW_WIDTH_MAX (SHRT_MAX+1)/2 // DEBUG
-	#define WINDOW_HEIGHT_MAX (SHRT_MAX+1)/2 // DEBUG
+	// Window minimal and maximal size
+	// Value higher than `SHRT_MAX/2` is very unsafe!
+	#define WINDOW_WIDTH_MIN (uint16_t)128
+	#define WINDOW_HEIGHT_MIN (uint16_t)128
+	#define WINDOW_WIDTH_MAX (uint16_t)SHRT_MAX/2
+	#define WINDOW_HEIGHT_MAX (uint16_t)SHRT_MAX/2
 	// Window default position
-	#define WINDOW_X_DEF 256 // `int16_t`
-	#define WINDOW_Y_DEF 256 // `int16_t`
+	#define WINDOW_X_DEF (int16_t)256
+	#define WINDOW_Y_DEF (int16_t)256
+
 	// Window default title
-	#define WINDOW_CHAR_TITLE_DEF "{,} Window"
-	#define WINDOW_WIDE_TITLE_DEF L"{,} Window"
-	// Window title max length
-	// Is decreased by `1`
-	#define WINDOW_TITLE_LENGTH_MAX 256 // DEBUG
+	// String longer than `254` chars is very unsafe!
+	#define WINDOW_TITLE_DEF L"{,} Window"
+	// Window title maximal length
+	// Is decreased by `1` for NULL terminator
+	#define WINDOW_TITLE_LENGTH_MAX (uint8_t)255
 
 	// Object minimal and maximal rotation value
-	#define OBJECT_ROTATION_MIN (-360) // `int16_t`
-	#define OBJECT_ROTATION_MAX 360 // `int16_t`
+	#define OBJECT_ROTATION_MIN (int16_t)(-360)
+	#define OBJECT_ROTATION_MAX (int16_t)360
 
-	// Object vertice amount limits
-	#define OBJECT_VERTICE_MIN 3 // `uint16_t`
-	#define OBJECT_VERTICE_MAX 1024 // `uint16_t`
+	// Object minimal and maximal vertice amount
+	#define OBJECT_VERTICE_MIN (uint16_t)3
+	#define OBJECT_VERTICE_MAX (uint16_t)1024
 
 	// Text minimal length
-	#define TEXT_LENGTH_MIN 2 // `uint16_t`
+	#define TEXT_LENGTH_MIN (uint16_t)2
 
 	// Text default space width in pt
-	#define TEXT_DEFAULT_SPACE 32 // `int32_t`
+	#define TEXT_DEFAULT_SPACE (int32_t)32
 
-	// Font size limits in pt
-	#define FONT_SIZE_MIN 4 // `uint16_t`
-	#define FONT_SIZE_MAX 1024 // `uint16_t`
+	// Font minimal and maximal size in pt
+	#define FONT_SIZE_MIN (uint16_t)4
+	#define FONT_SIZE_MAX (uint16_t)1024
 
-	// Maximal audio volume
-	#define AUDIO_VOLUME_MAX 200 // uint16_t
-	// Audio refresh rate
-	#define AUDIO_REFRESH_RATE 200000 // DEBUG
-	// Audio thread delay
-	#define AUDIO_SLEEP_RATE 40 // DEBUG
-	#define AUDIO_PROCESS_RATE 10 // DEBUG
+	// Maximal audio volume in percent
+	#define AUDIO_VOLUME_MAX (uint16_t)200
+
+	// Audio default refresh rate
+	#define AUDIO_DEFAULT_REFRESH_RATE (uint32_t)200000
+	// Audio thread delays used for diffrent purposes
+	// Experiment with it for quicker/slower audio changes
+	// Too radical values can mess up debug audio thread
+	#define AUDIO_SLEEP_RATE (uint8_t)40
+	#define AUDIO_PROCESS_RATE (uint8_t)10
 
 	/******************************************
 	*  ,_   _,
 	*  |     |
-	* (   ,   )  STRUCTURES
+	* (   ,   )  PRZECINEK VARIABLE
 	*  |     |
 	*  `-   -`
 	******************************************/
 
-	/******************************************
-	*  ,______,  [pPrzecinek] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
 	typedef struct{
 		// Console mode
 		// `true` for enabled console
@@ -137,6 +136,14 @@ extern "C"{
 	} pPrzecinek;
 
 	extern pPrzecinek przecinek;
+
+	/******************************************
+	*  ,_   _,
+	*  |     |
+	* (   ,   )  STRUCTURES
+	*  |     |
+	*  `-   -`
+	******************************************/
 
 	/******************************************
 	*  ,______,  [pWindow] structure
@@ -244,7 +251,7 @@ extern "C"{
 	/******************************************
 	*  ,_   _,
 	*  |     |
-	* (   ,   )  FUNCTIONS
+	* (   ,   )  DEFAULT FUNCTIONS
 	*  |     |
 	*  `-   -`
 	******************************************/
@@ -374,10 +381,18 @@ extern "C"{
 	* This function safely destroys structures and cleans memory
 	* before the end of the program. It firstly uninitializes all
 	* debug libraries. Then it searches for all undestroyed
-	* structures and removes them. At the end it resets [przecinek]
+	* structures and removes them. In the end it resets [przecinek]
 	* and several debug variables.
 	****************************************************************/
 	void pEndup();
+
+	/******************************************
+	*  ,_   _,
+	*  |     |
+	* (   ,   )  STRUCTURE FUNCTIONS
+	*  |     |
+	*  `-   -`
+	******************************************/
 
 	/****************************************************************
 	* |\_____/| pWindowCreate()
@@ -397,7 +412,8 @@ extern "C"{
 	* setups debug pointers to the [window] structure, then it
 	* creates physical [window] and creates second GL buffer.
 	* It also creates debug [window] thread which loads and
-	* responses to all signals.
+	* responses to all signals. In the end it fills background
+	* with `COLOR_DEFAULT_BACKGROUND` fill.
 	****************************************************************/
 	uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable);
 
@@ -422,7 +438,12 @@ extern "C"{
 	* then [texture] positions, debug [width], [height] and
 	* center [x] and [y] position are being recalculated. Then
 	* when everything is prepared [color] and [image] are
-	* being applied to GL and [object] is being rendered.
+	* being applied to GL and [object] is being rendered. If
+	* [color] is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being
+	* used. If [texture] source is `NULL` then default texture
+	* with `COLOR_DEFAULT_BACKGROUND` and `COLOR_DEFAULT_FOREGROUND`
+	* is being used instead. If [object] is fully outside the
+	* rendering area then it is skipped.
 	****************************************************************/
 	uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image);
 
@@ -447,7 +468,10 @@ extern "C"{
 	* of all [text] buffers are being recalculated or [text]
 	* debug values are being reseted and regenerated. Then
 	* when everything is prepared [color] is being applied to
-	* GL and [text] is being rendered.
+	* GL and [text] buffers are being rendered. If [color]
+	* is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being used. If
+	* any [text] buffer is fully outside the rendering area then
+	* it is skipped.
 	****************************************************************/
 	uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color);
 
@@ -646,7 +670,7 @@ extern "C"{
 	* [text] - which [text] structure should be initialized.
 	* If [text] was already created, then it will be overwritten.
 	* [length] - maximal length of [text] [value].
-	* Last position should allways have L'\0' value for safety.
+	* Last position should allways be L'\0' for safety.
 	* [value] - initial [text] [value].
 	*
 	* Additional Description:
@@ -700,7 +724,6 @@ extern "C"{
 	* Removed debug values will depend on [audio] [ID].
 	****************************************************************/
 	uint8_t pAudioDestroy(pAudio *audio);
-
 #ifdef __cplusplus
 }
 #endif

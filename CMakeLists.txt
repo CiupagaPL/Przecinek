@@ -21,6 +21,12 @@ if(X11)
 	# Set X11 location
 	add_executable(${PROJECT_NAME} ${CODE} "src/x11.c" ${HEADERS})
 
+	# TODO
+	set(BASE_FLAGS -O3 -flto -funroll-loops -ffast-math -fomit-frame-pointer)
+
+	# TODO
+	set(BASE_ARCH_FLAGS -msse2)
+
 	# Set compiler flags
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")

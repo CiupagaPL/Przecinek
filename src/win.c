@@ -14,7 +14,6 @@
 
 // Standard C libraries
 #include <stdio.h>
-#include <string.h>
 #include <wchar.h>
 #include <math.h>
 #include <locale.h>
@@ -22,19 +21,18 @@
 // WIN threads library
 #include <process.h>
 
-// GUID library
-#include <initguid.h>
-
 // WIN and GDI+ libraries
 #include <windows.h>
 #include <gdiplus.h>
+
+// GUID library
+#include <initguid.h>
 
 // CoreAudio libraries
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 
-// GL and GLU libraries
-#include <GL/gl.h>
+// GLU library
 #include <GL/glu.h>
 
 /******************************************
@@ -175,7 +173,7 @@ typedef struct{
 	// Debug physical window
 	HWND HWND;
 
-	// Window debug actions from proc
+	// WIN debug actions from proc
 	bool DESTROY, FOCUSIN, FOCUSOUT;
 	pSize SIZE;
 	pPosition MOVE;
@@ -363,20 +361,18 @@ pPrzecinek przecinek={ true, 0, 0 };
 // Create global [setup]
 bool setup=false;
 
-// Create global [windowMainID], [windowCount] and [windowCreateID]
-uint16_t windowMainID=0, windowCount=0;
-uint8_t windowCreateID=0;
+// Create global [windowMainID], [windowCreateID] and [windowCount]
+uint8_t windowMainID=0, windowCreateID=0, windowCount=0;
 
-// Create global [frameCount] and [lastFrameCount]
-uint16_t frameCount, lastFrameCount;
+// Create global [frameCount], [lastFrameCount] and [currentFrameLimit]
+uint16_t frameCount=0, lastFrameCount=0, currentFrameLimit;
 
 // Create global [frameStart] and [lastFrame]
 uint32_t frameStart;
 uint16_t lastFrame=0;
 
-// Create global [currentFrameLimit] and [frameOverhead]
+// Create global [currentFrameLimit]
 uint16_t currentFrameLimit;
-int16_t frameOverhead;
 
 // Create global [DHDC], [graphics] and [stringFormat]
 HDC DHDC;
@@ -425,7 +421,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument);
 /******************************************
 *  ,_   _,
 *  |     |
-* (   ,   )  FUNCTIONS
+* (   ,   )  DEFAULT FUNCTIONS
 *  |     |
 *  `-   -`
 ******************************************/
@@ -452,7 +448,7 @@ uint8_t pSetup(bool debug, uint16_t frameLimit){
 		if(przecinek.debug==true){
 			printf("[pSetup() Error]\n");
 			printf("Przecinek was already initialized!\n");
-			printf("Make sure to use pEndup() first,\n");
+			printf("Maybe try to read the documentation first c.c,\n");
 			fflush(stdout);
 		}
 
@@ -525,7 +521,7 @@ uint8_t pSetup(bool debug, uint16_t frameLimit){
 	POINT point;
 
 	// Load local [point] position
-	if(GetCursorPos(&point)){
+	if(GetCursorPos(&point)!=0){
 		// Set [przecinek] [cursor] values
 		przecinek.cursor.x=point.x;
 		przecinek.cursor.y=point.y;
@@ -564,7 +560,7 @@ uint8_t pSetup(bool debug, uint16_t frameLimit){
 	lastFrame=frameLimit;
 	currentFrameLimit=frameLimit;
 
-	// Set [frameStart] initial value
+	// Get [frameStart] initial value
 	timeBeginPeriod(1);
 	frameStart=GetTickCount();
 
@@ -679,6 +675,9 @@ uint8_t pUpdate(){
 
 	for(uint16_t ID=0; ID<WINDOW_MAX; ID+=1){
 		if(build[ID].exists==true){
+			// Set current [build] [buffer] for GL
+			wglMakeCurrent(build[ID].DHDC, build[ID].buffer);
+
 			// Create and load local [message]
 			MSG message;
 			while(PeekMessageW(&message, build[ID].HWND, 0, 0, PM_REMOVE)!=0){
@@ -764,13 +763,13 @@ uint8_t pUpdate(){
 				*build[ID].xPoint=build[ID].xBac-(build[ID].widthFix/2);
 				*build[ID].yPoint=build[ID].yBac-build[ID].heightFix+(build[ID].widthFix/2);
 
-				// Update [build] [x] and [y] values to the backuped ones
-				build[ID].x=build[ID].xBac-(build[ID].widthFix/2);
-				build[ID].y=build[ID].yBac-build[ID].heightFix+(build[ID].widthFix/2);
-
 				// Correct [build] [x] and [y] values
 				if(*build[ID].xPoint<0){ build[ID].x+=USHRT_MAX; }
 				if(*build[ID].yPoint<0){ build[ID].y+=USHRT_MAX; }
+
+				// Update [build] [x] and [y] values
+				build[ID].x=*build[ID].xPoint;
+				build[ID].y=*build[ID].yPoint;
 
 				// Create local [style]
 				uint32_t style;
@@ -787,20 +786,15 @@ uint8_t pUpdate(){
 
 				// Resize and move [build] [HWND]
 				SetWindowPos(
-					build[ID].HWND, NULL, *build[ID].xPoint, *build[ID].yPoint,
-					*build[ID].widthPoint, *build[ID].heightPoint,
-					SWP_NOZORDER | SWP_FRAMECHANGED
+					build[ID].HWND, NULL, build[ID].x, build[ID].y,
+					build[ID].width, build[ID].height, SWP_NOZORDER | SWP_FRAMECHANGED
 				);
 
-				// Update [build] [x] and [y] values
-				build[ID].x=*build[ID].xPoint;
-				build[ID].y=*build[ID].yPoint;
-
 				// Update [build] [buffer]
-				glViewport(0, 0, *build[ID].widthPoint, *build[ID].heightPoint);
+				glViewport(0, 0, build[ID].width, build[ID].height);
 				glMatrixMode(GL_PROJECTION);
 				glLoadIdentity();
-				glOrtho(0, *build[ID].widthPoint, *build[ID].heightPoint, 0, (-1), 1);
+				glOrtho(0, build[ID].width, build[ID].height, 0, (-1), 1);
 
 				// Mark [build] [fullScreen] as `false`
 				build[ID].fullScreen=false;
@@ -905,10 +899,10 @@ uint8_t pUpdate(){
 					);
 
 					// Update [build] [buffer]
-					glViewport(0, 0, *build[ID].widthPoint, *build[ID].heightPoint);
+					glViewport(0, 0, build[ID].width, build[ID].height);
 					glMatrixMode(GL_PROJECTION);
 					glLoadIdentity();
-					glOrtho(0, *build[ID].widthPoint, *build[ID].heightPoint, 0, (-1), 1);
+					glOrtho(0, build[ID].width, build[ID].height, 0, (-1), 1);
 				}
 				else if(build[ID].SIZE.width!=0 || build[ID].SIZE.height!=0){
 					// Update [build] [widthPoint] and [heightPoint] to [SIZE] event values
@@ -920,10 +914,10 @@ uint8_t pUpdate(){
 					build[ID].height=build[ID].SIZE.height;
 
 					// Update [build] [buffer]
-					glViewport(0, 0, *build[ID].widthPoint, *build[ID].heightPoint);
+					glViewport(0, 0, build[ID].width, build[ID].height);
 					glMatrixMode(GL_PROJECTION);
 					glLoadIdentity();
-					glOrtho(0, *build[ID].widthPoint, *build[ID].heightPoint, 0, (-1), 1);
+					glOrtho(0, build[ID].width, build[ID].height, 0, (-1), 1);
 				}
 
 				// Reset [build] [SIZE] values
@@ -1035,15 +1029,12 @@ uint8_t pUpdate(){
 				build[ID].FOCUSOUT=false;
 			}
 
-			// Set current [build] [buffer] for [DHDC]
-			wglMakeCurrent(build[ID].DHDC, build[ID].buffer);
-
-			// Switch [build] buffers using [DHDC]
-			SwapBuffers(build[ID].DHDC);
+			// Update [build] [focusPoint]
+			*build[ID].focusPoint=build[ID].focus;
 
 			if(wcscmp(*build[ID].titlePoint, build[ID].title)!=0){
 				if(wcslen(*build[ID].titlePoint)<WINDOW_TITLE_LENGTH_MAX-1){
-					// Safely copy [build] [titlePoint] to [title]
+					// Safely copy [build] [titlePoint] to the [title]
 					wmemcpy(build[ID].title, *build[ID].titlePoint, wcslen(*build[ID].titlePoint));
 					build[ID].title[wcslen(*build[ID].titlePoint)]=L'\0';
 				}
@@ -1058,9 +1049,9 @@ uint8_t pUpdate(){
 						fflush(stdout);
 					}
 
-					// Safely copy [build] [titlePoint] to [title]
-					wmemcpy(*build[ID].titlePoint, *build[ID].titlePoint, WINDOW_TITLE_LENGTH_MAX-1);
-					*build[ID].titlePoint[WINDOW_TITLE_LENGTH_MAX-1]=L'\0';
+					// Safely copy [build] [titlePoint] to the [title]
+					wmemcpy(build[ID].title, *build[ID].titlePoint, WINDOW_TITLE_LENGTH_MAX-1);
+					build[ID].title[WINDOW_TITLE_LENGTH_MAX-1]=L'\0';
 
 					// Update [build] [titlePoint]
 					wcscpy(*build[ID].titlePoint, build[ID].title);
@@ -1070,8 +1061,8 @@ uint8_t pUpdate(){
 				SetWindowTextW(build[ID].HWND, *build[ID].titlePoint);
 			}
 
-			// Update [build] [focusPoint]
-			*build[ID].focusPoint=build[ID].focus;
+			// Switch [build] buffers using [DHDC]
+			SwapBuffers(build[ID].DHDC);
 
 			// Refresh [build] [HWND]
 			InvalidateRect(build[ID].HWND, NULL, TRUE);
@@ -1083,8 +1074,11 @@ uint8_t pUpdate(){
 	// Sleep for short amount of time
 	Sleep(1000/currentFrameLimit);
 
-	// Calculate [frameOverhead] value
-	if(frameCount>=przecinek.frameLimit+3 && GetTickCount()-frameStart<1000){ frameOverhead+=1; }
+	// Create local [frameOverhead]
+	int16_t frameOverhead=0;
+
+	// Calculate local [frameOverhead] value
+	if(frameCount>=przecinek.frameLimit+3 && GetTickCount()-frameStart<1000){ frameOverhead=1; }
 	else if(GetTickCount()-frameStart>=1000 && frameCount<przecinek.frameLimit-5){
 		frameOverhead=frameCount-przecinek.frameLimit;
 	}
@@ -1100,9 +1094,6 @@ uint8_t pUpdate(){
 		// Correct [currentFrameLimit] value
 		currentFrameLimit-=frameOverhead;
 		if(currentFrameLimit>=przecinek.frameLimit*3){ currentFrameLimit=przecinek.frameLimit*3; }
-
-		// Reset [frameOverhead] value
-		frameOverhead=0;
 	}
 
 	// Update [przecinek] [frameCount] value
@@ -1507,6 +1498,14 @@ void pEndup(){
 	return;
 }
 
+/******************************************
+*  ,_   _,
+*  |     |
+* (   ,   )  STRUCTURE FUNCTIONS
+*  |     |
+*  `-   -`
+******************************************/
+
 /****************************************************************
 * |\_____/| pDebugBuildReset()
 * | .     |
@@ -1525,6 +1524,7 @@ void pDebugBuildReset(uint8_t ID){
 		wglMakeCurrent(build[ID].DHDC, build[ID].buffer);
 		wglDeleteContext(build[ID].buffer);
 		build[ID].buffer=NULL;
+
 		DeleteDC(build[ID].DHDC);
 		build[ID].DHDC=NULL;
 	}
@@ -1592,6 +1592,18 @@ LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LP
 	if(uMessage==WM_CREATE){
 		// Create and setup local [newWindowPoint]
 		newWindowPoint=(pWindowPoint*)malloc(sizeof(pWindowPoint));
+		if(newWindowPoint==NULL){
+			if(przecinek.debug==true){
+				printf("[pDebugBuildProc() Error]\n");
+				printf("Could not allocate enough memory!\n");
+				printf("Try to close some background applications,\n");
+				fflush(stdout);
+			}
+
+			// Return [build] proc
+			return DefWindowProcW(HWND, uMessage, wParameter, lParameter);
+		}
+
 		newWindowPoint->ID=windowCreateID;
 		newWindowPoint->HWND=HWND;
 
@@ -1934,7 +1946,8 @@ LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LP
 * setups debug pointers to the [window] structure, then it
 * creates physical [window] and creates second GL buffer.
 * It also creates debug [window] thread which loads and
-* responses to all signals.
+* responses to all signals. In the end it fills background
+* with `COLOR_DEFAULT_BACKGROUND` fill.
 ****************************************************************/
 uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable){
 	if(window==NULL){
@@ -1956,6 +1969,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		if(build[current].exists==false){
 			// Set some values to `NULL`
 			window->title=NULL;
+
 			build[current].title=NULL;
 
 			// Set [window] [ID] and reset it
@@ -1963,7 +1977,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 			pDebugWindowReset(window);
 			pDebugBuildReset(window->ID);
 
-			// Change [windowCount] value
+			// Change [windowCount] value by `1`
 			windowCount+=1;
 
 			break;
@@ -2058,6 +2072,28 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		height=WINDOW_HEIGHT_MAX;
 	}
 
+	// Allocate [window] [title]
+	window->title=malloc(sizeof(char)*WINDOW_TITLE_LENGTH_MAX);
+	if(window->title==NULL){
+		if(przecinek.debug==true){
+			printf("[pWindowCreate() Error]\n");
+			printf("Could not allocate enough memory!\n");
+			printf("Try to close some background applications,\n");
+			fflush(stdout);
+		}
+
+		// Reset [window] and [build]
+		pDebugWindowReset(window);
+		pDebugBuildReset(window->ID);
+
+		// Return `4`, finished with error
+		return 4;
+	}
+
+	// Safely copy `WINDOW_TITLE_DEF` to the [window] [title]
+	wmemcpy(window->title, WINDOW_TITLE_DEF, wcslen(WINDOW_TITLE_DEF));
+	window->title[wcslen(WINDOW_TITLE_DEF)]=L'\0';
+
 	// Set [window] values
 	window->exists=true;
 
@@ -2083,11 +2119,34 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	// Set [windowCreateID] value
 	windowCreateID=window->ID;
 
+	// Allocate [build] [title]
+	build[window->ID].title=malloc(sizeof(char)*WINDOW_TITLE_LENGTH_MAX);
+	if(build[window->ID].title==NULL){
+		if(przecinek.debug==true){
+			printf("[pWindowCreate() Error]\n");
+			printf("Could not allocate enough memory!\n");
+			printf("Try to close some background applications,\n");
+			fflush(stdout);
+		}
+
+		// Reset [window] and [build]
+		pDebugWindowReset(window);
+		pDebugBuildReset(window->ID);
+
+		// Return `5`, finished with error
+		return 5;
+	}
+
+	// Safely copy `WINDOW_TITLE_DEF` to the [build] [title]
+	wmemcpy(build[window->ID].title, WINDOW_TITLE_DEF, wcslen(WINDOW_TITLE_DEF));
+	build[window->ID].title[wcslen(WINDOW_TITLE_DEF)]=L'\0';
+
 	// Set [build] values
 	build[window->ID].exists=true;
 
 	build[window->ID].x=window->x;
 	build[window->ID].y=window->y;
+
 	build[window->ID].width=width;
 	build[window->ID].height=height;
 
@@ -2101,8 +2160,10 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	// Allocate [build] pointers
 	build[window->ID].xPoint=&window->x;
 	build[window->ID].yPoint=&window->y;
+
 	build[window->ID].widthPoint=&window->width;
 	build[window->ID].heightPoint=&window->height;
+
 	build[window->ID].widthMinPoint=&window->widthMin;
 	build[window->ID].heightMinPoint=&window->heightMin;
 	build[window->ID].widthMaxPoint=&window->widthMax;
@@ -2127,8 +2188,8 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		pDebugWindowReset(window);
 		pDebugBuildReset(window->ID);
 
-		// Return `4`, finished with error
-		return 4;
+		// Return `6`, finished with error
+		return 6;
 	}
 
 	// Set local [class] value
@@ -2143,7 +2204,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	uint8_t found=0;
 
 	while(GetClassInfoW(GetModuleHandle(NULL), class, &windowClass)==true){
-		// Modify [found] value
+		// Modify [found] value by `1`
 		found+=1;
 
 		// Modify [build] [class] if it already exists
@@ -2156,7 +2217,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	if(RegisterClassW(&windowClass)==0){
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Error]\n");
-			printf("WinAPI could not register window class!\n");
+			printf("WIN could not register window class!\n");
 			printf("Try to close other Przecinek instances or recompile Przecinek,\n");
 			fflush(stdout);
 		}
@@ -2165,8 +2226,8 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		pDebugWindowReset(window);
 		pDebugBuildReset(window->ID);
 
-		// Return `5`, finished with error
-		return 5;
+		// Return `7`, finished with error
+		return 7;
 	}
 
 	// Create local [style]
@@ -2184,22 +2245,16 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	RECT windowRectangle=(RECT){ 0, 0, width, height };
 	AdjustWindowRectEx(&windowRectangle, style, FALSE, 0);
 
-	// Set [window] and [build] [title] values
-	window->title=WINDOW_WIDE_TITLE_DEF;
-	build[window->ID].title=WINDOW_WIDE_TITLE_DEF;
-
-	// Create [HWND] for [build]
+	// Initialize [build] [HWND]
 	build[window->ID].HWND=CreateWindowExW(
-		0, class, window->title, style,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		windowRectangle.right-windowRectangle.left,
-		windowRectangle.bottom-windowRectangle.top,
+		0, class, WINDOW_TITLE_DEF, style, CW_USEDEFAULT, CW_USEDEFAULT,
+		windowRectangle.right-windowRectangle.left, windowRectangle.bottom-windowRectangle.top,
 		NULL, NULL, GetModuleHandle(NULL), NULL
 	);
 	if(build[window->ID].HWND==NULL){
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Error]\n");
-			printf("WinAPI library HWND doesn't work!\n");
+			printf("HWND from WIN library can not be created!\n");
 			printf("Try to reinstall WIN depencies or recompile Przecinek,\n");
 			fflush(stdout);
 		}
@@ -2208,8 +2263,8 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		pDebugWindowReset(window);
 		pDebugBuildReset(window->ID);
 
-		// Return `6`, finished with error
-		return 6;
+		// Return `8`, finished with error
+		return 8;
 	}
 
 	// Create local [fixRectangle]
@@ -2231,7 +2286,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 
 	// Move and resize [build] [HWND]
 	SetWindowPos(
-		build[window->ID].HWND, NULL, window->x, window->y,
+		build[window->ID].HWND, NULL, build[window->ID].x, build[window->ID].y,
 		0, 0, SWP_NOZORDER | SWP_NOSIZE
 	);
 	SetForegroundWindow(build[window->ID].HWND);
@@ -2245,9 +2300,7 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
 		PFD_TYPE_RGBA, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	};
-	SetPixelFormat(
-		build[window->ID].DHDC, ChoosePixelFormat(build[window->ID].DHDC, &pixel), &pixel
-	);
+	SetPixelFormat(build[window->ID].DHDC, ChoosePixelFormat(build[window->ID].DHDC, &pixel), &pixel);
 
 	// Create [build] [buffer]
 	build[window->ID].buffer=wglCreateContext(build[window->ID].DHDC);
@@ -2261,6 +2314,22 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 	glLoadIdentity();
 	glOrtho(0, width, height, 0, (-1), 1);
 	glMatrixMode(GL_MODELVIEW);
+
+	// Use `COLOR_DEFAULT_BACKGROUND` for rendering
+	glColor4f(
+		(float)COLOR_DEFAULT_BACKGROUND.red/255, (float)COLOR_DEFAULT_BACKGROUND.green/255,
+		(float)COLOR_DEFAULT_BACKGROUND.blue/255, (float)COLOR_DEFAULT_BACKGROUND.alpha/255
+	);
+
+	// Draw on [build] [buffer]
+	glBegin(GL_QUADS);
+
+	glVertex2i(0, 0);
+	glVertex2i(0, height);
+	glVertex2i(width, height);
+	glVertex2i(width, 0);
+
+	glEnd();
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -2287,22 +2356,14 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 * then [texture] positions, debug [width], [height] and
 * center [x] and [y] position are being recalculated. Then
 * when everything is prepared [color] and [image] are
-* being applied to GL and [object] is being rendered.
+* being applied to GL and [object] is being rendered. If
+* [color] is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being
+* used. If [texture] source is `NULL` then default texture
+* with `COLOR_DEFAULT_BACKGROUND` and `COLOR_DEFAULT_FOREGROUND`
+* is being used instead. If [object] is fully outside the
+* rendering area then it is skipped.
 ****************************************************************/
 uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pWindowDrawObject() Error]\n");
-			printf("Could not draw object!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(window==NULL){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawObject() Error]\n");
@@ -2311,8 +2372,8 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(window->ID>WINDOW_MAX){
 		if(przecinek.debug==true){
@@ -2323,19 +2384,19 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(build[window->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawObject() Error]\n");
-			printf("Given window was already destroyed!\n");
+			printf("Given window is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
-		// Return `4`, finished with error
-		return 4;
+		// Return `3`, finished with error
+		return 3;
 	}
 
 	if(object==NULL){
@@ -2346,8 +2407,8 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 			fflush(stdout);
 		}
 
-		// Return `5`, finished with error
-		return 5;
+		// Return `4`, finished with error
+		return 4;
 	}
 	else if(object->ID>OBJECT_MAX){
 		if(przecinek.debug==true){
@@ -2358,19 +2419,19 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 			fflush(stdout);
 		}
 
-		// Return `6`, finished with error
-		return 6;
+		// Return `5`, finished with error
+		return 5;
 	}
 	else if(figure[object->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawObject() Error]\n");
-			printf("Given object was already destroyed!\n");
+			printf("Given object is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
-		// Return `7`, finished with error
-		return 7;
+		// Return `6`, finished with error
+		return 6;
 	}
 
 	if(image!=NULL){
@@ -2383,52 +2444,52 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 				fflush(stdout);
 			}
 
-			// Return `8`, finished with error
-			return 8;
+			// Return `7`, finished with error
+			return 7;
 		}
 		else if(texture[image->ID].exists==false){
 			if(przecinek.debug==true){
 				printf("[pWindowDrawObject() Error]\n");
-				printf("Given image was already destroyed!\n");
+				printf("Given image is already destroyed!\n");
 				printf("Not sure what you were trying todo :-PP,\n");
 				fflush(stdout);
 			}
 
-			// Return `9`, finished with error
-			return 9;
+			// Return `8`, finished with error
+			return 8;
 		}
 	}
 
 	// Refresh [object]
 	pDebugObjectSetup(object);
 
-	// Check for square collision between [window] and [object]
+	// Check for square collision between [window] and [figure]
 	if(
-			(0<figure[object->ID].x+figure[object->ID].width) &&
-			(build[window->ID].width>figure[object->ID].x) &&
-			(0<figure[object->ID].y+figure[object->ID].height) &&
-			(build[window->ID].height>figure[object->ID].y)==false){
+			figure[object->ID].x+figure[object->ID].width<=0 ||
+			figure[object->ID].x>=build[window->ID].width ||
+			figure[object->ID].y+figure[object->ID].height<=0 ||
+			figure[object->ID].y>=build[window->ID].height){
 
 		// Return `0`, nothing to draw
 		return 0;
 	}
 
-	// Set current [build] [buffer]
+	// Set current [build] [buffer] for GL
 	wglMakeCurrent(build[window->ID].DHDC, build[window->ID].buffer);
 
-	// Setup [build] [buffer]
+	// Setup GL rendering tool
 	if(color==NULL){
-		// Use default [color] for rendering
+		// Use `COLOR_DEFAULT_FOREGROUND` for rendering
 		if(image==NULL){
 			glColor4f(
 				(float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
 				(float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
 			);
 		}
-		else{ glColor4f(1.f, 1.f, 1.f, 1.f); }
+		else{ glColor4f(1.0, 1.0, 1.0, 1.0); }
 	}
 	else{
-		// Set rendering [color]
+		// Use [color] for rendering
 		glColor4f(
 			(float)color->red/255, (float)color->green/255,
 			(float)color->blue/255, (float)color->alpha/255
@@ -2436,7 +2497,7 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 	}
 
 	if(image!=NULL){
-		// Bind [texture] based on [image] [ID]
+		// Bind [texture] based on [source]
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texture[image->ID].source);
 	}
@@ -2444,13 +2505,22 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 	// Draw on [build] [buffer]
 	glBegin(GL_POLYGON);
 
-	for(uint32_t current=0; current<figure[object->ID].verticeCount; current+=1){
-		glTexCoord2f(
-			figure[object->ID].xSrc[current], figure[object->ID].ySrc[current]
-		);
-		glVertex2i(
-			figure[object->ID].vertice[current].x, figure[object->ID].vertice[current].y
-		);
+	if(texture==NULL){
+		for(uint16_t current=0; current<figure[object->ID].verticeCount; current+=1){
+			glVertex2i(
+				figure[object->ID].vertice[current].x, figure[object->ID].vertice[current].y
+			);
+		}
+	}
+	else{
+		for(uint16_t current=0; current<figure[object->ID].verticeCount; current+=1){
+			glTexCoord2f(
+				figure[object->ID].xSrc[current], figure[object->ID].ySrc[current]
+			);
+			glVertex2i(
+				figure[object->ID].vertice[current].x, figure[object->ID].vertice[current].y
+			);
+		}
 	}
 
 	glEnd();
@@ -2481,22 +2551,12 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 * of all [text] buffers are being recalculated or [text]
 * debug values are being reseted and regenerated. Then
 * when everything is prepared [color] is being applied to
-* GL and [text] is being rendered.
+* GL and [text] buffers are being rendered. If [color]
+* is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being used. If
+* any [text] buffer is fully outside the rendering area then
+* it is skipped.
 ****************************************************************/
 uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pWindowDrawText() Error]\n");
-			printf("Could not draw text!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(window==NULL){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawText() Error]\n");
@@ -2505,8 +2565,8 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(window->ID>WINDOW_MAX){
 		if(przecinek.debug==true){
@@ -2517,19 +2577,19 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(build[window->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawText() Error]\n");
-			printf("Given window was already destroyed!\n");
+			printf("Given window is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
-		// Return `4`, finished with error
-		return 4;
+		// Return `3`, finished with error
+		return 3;
 	}
 
 	if(font==NULL){
@@ -2540,8 +2600,8 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `5`, finished with error
-		return 5;
+		// Return `4`, finished with error
+		return 4;
 	}
 	else if(font->ID>FONT_MAX){
 		if(przecinek.debug==true){
@@ -2552,19 +2612,19 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `6`, finished with error
-		return 6;
+		// Return `5`, finished with error
+		return 5;
 	}
 	else if(view[font->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawText() Error]\n");
-			printf("Given font was already destroyed!\n");
+			printf("Given font is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
-		// Return `7`, finished with error
-		return 7;
+		// Return `6`, finished with error
+		return 6;
 	}
 
 	if(text==NULL){
@@ -2575,8 +2635,8 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `8`, finished with error
-		return 8;
+		// Return `7`, finished with error
+		return 7;
 	}
 	else if(text->ID>TEXT_MAX){
 		if(przecinek.debug==true){
@@ -2587,39 +2647,33 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			fflush(stdout);
 		}
 
-		// Return `9`, finished with error
-		return 9;
+		// Return `8`, finished with error
+		return 8;
 	}
 	else if(code[text->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDrawText() Error]\n");
-			printf("Given text was already destroyed!\n");
+			printf("Given text is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
-		// Return `10`, finished with error
-		return 10;
+		// Return `9`, finished with error
+		return 9;
 	}
 
 	// Refresh [text] and [font]
 	pDebugTextSetup(text, font);
 
-	// Set current [build] [buffer]
+	// Set current [build] [buffer] for GL
 	wglMakeCurrent(build[window->ID].DHDC, build[window->ID].buffer);
 
-	// Setup [build] [buffer]
+	// Enable `GL_TEXTURE_2D`
 	glEnable(GL_TEXTURE_2D);
 
-	if(color!=NULL){
-		glColor4f(
-			(float)color->red/255,
-			(float)color->green/255,
-			(float)color->blue/255,
-			(float)color->alpha/255
-		);
-	}
-	else{
+	// Setup GL rendering tool
+	if(color==NULL){
+		// Use `COLOR_DEFAULT_FOREGROUND` for rendering
 		glColor4f(
 			(float)COLOR_DEFAULT_FOREGROUND.red/255,
 			(float)COLOR_DEFAULT_FOREGROUND.green/255,
@@ -2627,22 +2681,33 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			(float)COLOR_DEFAULT_FOREGROUND.alpha/255
 		);
 	}
+	else{
+		// Use [color] for rendering
+		glColor4f(
+			(float)color->red/255, (float)color->green/255,
+			(float)color->blue/255, (float)color->alpha/255
+		);
+	}
 
 	for(uint16_t current=0; current<wcslen(code[text->ID].value); current+=1){
-		// Check for square collision between [window] and [text] char
+		// Check for square collision between [window] and [code] char
 		if(
-				(0<code[text->ID].sourcePosition[font->ID][current].x+
-				code[text->ID].sourceSize[font->ID][current].width) &&
-				(build[window->ID].width>code[text->ID].sourcePosition[font->ID][current].x) &&
-				(0<code[text->ID].sourcePosition[font->ID][current].y+
-				code[text->ID].sourceSize[font->ID][current].height) &&
-				(build[window->ID].height>code[text->ID].sourcePosition[font->ID][current].y)==false){
+				code[text->ID].sourcePosition[font->ID][current].x+
+				code[text->ID].sourceSize[font->ID][current].width<=0 ||
+				code[text->ID].sourcePosition[font->ID][current].x>=build[window->ID].width ||
+				code[text->ID].sourcePosition[font->ID][current].y+
+				code[text->ID].sourceSize[font->ID][current].height<=0 ||
+				code[text->ID].sourcePosition[font->ID][current].y>=build[window->ID].height){
 
 			continue;
 		}
 
-		// Skip special chars
-		if(code[text->ID].value[current]==L'\n' || code[text->ID].value[current]==L' '){ continue; }
+		// Skip special [code] [value] chars
+		if(code[text->ID].value[current]==L'\n' || code[text->ID].value[current]==L' ' ||
+			code[text->ID].value[current]==L'\0'){
+
+			continue;
+		}
 
 		// Bind [code] [source]
 		glBindTexture(GL_TEXTURE_2D, code[text->ID].source[font->ID][current]);
@@ -2650,20 +2715,20 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 		// Draw on [build] [buffer]
 		glBegin(GL_QUADS);
 
-		glTexCoord2f(0.f, 0.f);
+		glTexCoord2f(0.0, 0.0);
 		glVertex2i(
 			code[text->ID].sourcePosition[font->ID][current].x,
 			code[text->ID].sourcePosition[font->ID][current].y
 		);
 
-		glTexCoord2f(0.f, 1.f);
+		glTexCoord2f(0.0, 1.0);
 		glVertex2i(
 			code[text->ID].sourcePosition[font->ID][current].x,
 			(code[text->ID].sourcePosition[font->ID][current].y+
 			code[text->ID].sourceSize[font->ID][current].height)
 		);
 
-		glTexCoord2f(1.f, 1.f);
+		glTexCoord2f(1.0, 1.0);
 		glVertex2i(
 			(code[text->ID].sourcePosition[font->ID][current].x+
 			code[text->ID].sourceSize[font->ID][current].width),
@@ -2671,7 +2736,7 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 			code[text->ID].sourceSize[font->ID][current].height)
 		);
 
-		glTexCoord2f(1.f, 0.f);
+		glTexCoord2f(1.0, 0.0);
 		glVertex2i(
 			(code[text->ID].sourcePosition[font->ID][current].x+
 			code[text->ID].sourceSize[font->ID][current].width),
@@ -2698,19 +2763,6 @@ uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color
 * Removed debug values will depend on [window] [ID].
 ****************************************************************/
 uint8_t pWindowDestroy(pWindow* window){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pWindowDestroy() Error]\n");
-			printf("Could not destroy window!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(window==NULL){
 		if(przecinek.debug==true){
 			printf("[pWindowDestroy() Error]\n");
@@ -2719,8 +2771,8 @@ uint8_t pWindowDestroy(pWindow* window){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(window->ID>WINDOW_MAX){
 		if(przecinek.debug==true){
@@ -2731,25 +2783,26 @@ uint8_t pWindowDestroy(pWindow* window){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(build[window->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pWindowDestroy() Warning]\n");
-			printf("Given window was already destroyed!\n");
+			printf("Given window is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(build[window->ID].exists==true){
-		// Reset [window]
-		pDebugWindowReset(window);
+	// Reset [window]
+	pDebugWindowReset(window);
 
-		// Send [build] `WM_CLOSE` signal
-		PostMessage(build[window->ID].HWND, WM_CLOSE, 0, 0);
-	}
+	// Send [build] `WM_CLOSE` signal
+	PostMessage(build[window->ID].HWND, WM_CLOSE, 0, 0);
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -2854,8 +2907,8 @@ void pDebugObjectSetup(pObject *object){
 				(float)(objectMax.y-figure[object->ID].vertice[current].y)/
 				(float)(objectMax.y-objectMin.y);
 
-			figure[object->ID].xSrc[current]=1.f-figure[object->ID].xSrc[current];
-			figure[object->ID].ySrc[current]=1.f-figure[object->ID].ySrc[current];
+			figure[object->ID].xSrc[current]=1.0-figure[object->ID].xSrc[current];
+			figure[object->ID].ySrc[current]=1.0-figure[object->ID].ySrc[current];
 		}
 
 		// Update [figure] size and position parameters
@@ -3151,19 +3204,6 @@ uint8_t pObjectGenerate(
 	uint16_t width, uint16_t height, int16_t rotation
 ){
 
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pObjectGenerate() Error]\n");
-			printf("Could not generate object!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(object==NULL){
 		if(przecinek.debug==true){
 			printf("[pObjectGenerate() Error]\n");
@@ -3172,8 +3212,8 @@ uint8_t pObjectGenerate(
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(object->ID>OBJECT_MAX){
 		if(przecinek.debug==true){
@@ -3181,6 +3221,17 @@ uint8_t pObjectGenerate(
 			printf("Given object was not created properly!\n");
 			printf("Value of the object.ID is out of range.\n");
 			printf("Try to not use corrupted variables next time,\n");
+			fflush(stdout);
+		}
+
+		// Return `2`, finished with error
+		return 2;
+	}
+	else if(figure[object->ID].exists==false){
+		if(przecinek.debug==true){
+			printf("[pObjectGenerate() Error]\n");
+			printf("Given object is already destroyed!\n");
+			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
@@ -3319,8 +3370,8 @@ uint8_t pObjectGenerate(
 			(float)(distanceMax.y-figure[object->ID].vertice[current].y)/
 			(float)(distanceMax.y-y);
 
-		figure[object->ID].xSrc[current]=1.f-figure[object->ID].xSrc[current];
-		figure[object->ID].ySrc[current]=1.f-figure[object->ID].ySrc[current];
+		figure[object->ID].xSrc[current]=1.0-figure[object->ID].xSrc[current];
+		figure[object->ID].ySrc[current]=1.0-figure[object->ID].ySrc[current];
 	}
 
 	// Copy [figure] [vertice] to the [object]
@@ -3357,19 +3408,6 @@ uint8_t pObjectGenerate(
 * and [y] position.
 ****************************************************************/
 uint8_t pObjectMove(pObject *object, uint16_t verticeCount, int32_t x, int32_t y){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pObjectMove() Error]\n");
-			printf("Could not generate object!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(object==NULL){
 		if(przecinek.debug==true){
 			printf("[pObjectMove() Error]\n");
@@ -3378,8 +3416,8 @@ uint8_t pObjectMove(pObject *object, uint16_t verticeCount, int32_t x, int32_t y
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(object->ID>OBJECT_MAX){
 		if(przecinek.debug==true){
@@ -3387,6 +3425,17 @@ uint8_t pObjectMove(pObject *object, uint16_t verticeCount, int32_t x, int32_t y
 			printf("Given object was not created properly!\n");
 			printf("Value of the object.ID is out of range.\n");
 			printf("Try to not use corrupted variables next time,\n");
+			fflush(stdout);
+		}
+
+		// Return `2`, finished with error
+		return 2;
+	}
+	else if(figure[object->ID].exists==false){
+		if(przecinek.debug==true){
+			printf("[pObjectMove() Error]\n");
+			printf("Given object is already destroyed!\n");
+			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
 
@@ -3449,19 +3498,6 @@ uint8_t pObjectMove(pObject *object, uint16_t verticeCount, int32_t x, int32_t y
 * less accurate.
 ****************************************************************/
 bool pObjectCollisionSquare(pObject *object1, pObject *object2){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pObjectCollisionSquare() Error]\n");
-			printf("Could not check objects collision!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `false`, finished with error
-		return false;
-	}
-
 	if(object1==NULL || object2==NULL){
 		if(przecinek.debug==true){
 			printf("[pObjectCollisionSquare() Error]\n");
@@ -3533,19 +3569,6 @@ bool pObjectCollisionSquare(pObject *object1, pObject *object2){
 * method is much slower but nearly perfectly accurate.
 ****************************************************************/
 bool pObjectCollisionComplex(pObject *object1, pObject *object2){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pObjectCollisionComplex() Error]\n");
-			printf("Could not check objects collision!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `false`, finished with error
-		return false;
-	}
-
 	if(object1==NULL || object2==NULL){
 		if(przecinek.debug==true){
 			printf("[pObjectCollisionComplex() Error]\n");
@@ -3847,19 +3870,6 @@ pDebugObjectCollisionTriangle(
 * Removed debug values will depend on [object] [ID].
 ****************************************************************/
 uint8_t pObjectDestroy(pObject *object){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pObjectDestroy() Error]\n");
-			printf("Could not destroy object!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(object==NULL){
 		if(przecinek.debug==true){
 			printf("[pObjectDestroy() Error]\n");
@@ -3868,8 +3878,8 @@ uint8_t pObjectDestroy(pObject *object){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(object->ID>OBJECT_MAX){
 		if(przecinek.debug==true){
@@ -3880,23 +3890,24 @@ uint8_t pObjectDestroy(pObject *object){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(figure[object->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pObjectDestroy() Warning]\n");
-			printf("Given object was already destroyed!\n");
+			printf("Given object is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(figure[object->ID].exists==true){
-		// Reset [object] and [figure]
-		pDebugObjectReset(object);
-		pDebugFigureReset(object->ID);
-	}
+	// Reset [object] and [figure]
+	pDebugObjectReset(object);
+	pDebugFigureReset(object->ID);
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -3992,15 +4003,16 @@ uint8_t pImageCreate(pImage *image, wchar_t *directory){
 	GpBitmap *buffer;
 
 	// Check [directory] value
-	if((wcslen(directory)>=4 && (wcscmp(directory+wcslen(directory)-4, L".png")==0 ||
+	if(
+			(wcslen(directory)>=4 && (wcscmp(directory+wcslen(directory)-4, L".png")==0 ||
 			wcscmp(directory+wcslen(directory)-4, L".jpg")==0)) ||
 			(wcslen(directory)>=5 && wcscmp(directory+wcslen(directory)-5, L".jpeg")==0)){
 
-		// Check if [texture] [directory] exists
+		// Try to load [buffer] from [directory]
 		if(GdipCreateBitmapFromFile(directory, &buffer)!=Ok){
 			if(przecinek.debug==true){
 				printf("[pImageCreate() Error]\n");
-				printf("GDI+ library could not load texture!\n");
+				printf("Operating system could not load texture!\n");
 				printf("Check if image.directory value is correct and not corrupted,\n");				
 				fflush(stdout);
 			}
@@ -4015,7 +4027,7 @@ uint8_t pImageCreate(pImage *image, wchar_t *directory){
 	else{
 		if(przecinek.debug==true){
 			printf("[pImageCreate() Error]\n");
-			printf("Value of the image.directory doesn't include .png/.jpg/.jpeg extenstion!\n");
+			printf("Value of the image.directory does not include .png/.jpg/.jpeg extenstion!\n");
 			printf("Check if you gave the correct value,\n");
 			fflush(stdout);
 		}
@@ -4036,22 +4048,25 @@ uint8_t pImageCreate(pImage *image, wchar_t *directory){
 
 	// Create local [picture]
 	GpRect picture=(GpRect){ 0, 0, width, height };
-	
+
 	// Create and setup local [bufferData]
 	BitmapData bufferData;
 	GdipBitmapLockBits(buffer, &picture, ImageLockModeRead, PixelFormat32bppARGB, &bufferData);
 
-	// Generate [texture] [source]
+	// Generate and bind [texture] [source]
 	glGenTextures(1, &texture[image->ID].source);
 	glBindTexture(GL_TEXTURE_2D, texture[image->ID].source);
 
-	// Fill [texture] [source]
+	// Set `GL_UNPACK_ALIGNMENT` value to `1`
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	// Convert local [bufferData] to the [texture] [source]
 	glTexImage2D(
 		GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
 		GL_BGRA, GL_UNSIGNED_BYTE, bufferData.Scan0
 	);
 
-	// Setup [texture] [source]
+	// Set [texture] [source] flags
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -4076,19 +4091,6 @@ uint8_t pImageCreate(pImage *image, wchar_t *directory){
 * Removed debug values will depend on [image] [ID].
 ****************************************************************/
 uint8_t pImageDestroy(pImage *image){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pImageDestroy() Error]\n");
-			printf("Could not destroy image!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(image==NULL){
 		if(przecinek.debug==true){
 			printf("[pImageDestroy() Error]\n");
@@ -4097,8 +4099,8 @@ uint8_t pImageDestroy(pImage *image){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(image->ID>IMAGE_MAX){
 		if(przecinek.debug==true){
@@ -4109,22 +4111,23 @@ uint8_t pImageDestroy(pImage *image){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(texture[image->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pImageDestroy() Warning]\n");
-			printf("Given image was already destroyed!\n");
+			printf("Given image is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(texture[image->ID].exists==true){
-		// Reset [texture]
-		pDebugTextureReset(image->ID);
-	}
+	// Reset [texture]
+	pDebugTextureReset(image->ID);
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -4281,7 +4284,8 @@ uint8_t pFontCreate(pFont *font, wchar_t *directory, uint16_t size){
 	view[font->ID].size=size;
 
 	// Check [directory] value
-	if(wcslen(directory)>=4 && (wcscmp(directory+wcslen(directory)-4, L".ttf")==0 ||
+	if(
+			wcslen(directory)>=4 && (wcscmp(directory+wcslen(directory)-4, L".ttf")==0 ||
 			wcscmp(directory+wcslen(directory)-4, L".otf")==0)){
 
 		// Setup [view] [collection] and check if [directory] exists
@@ -4289,7 +4293,7 @@ uint8_t pFontCreate(pFont *font, wchar_t *directory, uint16_t size){
 		if(GdipPrivateAddFontFile(view[font->ID].collection, directory)!=Ok){
 			if(przecinek.debug==true){
 				printf("[pFontCreate() Error]\n");
-				printf("Font located in font.directory doesn't exist!\n");
+				printf("Font located in font.directory does not exist!\n");
 				printf("Check if you gave the correct value,\n");
 				fflush(stdout);
 			}
@@ -4305,7 +4309,7 @@ uint8_t pFontCreate(pFont *font, wchar_t *directory, uint16_t size){
 	else{
 		if(przecinek.debug==true){
 			printf("[pFontCreate() Error]\n");
-			printf("Value of the font.directory doesn't include .ttf/.otf extenstion!\n");
+			printf("Value of the font.directory does not include .ttf/.otf extenstion!\n");
 			printf("Check if you gave the correct value,\n");
 			fflush(stdout);
 		}
@@ -4400,19 +4404,6 @@ uint8_t pFontCreate(pFont *font, wchar_t *directory, uint16_t size){
 * Removed debug values will depend on [font] [ID].
 ****************************************************************/
 uint8_t pFontDestroy(pFont *font){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pFontDestroy() Error]\n");
-			printf("Could not destroy font!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(font==NULL){
 		if(przecinek.debug==true){
 			printf("[pFontDestroy() Error]\n");
@@ -4421,8 +4412,8 @@ uint8_t pFontDestroy(pFont *font){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(font->ID>FONT_MAX){
 		if(przecinek.debug==true){
@@ -4433,23 +4424,24 @@ uint8_t pFontDestroy(pFont *font){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(view[font->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pFontDestroy() Warning]\n");
-			printf("Given font was already destroyed!\n");
+			printf("Given font is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(view[font->ID].exists==true){
-		// Reset [font] and [view]
-		pDebugFontReset(font);
-		pDebugViewReset(font->ID);
-	}
+	// Reset [font] and [view]
+	pDebugFontReset(font);
+	pDebugViewReset(font->ID);
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -4706,7 +4698,7 @@ bool pDebugTextSetup(pText *text, pFont *font){
 			height=realHeight+1;
 
 			// Create and allocate local [charData]
-			uint8_t *charData=(uint8_t*)malloc(sizeof(uint8_t)*width*height*4);
+			uint8_t *charData=malloc(sizeof(uint8_t)*width*height*4);
 			if(charData==NULL){
 				if(przecinek.debug==true){
 					printf("[pDebugTextSetup() Error]\n");
@@ -4755,19 +4747,23 @@ bool pDebugTextSetup(pText *text, pFont *font){
 				ImageLockModeRead, PixelFormat32bppARGB, &bufferData
 			);
 
-			// Setup [code] [source]
+			// Bind [code] [source]
 			glBindTexture(GL_TEXTURE_2D, code[text->ID].source[font->ID][current]);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// Set `GL_UNPACK_ALIGNMENT` value to `1`
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-			// Initialize [code] [source]
+			// Convert local [bufferData] to the [code] [source]
 			glTexImage2D(
 				GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
 				GL_BGRA, GL_UNSIGNED_BYTE, bufferData.Scan0
 			);
+
+			// Set [code] [source] flags
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 			// Set [code] [sourceSize] values
 			code[text->ID].sourceSize[font->ID][current].width=width;
@@ -4810,7 +4806,7 @@ bool pDebugTextSetup(pText *text, pFont *font){
 * [text] - which [text] structure should be initialized.
 * If [text] was already created, then it will be overwritten.
 * [length] - maximal length of [text] [value].
-* Last position should allways have L'\0' value for safety.
+* Last position should allways be L'\0' for safety.
 * [value] - initial [text] [value].
 *
 * Additional Description:
@@ -4835,6 +4831,7 @@ uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value){
 		if(code[current].exists==false){
 			// Set some values to `NULL`
 			text->value=NULL;
+
 			code[current].value=NULL;
 
 			// Set [text] [ID] and reset it
@@ -4924,7 +4921,7 @@ uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value){
 	text->length=length;
 
 	if(wcslen(value)<length-1){
-		// Safely copy [value] to [text] [value]
+		// Safely copy [value] to the [text] [value]
 		wmemcpy(text->value, value, wcslen(value));
 		text->value[wcslen(value)]=L'\0';
 	}
@@ -4939,7 +4936,7 @@ uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value){
 			fflush(stdout);
 		}
 
-		// Safely copy [value] to [text] [value]
+		// Safely copy [value] to the [text] [value]
 		wmemcpy(text->value, value, length-1);
 		text->value[length-1]=L'\0';
 	}
@@ -5015,7 +5012,7 @@ uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value){
 
 	code[text->ID].length=length;
 
-	// Safely copy [text] [value] to [code] [value]
+	// Safely copy [text] [value] to the [code] [value]
 	wmemcpy(code[text->ID].value, text->value, wcslen(text->value));
 	code[text->ID].value[wcslen(text->value)]=L'\0';
 
@@ -5038,19 +5035,6 @@ uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value){
 * Removed debug values will depend on [text] [ID].
 ****************************************************************/
 uint8_t pTextDestroy(pText *text){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pTextDestroy() Error]\n");
-			printf("Could not destroy text!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(text==NULL){
 		if(przecinek.debug==true){
 			printf("[pTextDestroy() Error]\n");
@@ -5059,8 +5043,8 @@ uint8_t pTextDestroy(pText *text){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(text->ID>TEXT_MAX){
 		if(przecinek.debug==true){
@@ -5071,23 +5055,24 @@ uint8_t pTextDestroy(pText *text){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(code[text->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pTextDestroy() Warning]\n");
-			printf("Given text was already destroyed!\n");
+			printf("Given text is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(code[text->ID].exists==true){
-		// Reset [text] and [code]
-		pDebugTextReset(text);
-		pDebugCodeReset(text->ID);
-	}
+	// Reset [text] and [code]
+	pDebugTextReset(text);
+	pDebugCodeReset(text->ID);
 
 	// Return `0`, finished succesfully
 	return 0;
@@ -5190,7 +5175,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't too big or corruped,\n");
+			printf("Check if your file is not too huge or corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5226,7 +5211,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5248,7 +5233,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5340,7 +5325,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5365,7 +5350,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5389,7 +5374,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5420,7 +5405,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5442,12 +5427,12 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 	if(FAILED(audioClient->lpVtbl->Initialize(
 			audioClient, AUDCLNT_SHAREMODE_SHARED,
 			AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-			(REFERENCE_TIME)AUDIO_REFRESH_RATE, 0, fileFormat, NULL))){
+			(REFERENCE_TIME)AUDIO_DEFAULT_REFRESH_RATE, 0, fileFormat, NULL))){
 
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5476,7 +5461,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5505,7 +5490,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5536,7 +5521,7 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
-			printf("Check if your file isn't corruped,\n");
+			printf("Check if your file is not corruped,\n");
 			fflush(stdout);
 		}
 
@@ -5714,8 +5699,8 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 					// Create and calculate local [calculation]
 					float calculation=sample*percent;
 
-					if(calculation>8388607.f){ calculation=8388607.f; }
-					if(calculation<(-8388608.f)){ calculation=(-8388608.f); }
+					if(calculation>8388607.0){ calculation=8388607.0; }
+					if(calculation<(-8388608.0)){ calculation=(-8388608.0); }
 
 					// Set local [checkData] values
 					checkData[fileOffset]=(uint8_t)((int32_t)calculation&0xFF);
@@ -5863,7 +5848,7 @@ uint8_t pAudioCreate(pAudio *audio, wchar_t *directory){
 	if(wcslen(directory)<4 || wcscmp(directory+wcslen(directory)-4, L".wav")!=0){
 		if(przecinek.debug==true){
 			printf("[pAudioCreate() Error]\n");
-			printf("Value of the audio.directory doesn't include .wav extenstion!\n");
+			printf("Value of the audio.directory does not include .wav extenstion!\n");
 			printf("Check if you gave the correct value,\n");
 			fflush(stdout);
 		}
@@ -5903,19 +5888,6 @@ uint8_t pAudioCreate(pAudio *audio, wchar_t *directory){
 * Removed debug values will depend on [audio] [ID].
 ****************************************************************/
 uint8_t pAudioDestroy(pAudio *audio){
-	if(setup==false){
-		if(przecinek.debug==true){
-			printf("[pAudioDestroy() Error]\n");
-			printf("Could not destroy audio!\n");
-			printf("Przecinek is not initialized.\n");
-			printf("Try to run pSetup() first,\n");
-			fflush(stdout);
-		}
-
-		// Return `1`, finished with error
-		return 1;
-	}
-
 	if(audio==NULL){
 		if(przecinek.debug==true){
 			printf("[pAudioDestroy() Error]\n");
@@ -5924,8 +5896,8 @@ uint8_t pAudioDestroy(pAudio *audio){
 			fflush(stdout);
 		}
 
-		// Return `2`, finished with error
-		return 2;
+		// Return `1`, finished with error
+		return 1;
 	}
 	else if(audio->ID>AUDIO_MAX){
 		if(przecinek.debug==true){
@@ -5936,23 +5908,24 @@ uint8_t pAudioDestroy(pAudio *audio){
 			fflush(stdout);
 		}
 
-		// Return `3`, finished with error
-		return 3;
+		// Return `2`, finished with error
+		return 2;
 	}
 	else if(sound[audio->ID].exists==false){
 		if(przecinek.debug==true){
 			printf("[pAudioDestroy() Warning]\n");
-			printf("Given audio was already destroyed!\n");
+			printf("Given audio is already destroyed!\n");
 			printf("Not sure what you were trying todo :-PP,\n");
 			fflush(stdout);
 		}
+
+		// Return `0`, nothing to destroy
+		return 0;
 	}
 
-	if(sound[audio->ID].exists==true){
-		// Reset [audio] and [sound]
-		pDebugAudioReset(audio);
-		pDebugSoundReset(audio->ID);
-	}
+	// Reset [audio] and [sound]
+	pDebugAudioReset(audio);
+	pDebugSoundReset(audio->ID);
 
 	// Return `0`, finished succesfully
 	return 0;

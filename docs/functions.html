@@ -27,7 +27,8 @@
 	</header>
 
 	<nav id="nav">
-		<a data-key="pageFunctionList0" href="#pageFunctionList"></a><br>
+		<a data-key="pageDefaultFunctionList0" href="#pageDefaultFunctionList"></a><br>
+		<a data-key="pageStructureFunctionList0" href="#pageStructureFunctionList"></a><br>
 
 		<br>
 
@@ -45,7 +46,7 @@
 	<main id="main">
 		<h1 data-key="pageTitle"></h1>
 
-		<h2 data-key="pageFunctionList0" id="pageFunctionList"></h2>
+		<h2 data-key="pageDefaultFunctionList0" id="pageDefaultFunctionList"></h2>
 		<pre>
 /****************************************************************
 * |\_____/| pSetup()
@@ -172,11 +173,14 @@ bool pKeyScroll();
 * This function safely destroys structures and cleans memory
 * before the end of the program. It firstly uninitializes all
 * debug libraries. Then it searches for all undestroyed
-* structures and removes them. At the end it resets [przecinek]
+* structures and removes them. In the end it resets [przecinek]
 * and several debug variables.
 ****************************************************************/
 void pEndup();
+		</pre>
 
+		<h2 data-key="pageStructureFunctionList0" id="pageStructureFunctionList"></h2>
+		<pre>
 /****************************************************************
 * |\_____/| pWindowCreate()
 * | .     | In: pWindow *window, uint16_t [width], [height],
@@ -195,7 +199,8 @@ void pEndup();
 * setups debug pointers to the [window] structure, then it
 * creates physical [window] and creates second GL buffer.
 * It also creates debug [window] thread which loads and
-* responses to all signals.
+* responses to all signals. In the end it fills background
+* with `COLOR_DEFAULT_BACKGROUND` fill.
 ****************************************************************/
 uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable);
 
@@ -220,7 +225,12 @@ uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool res
 * then [texture] positions, debug [width], [height] and
 * center [x] and [y] position are being recalculated. Then
 * when everything is prepared [color] and [image] are
-* being applied to GL and [object] is being rendered.
+* being applied to GL and [object] is being rendered. If
+* [color] is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being
+* used. If [texture] source is `NULL` then default texture
+* with `COLOR_DEFAULT_BACKGROUND` and `COLOR_DEFAULT_FOREGROUND`
+* is being used instead. If [object] is fully outside the
+* rendering area then it is skipped.
 ****************************************************************/
 uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image);
 
@@ -245,7 +255,10 @@ uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImag
 * of all [text] buffers are being recalculated or [text]
 * debug values are being reseted and regenerated. Then
 * when everything is prepared [color] is being applied to
-* GL and [text] is being rendered.
+* GL and [text] buffers are being rendered. If [color]
+* is `NULL` then `COLOR_DEFAULT_FOREGROUND` is being used. If
+* any [text] buffer is fully outside the rendering area then
+* it is skipped.
 ****************************************************************/
 uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color);
 
@@ -444,7 +457,7 @@ uint8_t pFontDestroy(pFont *font);
 * [text] - which [text] structure should be initialized.
 * If [text] was already created, then it will be overwritten.
 * [length] - maximal length of [text] [value].
-* Last position should allways have L'\0' value for safety.
+* Last position should allways be L'\0' for safety.
 * [value] - initial [text] [value].
 *
 * Additional Description:
@@ -517,7 +530,9 @@ uint8_t pAudioDestroy(pAudio *audio);
 
 	"pageTitle": "Functions",
 
-	"pageFunctionList0": "Functions from przecinek.h"
+	"pageDefaultFunctionList0": "Default functions from przecinek.h",
+
+	"pageStructureFunctionList0": "Structure functions from przecinek.h"
 },
 
 "pl":{
@@ -532,7 +547,9 @@ uint8_t pAudioDestroy(pAudio *audio);
 
 	"pageTitle": "Funkcje",
 
-	"pageFunctionList0": "Funkcje z przecinek.h"
+	"pageDefaultFunctionList0": "Funkcje domyślne z przecinek.h",
+
+	"pageStructureFunctionList0": "Funkcje strukturalne z przecinek.h"
 }
 
 }
