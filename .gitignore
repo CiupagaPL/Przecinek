@@ -1,5 +1,4 @@
 build/
-add/
 debug.c
 debug.cpp
 script.sh

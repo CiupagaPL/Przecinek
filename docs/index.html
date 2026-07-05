@@ -8,44 +8,54 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 	<link href="style.css" rel="stylesheet">
-
 	<link rel="icon" id="icon" href="local/icon_red.png">
-
-	<link href="https://fonts.googleapis.com" rel="preconnect">
-	<link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@500" rel="stylesheet">
 </head>
 
 <body id="body">
-	<header id="header">
-		<a href="https://github.com/CiupagaPL/Przecinek/tree/unstable" id="logo"></a>
+	<nav id="navA">
+		<a id="logo" href="https://github.com/CiupagaPL/Przecinek/tree/unstable"></a>
+	</nav>
 
-		<p data-key="homeButton"></p>
-		<a data-key="structuresButton" href="structures.html"></a>
-		<a data-key="functionsButton" href="functions.html"></a>
-		<a data-key="examplesButton" href="examples.html"></a>
-	</header>
-
-	<nav id="nav">
-		<a data-key="pageAbout0" href="#pageAbout"></a><br>
-		<a data-key="pageWiki0" href="#pageWiki"></a><br>
-		<a data-key="pageLicense0" href="#pageLicense"></a><br>
-
-		<br>
+	<nav id="navB">
+		<b data-key="settings"></b>
+		<span></span>
 
 		<button
 			data-key="animationsButton" onclick="animationsPress()" id="animationsSetting">
-		</button><br>
+		</button>
+		<span></span>
+
 		<button
 			data-key="themeButton" onclick="themePress()" id="themeSetting">
-		</button><br>
+		</button>
+		<span></span>
+
 		<button
 			data-key="languageButton" onclick="languagePress()" id="languageSetting">
-		</button><br>
+		</button>
+
+		<span></span>
+		<span></span>
+
+		<b data-key="sections"></b>
+		<span></span>
+
+		<details>
+			<summary data-key="about"></summary>
+
+			<a data-key="pageAbout0" href="#pageAbout"></a>
+			<span></span>
+
+			<a data-key="pageWiki0" href="#pageWiki"></a>
+			<span></span>
+
+			<a data-key="pageLicense0" href="#pageLicense"></a>
+		</details>
 	</nav>
 
 	<main id="main">
-		<h1 data-key="pageTitle"></h1>
+		<h1 data-key="about"></h1>
 
 		<h2 data-key="pageAbout0" id="pageAbout"></h2>
 		<p data-key="pageAbout1"></p>
@@ -65,61 +75,54 @@
 
 <script type="application/json" id="data">
 {
+	"en":{
+		"settings": "Settings",
+		"sections": "Sections",
 
-"en":{
-	"homeButton": "Home page",
-	"structuresButton": "Structures",
-	"functionsButton": "Functions",
-	"examplesButton": "Examples",
+		"animationsButton": "Animations: ",
+		"themeButton": "Theme: ",
+		"languageButton": "Language: en",
 
-	"animationsButton": "Animations: ",
-	"themeButton": "Theme: ",
-	"languageButton": "Language: en",
+		"about": "About",
 
-	"pageTitle": "Welcome to the Przecinek Wiki!",
+		"pageAbout0": "Welcome to the przecinek wiki!",
+		"pageAbout1": "Przecinek is a small multimedia library for Windows and Linux. Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.",
+		"pageAbout2": "TODO",
+		"pageAbout3": "TODO",
 
-	"pageAbout0": "About Przecinek",
-	"pageAbout1": "Przecinek is a small multimedia library for Windows and Linux. Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.",
-	"pageAbout2": "TODO",
-	"pageAbout3": "TODO",
+		"pageWiki0": "About Wiki",
+		"pageWiki1": "TODO",
+		"pageWiki2": "Last updated stable version: [a6,1a];",
+		"pageWiki3": "Last updated unstable version: [u,24];",
+		"pageWiki4": "Last update: 05-07-2026;",
 
-	"pageWiki0": "About Wiki",
-	"pageWiki1": "TODO",
-	"pageWiki2": "Last updated stable version: [a6,0a];",
-	"pageWiki3": "Last updated unstable version: [u,23];",
-	"pageWiki4": "Last update: 26-06-2026;",
+		"pageLicense0": "Site license",
+		"pageLicense1": "TODO, same as Przecinek license"
+	},
+	"pl":{
+		"settings": "Ustawienia",
+		"sections": "Sekcje",
 
-	"pageLicense0": "Site license",
-	"pageLicense1": "TODO, same as Przecinek license"
-},
+		"animationsButton": "Animacje: ",
+		"themeButton": "Motyw: ",
+		"languageButton": "Język: pl",
 
-"pl":{
-	"homeButton": "Strona główna",
-	"structuresButton": "Struktury",
-	"functionsButton": "Funkcje",
-	"examplesButton": "Przykłady",
+		"about": "Wstęp",
 
-	"animationsButton": "Animacje: ",
-	"themeButton": "Motyw: ",
-	"languageButton": "Język: pl",
+		"pageAbout0": "Witaj w przecinkowej wiki!",
+		"pageAbout1": "Przecinek jest małą w rozmiarze biblioteką multimedialną dla Windows'a i Linux'a. Prostą definicją - jest to zbiór funkcji i struktur, za pomocą których można utworzyć okno, wczytać czcionki i zdjęcia, narysować obiekty i teskty oraz odtwarzać dźwięki. W orginalnym założeniu Przecinek przeznaczony jest dla użytku w języku C, lecz równie dobrze sprawuje się w C++.",
+		"pageAbout2": "Przecinek stworzony jest z myślą, by używać jak najmniejszą ilość cudzych bibliotek, dlatego skupia się głównie na bibliotekach systemowych (dla Windows'a jest to WinAPI; dla Linux'a jest to X11lib). Celem Przecinka jest ułatwienie tworzenia aplikacji i gier desktopowych zachowując przy tym duch minimalistyczności.",
+		"pageAbout3": "Przecinek posiada rozbudowany system błędów, dzięki czemu użytkownik nie dostanie natychmiastowego wycieku pamięci po drobnym błędzie. Jest zbudowany tak, by być jak najmocniej zoptymalizowanym i przyjaznym dla użytkownika. Nie trzeba dostosowywać kodu pod każdy system operacyjny - Przecinek został stworzony, by ten sam kod działał na Windows'ie i Linux'ie. Dodatkowo kod Przecinka jest udokumentowany od góry do dołu - by użytkownik chociaż w części mógł zrozumieć jak on działa i potencjalnie zmodyfikować go pod swoje potrzeby.",
 
-	"pageTitle": "Witaj w Przecinkowej Wiki!",
+		"pageWiki0": "Na temat wiki",
+		"pageWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem [b1,0a].",
+		"pageWiki2": "Ostatnia zaktualizowana wersja stabilna: [a6,1a];",
+		"pageWiki3": "Ostatnia zaktualizowana wersja niestabilna: [u,24];",
+		"pageWiki4": "Ostatnia aktualizacja: 05-07-2026;",
 
-	"pageAbout0": "Na temat Przecinka",
-	"pageAbout1": "Przecinek jest małą w rozmiarze biblioteką multimedialną dla Windows'a i Linux'a. Prostą definicją - jest to zbiór funkcji i struktur, za pomocą których można utworzyć okno, wczytać czcionki i zdjęcia, narysować obiekty i teskty oraz odtwarzać dźwięki. W orginalnym założeniu Przecinek przeznaczony jest dla użytku w języku C, lecz równie dobrze sprawuje się w C++.",
-	"pageAbout2": "Przecinek stworzony jest z myślą, by używać jak najmniejszą ilość cudzych bibliotek, dlatego skupia się głównie na bibliotekach systemowych (dla Windows'a jest to WinAPI; dla Linux'a jest to X11lib). Celem Przecinka jest ułatwienie tworzenia aplikacji i gier desktopowych zachowując przy tym duch minimalistyczności.",
-	"pageAbout3": "Przecinek posiada rozbudowany system błędów, dzięki czemu użytkownik nie dostanie natychmiastowego wycieku pamięci po drobnym błędzie. Jest zbudowany tak, by być jak najmocniej zoptymalizowanym i przyjaznym dla użytkownika. Nie trzeba dostosowywać kodu pod każdy system operacyjny - Przecinek został stworzony, by ten sam kod działał na Windows'ie i Linux'ie. Dodatkowo kod Przecinka jest udokumentowany od góry do dołu - by użytkownik chociaż w części mógł zrozumieć jak on działa i potencjalnie zmodyfikować go pod swoje potrzeby.",
-
-	"pageWiki0": "Na temat Wiki",
-	"pageWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem [b1,0a].",
-	"pageWiki2": "Ostatnia zaktualizowana wersja stabilna: [a6,0a];",
-	"pageWiki3": "Ostatnia zaktualizowana wersja niestabilna: [u,23];",
-	"pageWiki4": "Ostatnia aktualizacja: 26-06-2026;",
-
-	"pageLicense0": "Licencja strony",
-	"pageLicense1": "Strona ta podlega tej samej licencji co Przecinek. Jednak pełne prawa do Niej posiadają również tłumacze (których na razie nie ma lol :-PP). Z licencją możesz się zapoznać na głównym repozytorium."
-}
-
+		"pageLicense0": "Licencja strony",
+		"pageLicense1": "Strona ta podlega tej samej licencji co Przecinek. Jednak pełne prawa do Niej posiadają również tłumacze (których na razie nie ma lol :-PP). Z licencją możesz się zapoznać na głównym repozytorium."
+	}
 }
 </script>
 

@@ -23,14 +23,14 @@ const icon=document.getElementById("icon");
 // Create and load [body] from HTML
 const body=document.getElementById("body");
 
-// Create and load [header] from HTML
-const header=document.getElementById("header");
+// Create and load [navA] from HTML
+const navA=document.getElementById("navA");
 
 // Create and load [logo] from HTML
 const logo=document.getElementById("logo");
 
-// Create and load [nav] from HTML
-const nav=document.getElementById("nav");
+// Create and load [navB] from HTML
+const navB=document.getElementById("navB");
 
 // Create and load local [animationsSetting], [themeSetting] and [languageSetting]
 const animationsSetting=document.getElementById("animationsSetting");
@@ -39,6 +39,9 @@ const languageSetting=document.getElementById("languageSetting");
 
 // Create and load [main] from HTML
 const main=document.getElementById("main");
+
+// Create and load [translation] from JSON
+const translation=JSON.parse(document.getElementById("data").textContent);
 
 if(animation==="true"){
 	// Setup [body] animation
@@ -59,17 +62,15 @@ if(light==="true"){
 	// Set [body] colorscheme
 	body.classList.add("light");
 
-	// Set [header] colorscheme
-	header.classList.add("light");
-
-	// Set [nav] colorscheme
-	nav.classList.add("light");
+	// Set [navA] and [navB] colorscheme
+	navA.classList.add("light");
+	navB.classList.add("light");
 
 	// Set [animationsSetting] colorscheme
 	animationsSetting.classList.add("light");
-	// Set [animationsSetting] colorscheme
+	// Set [themeSetting] colorscheme
 	themeSetting.classList.add("light");
-	// Set [animationsSetting] colorscheme
+	// Set [languageSetting] colorscheme
 	languageSetting.classList.add("light");
 
 	// Set [main] colorscheme
@@ -79,25 +80,20 @@ else{
 	// Set [body] colorscheme
 	body.classList.add("dark");
 
-	// Set [body] colorscheme
-	header.classList.add("dark");
-
-	// Set [nav] colorscheme
-	nav.classList.add("dark");
+	// Set [navA] and [navB] colorscheme
+	navA.classList.add("dark");
+	navB.classList.add("dark");
 
 	// Set [animationsSetting] colorscheme
 	animationsSetting.classList.add("dark");
-	// Set [animationsSetting] colorscheme
+	// Set [themeSetting] colorscheme
 	themeSetting.classList.add("dark");
-	// Set [animationsSetting] colorscheme
+	// Set [languageSetting] colorscheme
 	languageSetting.classList.add("dark");
 
 	// Set [main] colorscheme
 	main.classList.add("dark");
 }
-
-// Create and load [translation]
-let translation=JSON.parse(document.getElementById("data").textContent);
 
 /****************************************************************
 * |\_____/| refreshButtons()
@@ -113,15 +109,9 @@ function refreshButtons(){
 		animationsSetting.innerHTML=animationsSetting.innerHTML.slice(0, position+2)
 	}
 
-	// Update [document] [animations] based on [language] and [animation] value
-	if(language==="en"){
-		if(animation==="true"){ animationsSetting.innerHTML+="on"; }
-		else{ animationsSetting.innerHTML+="off"; }
-	}
-	else{
-		if(animation==="true"){ animationsSetting.innerHTML+="włączone"; }
-		else{ animationsSetting.innerHTML+="wyłączone"; }
-	}
+	// Update [document] [animations] based on [animation] value
+	if(animation==="true"){ animationsSetting.innerHTML+="✓"; }
+	else{ animationsSetting.innerHTML+="⨯"; }
 
 	// Calculate local [position] for [themeSetting]
 	position=themeSetting.innerHTML.indexOf(": ")
@@ -130,15 +120,9 @@ function refreshButtons(){
 		themeSetting.innerHTML=themeSetting.innerHTML.slice(0, position+2)
 	}
 
-	// Update [document] [theme] based on [language] and [light] value
-	if(language==="en"){
-		if(light==="true"){ themeSetting.innerHTML+="light"; }
-		else{ themeSetting.innerHTML+="dark"; }
-	}
-	else{
-		if(light==="true"){ themeSetting.innerHTML+="jasny"; }
-		else{ themeSetting.innerHTML+="ciemny"; }
-	}
+	// Update [document] [theme] based on [light] value
+	if(light==="true"){ themeSetting.innerHTML+="☼"; }
+	else{ themeSetting.innerHTML+="☽"; }
 }
 
 /****************************************************************
@@ -247,21 +231,19 @@ function themePress(){
 		body.classList.add("dark");
 		body.classList.remove("light");
 
-		// Change [header] colorscheme
-		header.classList.add("dark");
-		header.classList.remove("light");
-
-		// Change [nav] colorscheme
-		nav.classList.add("dark");
-		nav.classList.remove("light");
+		// Change [navA] and [navB] colorscheme
+		navA.classList.add("dark");
+		navA.classList.remove("light");
+		navB.classList.add("dark");
+		navB.classList.remove("light");
 
 		// Change [animationsSetting] colorscheme
 		animationsSetting.classList.add("dark");
 		animationsSetting.classList.remove("light");
-		// Change [animationsSetting] colorscheme
+		// Change [themeSetting] colorscheme
 		themeSetting.classList.add("dark");
 		themeSetting.classList.remove("light");
-		// Change [animationsSetting] colorscheme
+		// Change [languageSetting] colorscheme
 		languageSetting.classList.add("dark");
 		languageSetting.classList.remove("light");
 
@@ -278,21 +260,19 @@ function themePress(){
 		body.classList.add("light");
 		body.classList.remove("dark");
 
-		// Change [header] colorscheme
-		header.classList.add("light");
-		header.classList.remove("dark");
-
-		// Change [nav] colorscheme
-		nav.classList.add("light");
-		nav.classList.remove("dark");
+		// Change [navA] and [navB] colorscheme
+		navA.classList.add("light");
+		navA.classList.remove("dark");
+		navB.classList.add("light");
+		navB.classList.remove("dark");
 
 		// Change [animationsSetting] colorscheme
 		animationsSetting.classList.add("light");
 		animationsSetting.classList.remove("dark");
-		// Change [animationsSetting] colorscheme
+		// Change [themeSetting] colorscheme
 		themeSetting.classList.add("light");
 		themeSetting.classList.remove("dark");
-		// Change [animationsSetting] colorscheme
+		// Change [languageSetting] colorscheme
 		languageSetting.classList.add("light");
 		languageSetting.classList.remove("dark");
 
