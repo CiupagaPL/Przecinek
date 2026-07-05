@@ -1,19 +1,18 @@
-/****************************************************************
-*         |\_____/|  Orginal {,} made by Ciupaga
-*         |       |  Copyright 2025-2026
-*  ___    | >   < |
-* /   \  _\ = , = /  https://github.com/CiupagaPL/Przecinek
-* \__  \/        |   Make sure to read the License and Manual!
-*    \_         /
-*      \ \----\ \
-*       {,{,} {,},}
-****************************************************************/
+/****************************************************
+*       |\____/|
+*       |      | github.com/CiupagaPL/Przecinek
+*  __   | >  < | original {,} copyright 2025-2026
+* /  \__\ =, = /
+* \__         /
+*    \ \____\ \
+*    {,{,} {,},}
+*****************************************************/
 
 // Standard C libraries
 #include <limits.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <float.h>
 
 #ifndef PRZECINEK_H
 #define PRZECINEK_H
@@ -21,32 +20,32 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
 	* (   ,   )  GLOBAL STRUCTURES
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
 	typedef struct{ uint16_t width, height; } pSize;
 	typedef struct{ int32_t x, y; } pPosition;
 	typedef struct{ uint8_t red, green, blue, alpha; } pColor;
 
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
-	* (   ,   )  DEFINES
+	* (   ,   )  GLOBAL DEFINES
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
 	// Przecinek version
 	#define PRZECINEK_STABLE_BRANCH L"a"
-	#define PRZECINEK_STABLE_MAJOR 5
-	#define PRZECINEK_STABLE_MINOR 0
+	#define PRZECINEK_STABLE_MAJOR 6
+	#define PRZECINEK_STABLE_MINOR 1
 	#define PRZECINEK_STABLE_PATCH L"a"
-	#define PRZECINEK_UNSTABLE 23
+	#define PRZECINEK_UNSTABLE 24
 
 	// Frame limit for all windows
 	// Value higher than `480` is very unsafe!
@@ -114,13 +113,13 @@ extern "C"{
 	#define AUDIO_SLEEP_RATE (uint8_t)40
 	#define AUDIO_PROCESS_RATE (uint8_t)10
 
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
 	* (   ,   )  PRZECINEK VARIABLE
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
 	typedef struct{
 		// Console mode
@@ -137,22 +136,23 @@ extern "C"{
 
 	extern pPrzecinek przecinek;
 
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
 	* (   ,   )  STRUCTURES
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
-	/******************************************
-	*  ,______,  [pWindow] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pWindow] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
-		uint8_t ID, exists;
+		uint8_t ID;
+		bool exists;
 
 		// Pixel position on the screen
 		int16_t x, y;
@@ -168,12 +168,12 @@ extern "C"{
 		bool focus, fullScreen;
 	} pWindow;
 
-	/******************************************
-	*  ,______,  [pObject] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pObject] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
 		uint16_t ID;
 
@@ -184,22 +184,22 @@ extern "C"{
 		pPosition *vertice;
 	} pObject;
 
-	/******************************************
-	*  ,______,  [pImage] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pImage] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
 		uint16_t ID;
 	} pImage;
 
-	/******************************************
-	*  ,______,  [pFont] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pFont] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
 		uint16_t ID;
 
@@ -207,12 +207,12 @@ extern "C"{
 		uint16_t size;
 	} pFont;
 
-	/******************************************
-	*  ,______,  [pText] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pText] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
 		uint16_t ID;
 
@@ -229,12 +229,12 @@ extern "C"{
 		int32_t letterSpacing, lineSpacing, spaceSize;
 	} pText;
 
-	/******************************************
-	*  ,______,  [pAudio] structure
-	*  |      |
-	*  |______|
-	* (--------)
-	******************************************/
+	/************************************
+	*  ,____,  [pAudio] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*************************************/
 	typedef struct{
 		uint16_t ID;
 
@@ -248,40 +248,40 @@ extern "C"{
 		uint32_t frame, frameMax;
 	} pAudio;
 
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
 	* (   ,   )  DEFAULT FUNCTIONS
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
 	/****************************************************************
-	* |\_____/| pSetup()
-	* | .     |
-	* |     . | In: bool [debug], uint16_t [frameLimit]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pSetup()
+	* |      |
+	* | o  o | In: bool [debug], uint16_t [frameLimit]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [debug] - console debug messages status.
 	* [frameLimit] - what should be the frame limit of all windows.
 	*
-	* Additional Description:
+	* > Description:
 	* This function initializes Przecinek library. It setups locale
 	* and libraries used later. It also creates several global
 	* debug objects, setups all needed values and variables,
 	* setups [przecinek], creates debug console and downloads
 	* initial values of the [display] and the [cursor].
 	****************************************************************/
-	uint8_t pSetup(bool debug, uint16_t frameLimit);
+	int8_t pSetup(bool debug, uint16_t frameLimit);
 
 	/****************************************************************
-	* |\_____/| pUpdate()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pUpdate()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Additional Description:
+	* > Description:
 	* This function updates all [window] structures and [przecinek]
 	* global variable values. Firstly it updates debug main
 	* [window] [ID], then it refreshes input and updates all
@@ -290,94 +290,94 @@ extern "C"{
 	* In the end it stops main loop for a short amount of time and
 	* updates all frame related stuff.
 	****************************************************************/
-	uint8_t pUpdate();
+	int8_t pUpdate();
 
 	/****************************************************************
-	* |\_____/| pClear()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out:
+	* |\____/| pClear()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out:
 	*
-	* Additional Description:
+	* > Description:
 	* This function clears and refreshes the debug console. It uses
 	* `cls` or `clear` depending on the operating system.
 	****************************************************************/
 	void pClear();
 
 	/****************************************************************
-	* |\_____/| pKeyPress()
-	* | .     |
-	* |     . | In: wchar_t* [key]
-	* \ = , = / Out: bool (`true` -> pressed)
+	* |\____/| pKeyPress()
+	* |      |
+	* | o  o | In: wchar_t* [key]
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Parameters:
+	* > Parameters:
 	* [key] - which [key] status should be checked.
 	*
-	* Additional Description:
+	* > Description:
 	* This function checks if [key] is being pressed. Returned
 	* value will be `true` only for one frame. Before [key] is
 	* being checked this function searches for debug [key] code.
 	* Debug code depends on the operating system.
 	****************************************************************/
-	bool pKeyPress(wchar_t *key);
+	int8_t pKeyPress(const wchar_t *key);
 
 	/****************************************************************
-	* |\_____/| pKeyHold()
-	* | .     |
-	* |     . | In: wchar_t* [key]
-	* \ = , = / Out: bool (`true` -> hold)
+	* |\____/| pKeyHold()
+	* |      |
+	* | o  o | In: wchar_t* [key]
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Parameters:
+	* > Parameters:
 	* [key] - which [key] status should be checked.
 	*
-	* Additional Description:
+	* > Description:
 	* This function checks if [key] is being hold. Returned
 	* value will be `true` after the first frame. Before [key] is
 	* being checked this function searches for debug [key] code.
 	* Debug code depends on the operating system.
 	****************************************************************/
-	bool pKeyHold(wchar_t *key);
+	int8_t pKeyHold(const wchar_t *key);
 
 	/****************************************************************
-	* |\_____/| pKeyCaps()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out: bool (`true` -> activate)
+	* |\____/| pKeyCaps()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Additional Description:
+	* > Description:
 	* This function returns Caps Lock key status.
 	****************************************************************/
-	bool pKeyCaps();
+	int8_t pKeyCaps();
 
 	/****************************************************************
-	* |\_____/| pKeyNum()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out: bool (`true` -> activate)
+	* |\____/| pKeyNum()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Additional Description:
+	* > Description:
 	* This function returns Num Lock key status.
 	****************************************************************/
-	bool pKeyNum();
+	int8_t pKeyNum();
 
 	/****************************************************************
-	* |\_____/| pKeyScroll()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out: bool (`true` -> activate)
+	* |\____/| pKeyScroll()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Additional Description:
+	* > Description:
 	* This function returns Scroll Lock key status.
 	****************************************************************/
-	bool pKeyScroll();
+	int8_t pKeyScroll();
 
 	/****************************************************************
-	* |\_____/| pEndup()
-	* | .     |
-	* |     . | In:
-	* \ = , = / Out:
+	* |\____/| pEndup()
+	* |      |
+	* | o  o | In:
+	* \ = .= / Out:
 	*
-	* Additional Description:
+	* > Description:
 	* This function safely destroys structures and cleans memory
 	* before the end of the program. It firstly uninitializes all
 	* debug libraries. Then it searches for all undestroyed
@@ -386,27 +386,27 @@ extern "C"{
 	****************************************************************/
 	void pEndup();
 
-	/******************************************
+	/************************************
 	*  ,_   _,
 	*  |     |
 	* (   ,   )  STRUCTURE FUNCTIONS
 	*  |     |
 	*  `-   -`
-	******************************************/
+	*************************************/
 
 	/****************************************************************
-	* |\_____/| pWindowCreate()
-	* | .     | In: pWindow *window, uint16_t [width], [height],
-	* |     . | bool [resizable]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pWindowCreate()
+	* |      | In: pWindow *window, uint16_t [width], [height],
+	* | o  o | bool [resizable]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [window] - which [window] structure should be initialized. If
 	* given [window] is already created, then it will be overwritten.
 	* [width], [height] - initial size of a newly created [window].
 	* [resizable] - should the [window] be resizable or constant.
 	*
-	* Additional Description:
+	* > Description:
 	* This function choses [ID] for given [window], then it
 	* creates debug process, setups all needed values and variables,
 	* setups debug pointers to the [window] structure, then it
@@ -415,15 +415,15 @@ extern "C"{
 	* responses to all signals. In the end it fills background
 	* with `COLOR_DEFAULT_BACKGROUND` fill.
 	****************************************************************/
-	uint8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable);
+	int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable);
 
-	/****************************************************************
-	* |\_____/| pWindowDrawObject()
-	* | .     | In: pWindow* [window], pObject* [object],
-	* |     . | pColor* [color], pImage* [image]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	/****************************************************************\
+	* |\____/| pWindowDrawObject()
+	* |      | In: pWindow* [window], pObject* [object],
+	* | o  o | pColor* [color], pImage* [image]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [window] - which [window] should be used for rendering.
 	* [object] - which [object] should be rendered on [window].
 	* [color] - in which [color] fill should [object] be
@@ -431,7 +431,7 @@ extern "C"{
 	* [image] - in which [image] fill should [object] be
 	* rendered in. Can be `NULL`.
 	*
-	* Additional Description:
+	* > Description:
 	* This function uses GL to render [object] on given [window].
 	* Before any action is taken, it checks and refreshes
 	* [object] values if needed. If any [vertice] was modified,
@@ -445,22 +445,22 @@ extern "C"{
 	* is being used instead. If [object] is fully outside the
 	* rendering area then it is skipped.
 	****************************************************************/
-	uint8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image);
+	int8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage *image);
 
 	/****************************************************************
-	* |\_____/| pWindowDrawText()
-	* | .     | In: pWindow* [window], pFont* [font], pText* [text],
-	* |     . | pColor* [color]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pWindowDrawText()
+	* |      | In: pWindow* [window], pFont* [font],
+	* | o  o | pText* [text], pColor* [color]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [window] - which [window] should be used for rendering.
 	* [font] - which [font] should be to render [text].
 	* [text] - which [text] should be drawn.
 	* [color] - in which [color] fill should [text] be
 	* rendered in. Can be `NULL`.
 	*
-	* Additional Description:
+	* > Description:
 	* This function uses GL to render [text] using [font]
 	* on given [window]. Before any action is taken, it checks
 	* and refreshes [text] and [font] values if needed.
@@ -473,109 +473,106 @@ extern "C"{
 	* any [text] buffer is fully outside the rendering area then
 	* it is skipped.
 	****************************************************************/
-	uint8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color);
+	int8_t pWindowDrawText(pWindow *window, pFont *font, pText *text, pColor *color);
 
 	/****************************************************************
-	* |\_____/| pWindowDestroy()
-	* | .     |
-	* |     . | In: pWindow* [window]
-	* \ = , = / Out: uint16_t (debug key code, `0` -> not found)
+	* |\____/| pWindowDestroy()
+	* |      |
+	* | o  o | In: pWindow* [window]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [window] - which [window] structure should receive kill signal.
 	* Removed debug values will depend on [window] [ID].
 	****************************************************************/
-	uint8_t pWindowDestroy(pWindow* window);
+	int8_t pWindowDestroy(pWindow* window);
 
 	/****************************************************************
-	* |\_____/| pObjectCreate()
-	* | .     |
-	* |     . | In: pObject* [object], uint16_t [verticeCount]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pObjectCreate()
+	* |      |
+	* | o  o | In: pObject* [object], uint16_t [verticeCount]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object] - which [object] structure should be initialized.
 	* If [object] was already created, then it will be overwritten.
 	* [verticeCount] - how many [vertice] should be allocated.
 	*
-	* Additional Description:
+	* > Description:
 	* This function choses [ID] for given [object], then it setups
 	* all needed values and variables and allocates [vertice]
 	* amount in the memory.
 	****************************************************************/
-	uint8_t pObjectCreate(pObject *object, uint16_t verticeCount);
+	int8_t pObjectCreate(pObject *object, uint16_t verticeCount);
 
 	/****************************************************************
-	* |\_____/| pObjectGenerate()
-	* | .     | In: pObject* [object], uint16_t [verticeCount], int32_t
-	* |     . | [x], [y], uint16_t [width], [height], int16_t [rotation]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pObjectGenerate()
+	* |      | In: pObject* [object], int32_t [x], [y],
+	* | o  o | uint16_t [width], [height], int16_t [rotation]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object] - which [object] structure should be generated.
-	* [verticeCount] - how many [object] [vertice] should be used.
-	* Generated figure will depend on [verticeCount].
 	* [x], [y] - from where [object] vertices should start from.
 	* [width], [height] - how big should the [object] be.
 	* [rotation] - how rotated should the [object] be.
 	*
-	* Additional Description:
+	* > Description:
 	* This function generates [object] structure based on given
 	* parameters. It automatically calculates [vertice] positions
 	* and creates geometric figure. It also prepares [texture]
 	* positions and calculates debug [width], [height] and
 	* figure center [x] and [y] position.
 	****************************************************************/
-	uint8_t pObjectGenerate(
-		pObject *object, uint16_t verticeCount, int32_t x, int32_t y,
+	int8_t pObjectGenerate(
+		pObject *object, int32_t x, int32_t y,
 		uint16_t width, uint16_t height, int16_t rotation
 	);
 
 	/****************************************************************
-	* |\_____/| pObjectMove()
-	* | .     | In: pObject* [object], uint16_t [verticeCount],
-	* |     . | int32_t [x], [y]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pObjectMove()
+	* |      |
+	* | o  o | In: pObject* [object], int32_t [x], [y]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object] - which [object] structure should be moved.
-	* [verticeCount] - how many [object] [vertice] should be moved.
 	* [x], [y] - from where [object] vertices should start from.
 	*
-	* Additional Description:
+	* > Description:
 	* This function moves [object] structure based on given
 	* parameters. It also recalculates figure debug center [x]
 	* and [y] position.
 	****************************************************************/
-	uint8_t pObjectMove(pObject *object, uint16_t verticeCount, int32_t x, int32_t y);
+	int8_t pObjectMove(pObject *object, int32_t x, int32_t y);
 
 	/****************************************************************
-	* |\_____/| pObjectCollisionSquare()
-	* | .     |
-	* |     . | In: pObject* [object1], [object2]
-	* \ = , = / Out: bool (`true` -> found collision)
+	* |\____/| pObjectCollisionSquare()
+	* |      |
+	* | o  o | In: pObject* [object1], [object2]
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object1], [object2] - which structures should be checked.
 	*
-	* Additional Description:
+	* > Description:
 	* This function checks for collision between two objects
 	* using their width and height. Their size parameters are
 	* calculated as debug values. This method is much faster but
 	* less accurate.
 	****************************************************************/
-	bool pObjectCollisionSquare(pObject *object1, pObject *object2);
+	int8_t pObjectCollisionSquare(pObject *object1, pObject *object2);
 
 	/****************************************************************
-	* |\_____/| pObjectCollisionComplex()
-	* | .     |
-	* |     . | In: pObject* [object1], [object2]
-	* \ = , = / Out: bool (`true` -> found collision)
+	* |\____/| pObjectCollisionComplex()
+	* |      |
+	* | o  o | In: pObject* [object1], [object2]
+	* \ = .= / Out: int8_t (`0`: `false`; `1`: `true`)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object1], [object2] - which structures should be checked.
 	*
-	* Additional Description:
+	* > Description:
 	* This function checks for collision between two objects
 	* using their vertices. Firstly it searches five closest
 	* vertices of [object1] to the center of [object2]. Then
@@ -584,126 +581,126 @@ extern "C"{
 	* triangular collision between simulated mini objects. This
 	* method is much slower but nearly perfectly accurate.
 	****************************************************************/
-	bool pObjectCollisionComplex(pObject *object1, pObject *object2);
+	int8_t pObjectCollisionComplex(pObject *object1, pObject *object2);
 
 	/****************************************************************
-	* |\_____/| pObjectDestroy()
-	* | .     |
-	* |     . | In: pObject* [object]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pObjectDestroy()
+	* |      |
+	* | o  o | In: pObject* [object]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [object] - which [object] structure should be destroyed.
 	* Removed debug values will depend on [object] [ID].
 	****************************************************************/
-	uint8_t pObjectDestroy(pObject *object);
+	int8_t pObjectDestroy(pObject *object);
 
 	/****************************************************************
-	* |\_____/| pImageCreate()
-	* | .     |
-	* |     . | In: pImage* [image], wchar_t* [directory]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pImageCreate()
+	* |      |
+	* | o  o | In: pImage* [image], wchar_t* [directory]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [image] - which [image] structure should be initialized.
 	* If [image] was already created, then it will be overwritten.
 	* [directory] - from where the [image] should be loaded.
 	*
-	* Additional Description:
+	* > Description:
 	* This function choses [ID] for given [image], then it setups
 	* all needed values and variables, loads [image] from given
 	* [directory] and creates proper [image] debug GL bitmap
 	* for future rendering.
 	****************************************************************/
-	uint8_t pImageCreate(pImage *image, wchar_t *directory);
+	int8_t pImageCreate(pImage *image, const wchar_t *directory);
 
 	/****************************************************************
-	* |\_____/| pImageDestroy()
-	* | .     |
-	* |     . | In: pImage* [image]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pImageDestroy()
+	* |      |
+	* | o  o | In: pImage* [image]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [image] - which [image] structure should be destroyed.
 	* Removed debug values will depend on [image] [ID].
 	****************************************************************/
-	uint8_t pImageDestroy(pImage *image);
+	int8_t pImageDestroy(pImage *image);
 
 	/****************************************************************
-	* |\_____/| pFontCreate()
-	* | .     | In: pFont* [font], wchar_t* [directory],
-	* |     . | uint16_t [size]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pTextCreate()
+	* |      |
+	* | o  o | In: pText* [text], uint16_t [length], wchar_t* [value]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
-	* [font] - which [font] structure should be initialized.
-	* If [font] was already created, then it will be overwritten.
-	* [directory] - from where the [font] should be loaded.
-	* [size] - initial size of newly created [font].
-	*
-	* Additional Description:
-	* This function choses [ID] for given [font], then it loads
-	* [font] from given [directory] and setups all needed
-	* values and variables.
-	****************************************************************/
-	uint8_t pFontCreate(pFont *font, wchar_t *directory, uint16_t size);
-
-	/****************************************************************
-	* |\_____/| pFontDestroy()
-	* | .     |
-	* |     . | In: pFont* [font]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
-	*
-	* Parameters:
-	* [font] - which [font] structure should be destroyed.
-	* Removed debug values will depend on [font] [ID].
-	****************************************************************/
-	uint8_t pFontDestroy(pFont *font);
-
-	/****************************************************************
-	* |\_____/| pTextCreate()
-	* | .     | In: pText* [text], uint16_t [length]
-	* |     . | wchar_t* [value]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
-	*
-	* Parameters:
+	* > Parameters:
 	* [text] - which [text] structure should be initialized.
 	* If [text] was already created, then it will be overwritten.
 	* [length] - maximal length of [text] [value].
 	* Last position should allways be L'\0' for safety.
 	* [value] - initial [text] [value].
 	*
-	* Additional Description:
+	* > Description:
 	* This function choses [ID] for given [text], then
 	* it allocates memory, setups all needed values and variables
 	* and you are ready to go.
 	****************************************************************/
-	uint8_t pTextCreate(pText *text, uint16_t length, wchar_t *value);
+	int8_t pTextCreate(pText *text, uint16_t length, const wchar_t *value);
 
 	/****************************************************************
-	* |\_____/| pTextDestroy()
-	* | .     |
-	* |     . | In: pText* [text]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pTextDestroy()
+	* |      |
+	* | o  o | In: pText* [text]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [text] - which [text] structure should be destroyed.
 	* Removed debug values will depend on [text] [ID].
 	****************************************************************/
-	uint8_t pTextDestroy(pText *text);
+	int8_t pTextDestroy(pText *text);
 
 	/****************************************************************
-	* |\_____/| pAudioCreate()
-	* | .     |
-	* |     . | In: pAudio* [audio], wchar_t* [directory]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pFontCreate()
+	* |      | In: pFont* [font], wchar_t* [directory],
+	* | o  o | uint16_t [size]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
+	* [font] - which [font] structure should be initialized.
+	* If [font] was already created, then it will be overwritten.
+	* [directory] - from where the [font] should be loaded.
+	* [size] - initial size of newly created [font].
+	*
+	* > Description:
+	* This function choses [ID] for given [font], then it loads
+	* [font] from given [directory] and setups all needed
+	* values and variables.
+	****************************************************************/
+	int8_t pFontCreate(pFont *font, const wchar_t *directory, uint16_t size);
+
+	/****************************************************************
+	* |\____/| pFontDestroy()
+	* |      |
+	* | o  o | In: pFont* [font]
+	* \ = .= / Out: int8_t (`0`: success)
+	*
+	* > Parameters:
+	* [font] - which [font] structure should be destroyed.
+	* Removed debug values will depend on [font] [ID].
+	****************************************************************/
+	int8_t pFontDestroy(pFont *font);
+
+	/****************************************************************
+	* |\____/| pAudioCreate()
+	* |      |
+	* | o  o | In: pAudio* [audio], wchar_t* [directory]
+	* \ = .= / Out: int8_t (`0`: success)
+	*
+	* > Parameters:
 	* [audio] - which [audio] structure should be initialized.
 	* If [audio] was already created, then it will be overwritten.
 	* [directory] - from where the [audio] should be loaded.
 	*
-	* Additional Description:
+	* > Description:
 	* This function choses [ID] for given [audio], then
 	* it setups all needed values and variables, loads file from
 	* given [directory] and creates [audio] debug thread.
@@ -711,15 +708,15 @@ extern "C"{
 	* properly decodes [audio] file on creation. Then it is used
 	* to properly play/pause [audio].
 	****************************************************************/
-	uint8_t pAudioCreate(pAudio *audio, wchar_t *directory);
+	int8_t pAudioCreate(pAudio *audio, const wchar_t *directory);
 
 	/****************************************************************
-	* |\_____/| pAudioDestroy()
-	* | .     |
-	* |     . | In: pAudio* [audio]
-	* \ = , = / Out: uint8_t (`0` -> finished succesfully)
+	* |\____/| pAudioDestroy()
+	* |      |
+	* | o  o | In: pAudio* [audio]
+	* \ = .= / Out: int8_t (`0`: success)
 	*
-	* Parameters:
+	* > Parameters:
 	* [audio] - which [audio] structure should be destroyed.
 	* Removed debug values will depend on [audio] [ID].
 	****************************************************************/

@@ -1,24 +1,12 @@
-.PHONY: default win x11 clean
+.PHONY: default win x11
 
-# Run compiled script
 default:
-	./build/debug
+	./build/x11/debug
 
-# Compile WIN
-win: clean
-	clear
-	mkdir -p build/
-	cmake -B build/ . -DWIN=ON
-	cmake --build build/
-	cp -r add/ build/
+win:
+	cmake -B build/win/ . -D win=ON -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
+	cmake --build build/win/
 
-# Compile X11
-x11: clean
-	clear
-	mkdir -p build/
-	cmake -B build/ . -DX11=ON
-	cmake --build build/
-
-# Remove build/ directory
-clean:
-	rm -rf build/
+x11:
+	cmake -B build/x11/ . -D x11=ON
+	cmake --build build/x11/

@@ -1,62 +1,92 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 4.2)
+
+if(POLICY CMP0069)
+	cmake_policy(SET CMP0069 NEW)
+endif()
+if(POLICY CMP0072)
+    cmake_policy(SET CMP0072 NEW)
+endif()
+
 project(debug VERSION 0.0.0 LANGUAGES C CXX)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Create options
-option(WIN "Przecinek for WIN" OFF)
-option(X11 "Przecinek for X11" OFF)
+option(win "win" OFF)
+option(x11 "x11" OFF)
 
-# Select source files
 set(CODE "debug.c")
-set(HEADERS "przecinek.h")
+set(HEADERS "")
 
-if(X11)
-	# Check for packages
+set(PRZECINEK "przecinek.h")
+set(PRZECINEK_WIN "src/win.c")
+set(PRZECINEK_X11 "src/x11.c")
+
+if(x11)
+	add_executable(
+		${PROJECT_NAME} ${PRZECINEK} ${PRZECINEK_X11}
+		${CODE} ${HEADERS}
+	)
+
+	set_target_properties(${PROJECT_NAME} PROPERTIES
+		C_STANDARD 23
+		C_STANDARD_REQUIRED YES
+		CXX_STANDARD 17
+		CXX_STANDARD_REQUIRED YES
+	)
+
 	find_package(X11 REQUIRED)
 	find_package(Freetype REQUIRED)
 	find_package(OpenGL REQUIRED)
 
-	# Set X11 location
-	add_executable(${PROJECT_NAME} ${CODE} "src/x11.c" ${HEADERS})
+	target_link_libraries(
+		${PROJECT_NAME} PRIVATE
+		Freetype::Freetype OpenGL::GL X11::X11
+		m png jpeg
+	)
 
-	# TODO
-	set(BASE_FLAGS -O3 -flto -funroll-loops -ffast-math -fomit-frame-pointer)
-
-	# TODO
-	set(BASE_ARCH_FLAGS -msse2)
-
-	# Set compiler flags
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
-
-	# Set target libraries
-	include_directories(${FREETYPE_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME} m X11 GL GLX png jpeg freetype)
+	target_compile_options(${PROJECT_NAME} PRIVATE -O3)
+	target_link_options(${PROJECT_NAME} PRIVATE -flto -static-libgcc -static-libstdc++)
 else()
-	# Check for packages
+	add_executable(
+		${PROJECT_NAME} ${PRZECINEK} ${PRZECINEK_WIN}
+		${CODE} ${HEADERS}
+	)
+
+	set_target_properties(${PROJECT_NAME} PROPERTIES
+		C_STANDARD 23
+		C_STANDARD_REQUIRED YES
+		CXX_STANDARD 17
+		CXX_STANDARD_REQUIRED YES
+	)
+
+	if(MSVC)
+		target_compile_options(${PROJECT_NAME} PRIVATE /O2)
+	else()
+		target_compile_options(${PROJECT_NAME} PRIVATE -O3)
+
+		include(CheckIPOSupported)
+		check_ipo_supported(RESULT IPO_SUPPORTED)
+
+		if(IPO_SUPPORTED)
+			set_property(
+				TARGET ${PROJECT_NAME}
+				PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE
+			)
+		endif()
+	endif()
+
+	set(OpenGL_GL_PREFERENCE LEGACY)
 	find_package(OpenGL REQUIRED)
+	target_link_libraries(
+		${PROJECT_NAME} PRIVATE
+		OpenGL::GL
+		winmm gdiplus
+	)
 
-	# Set WIN location
-	add_executable(${PROJECT_NAME} ${CODE} "src/win.c" ${HEADERS})
-
-	# TODO
-	set(BASE_FLAGS -O3 -flto -funroll-loops -ffast-math -fomit-frame-pointer)
-
-	# TODO
-	set(BASE_ARCH_FLAGS -msse2)
-
-	# Set compiler flags
-	set(CMAKE_C_COMPILER "x86_64-w64-mingw32-gcc")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc -static")
-
-	set(CMAKE_CXX_COMPILER "x86_64-w64-mingw32-g++")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
-
-	# Set target libraries
-	target_link_libraries(${PROJECT_NAME} m winmm gdiplus user32 gdi32 msimg32 opengl32 glu32 ole32)
+	if(MINGW)
+		target_link_options(
+			${PROJECT_NAME} PRIVATE
+			-static -static-libgcc -static-libstdc++
+		)
+	endif()
 endif()
 
-# Set compile options
 add_compile_options(-Wall -Werror)

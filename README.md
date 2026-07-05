@@ -6,7 +6,7 @@
     <a href="https://github.com/CiupagaPL/Przecinek/tree/unstable">[unstable]</a>
 </div>
 
-### About
+### About the project
 
 **Przecinek is a small multimedia library for Windows and Linux.**
 Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for **C**, but it can also be used with **C++**.<br>
@@ -16,9 +16,9 @@ You can read more about it on the [wiki page](https://ciupagapl.github.io/Przeci
 
 Most of the planned features have already been implemented. I still plan to add and modify some of the existing ones. I aim to finalize most of the stuff with the release of the first Beta. Until then, some function names and features might change between Przecinek versions.
 
-### TODO list
+### Planned stuff list
 
-| planned feature | WIN | X11 |
+| planned feature | win | x11 |
 |-----------------|-----|-----|
 | loading / managing / playing audio            | ✅ | ❌ |
 | auto-repeating audio                          | ❌ | ❌ |
@@ -31,30 +31,31 @@ Most of the planned features have already been implemented. I still plan to add 
 | rendering default texture when failed to load | ❌ | ❌ |
 | managing window resize                        | ❌ | ❌ |
 | generating lines                              | ❌ | ❌ |
+| compiling projects on all operating systems   | ✅ | ✅ |
 
 `?` -  unfinished feature
 
-### Used libraries
+### Used 3rd party libraries
 
 | Library | In |
 |---------|----|
-| [WIN api](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-api-list)           | *WIN* |
-| [GDI+ flat (C)](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat) | *WIN* |
-| [CoreAudio api](https://learn.microsoft.com/en-us/windows/win32/api/_coreaudio)                | *WIN* |
-| [GLU](https://learn.microsoft.com/en-us/windows/win32/opengl/opengl-reference)                 | *WIN* |
-| [X11 library](https://x.org/releases/current/doc/libX11/libX11/libX11.html)                    | *X11* |
-| [FreeType2](https://freetype.org/freetype2/docs/documentation.html)                            | *X11* |
-| [PNG library](https://www.libpng.org/pub/png/pngdocs.html)                                     | *X11* |
-| [JPEG turbo library](https://libjpeg-turbo.org/)                                               | *X11* |
-| [GLX](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)                                 | *X11* |
+| [WIN api](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-api-list)           | *win* |
+| [GDI+ flat (C)](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat) | *win* |
+| [GLU](https://learn.microsoft.com/en-us/windows/win32/opengl/opengl-reference)                 | *win* |
+| [CoreAudio api](https://learn.microsoft.com/en-us/windows/win32/api/_coreaudio)                | *win* |
+| [X11 library](https://x.org/releases/current/doc/libX11/libX11/libX11.html)                    | *x11* |
+| [GLX](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)                                 | *x11* |
+| [FreeType2](https://freetype.org/freetype2/docs/documentation.html)                            | *x11* |
+| [PNG library](https://www.libpng.org/pub/png/pngdocs.html)                                     | *x11* |
+| [JPEG turbo library](https://libjpeg-turbo.org/)                                               | *x11* |
 
-### Version
+### Newest branch version
 
-> Newest Version (Alpha): **[a6,0a]**;<br>
-> Newest Version (Unstable): **[u,23]**;<br>
-> Last Updated: **26-06-2026**;
+> Newest Version (Alpha): **[a6,1a]**;<br>
+> Newest Version (Unstable): **[u,24]**;<br>
+> Last Updated: **05-07-2026**;
 
-### LICENSE
+### Project license
 
 ```
 Copyright(C) 2025-2026 Ciupaga
