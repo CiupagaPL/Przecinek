@@ -1,8 +1,8 @@
 /****************************************************
 *       |\____/|
 *       |      | github.com/CiupagaPL/Przecinek
-*  __   | >  < | original {,} copyright 2025-2026
-* /  \__\ =, = /
+*  __   | >  < | original {,} library
+* /  \__\ =, = / copyright 2025-2026
 * \__         /
 *    \ \____\ \
 *    {,{,} {,},}
@@ -397,7 +397,9 @@ uint16_t pDebugKeySearch(const wchar_t *key);
 
 void pDebugBuildReset(uint8_t ID);
 void pDebugWindowReset(pWindow *window);
-LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LPARAM lParameter);
+LRESULT CALLBACK pDebugBuildProc(
+	HWND HWND, UINT uMessage, WPARAM wParameter, LPARAM lParameter
+);
 
 void pDebugFigureReset(uint16_t ID);
 void pDebugObjectReset(pObject *object);
@@ -708,9 +710,11 @@ int8_t pUpdate(){
 			if(build[ID].fullScreen==false){
 				// Calculate [build] [widthFix] and [heightFix] values
 				build[ID].widthFix=
-					(windowRectangle.right-windowRectangle.left)-(fixRectangle.right-fixRectangle.left);
+					(windowRectangle.right-windowRectangle.left)-
+					(fixRectangle.right-fixRectangle.left);
 				build[ID].heightFix=
-					(windowRectangle.bottom-windowRectangle.top)-(fixRectangle.bottom-fixRectangle.top);
+					(windowRectangle.bottom-windowRectangle.top)-
+					(fixRectangle.bottom-fixRectangle.top);
 			}
 
 			if(*build[ID].fullScreenPoint==true && build[ID].fullScreen==false){
@@ -831,7 +835,8 @@ int8_t pUpdate(){
 				build[ID].MOVE.x=0;
 				build[ID].MOVE.y=0;
 
-				if(*build[ID].widthPoint!=build[ID].width || *build[ID].heightPoint!=build[ID].height){
+				if(*build[ID].widthPoint!=build[ID].width ||
+						*build[ID].heightPoint!=build[ID].height){
 					// Check [build] [widthPoint] value
 					if(*build[ID].widthPoint<WINDOW_WIDTH_MIN){
 						if(przecinek.debug==true){
@@ -974,7 +979,8 @@ int8_t pUpdate(){
 				}
 
 				if(build[ID].widthMin>build[ID].width || build[ID].widthMax<build[ID].width ||
-						build[ID].heightMin>build[ID].height || build[ID].heightMax<build[ID].height){
+						build[ID].heightMin>build[ID].height ||
+						build[ID].heightMax<build[ID].height){
 
 					if(build[ID].widthMin>build[ID].width){
 						// Correct [build] [width] and [widthPoint] values
@@ -1134,107 +1140,225 @@ void pClear(){
 * \ = .= /
 *************************************/
 uint16_t pDebugKeySearch(const wchar_t *key){
-	if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){ return VK_LBUTTON; }
-	if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){ return VK_MBUTTON; }
-	if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){ return VK_RBUTTON; }
-	if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){ return VK_XBUTTON1; }
-	if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){ return VK_XBUTTON2; }
+	if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){
+		return VK_LBUTTON;
+	}
+	if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){
+		return VK_MBUTTON;
+	}
+	if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){
+		return VK_RBUTTON;
+	}
+	if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){
+		return VK_XBUTTON1;
+	}
+	if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){
+		return VK_XBUTTON2;
+	}
 
 	if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){
-		return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_ESCAPE, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){
-		return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_TAB, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){
-		return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){
-		return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_LCONTROL, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){
-		return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_LWIN, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){
-		return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_LMENU, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){
-		return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_SPACE, MAPVK_VK_TO_VSC);
+	}
 
-	else if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){ return MapVirtualKey(VK_F1, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){ return MapVirtualKey(VK_F2, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F3")==0 || wcscmp(key, L"f3")==0){ return MapVirtualKey(VK_F3, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F4")==0 || wcscmp(key, L"f4")==0){ return MapVirtualKey(VK_F4, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F5")==0 || wcscmp(key, L"f5")==0){ return MapVirtualKey(VK_F5, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F6")==0 || wcscmp(key, L"f6")==0){ return MapVirtualKey(VK_F6, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F7")==0 || wcscmp(key, L"f7")==0){ return MapVirtualKey(VK_F7, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F8")==0 || wcscmp(key, L"f8")==0){ return MapVirtualKey(VK_F8, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F9")==0 || wcscmp(key, L"f9")==0){ return MapVirtualKey(VK_F9, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F10")==0 || wcscmp(key, L"f10")==0){ return MapVirtualKey(VK_F10, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){ return MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){ return MapVirtualKey(VK_F12, MAPVK_VK_TO_VSC); }
+	else if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){
+		return MapVirtualKey(VK_F1, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){
+		return MapVirtualKey(VK_F2, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F3")==0 || wcscmp(key, L"f3")==0){
+		return MapVirtualKey(VK_F3, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F4")==0 || wcscmp(key, L"f4")==0){
+		return MapVirtualKey(VK_F4, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F5")==0 || wcscmp(key, L"f5")==0){
+		return MapVirtualKey(VK_F5, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F6")==0 || wcscmp(key, L"f6")==0){
+		return MapVirtualKey(VK_F6, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F7")==0 || wcscmp(key, L"f7")==0){
+		return MapVirtualKey(VK_F7, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F8")==0 || wcscmp(key, L"f8")==0){
+		return MapVirtualKey(VK_F8, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F9")==0 || wcscmp(key, L"f9")==0){
+		return MapVirtualKey(VK_F9, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F10")==0 || wcscmp(key, L"f10")==0){
+		return MapVirtualKey(VK_F10, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){
+		return MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){
+		return MapVirtualKey(VK_F12, MAPVK_VK_TO_VSC);
+	}
 
 	else if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){
-		return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RMENU, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){
-		return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RWIN, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){
-		return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_APPS, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){
-		return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RCONTROL, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){
-		return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RSHIFT, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){
-		return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 || wcscmp(key, L"Backspace")==0){
-		return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RETURN, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 ||
+			wcscmp(key, L"Backspace")==0){
+
+		return MapVirtualKey(VK_BACK, MAPVK_VK_TO_VSC);
+	}
 
 	else if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 || wcscmp(key, L"LArrow")==0){
-		return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_LEFT, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 || wcscmp(key, L"DArrow")==0){
-		return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_DOWN, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 || wcscmp(key, L"RArrow")==0){
-		return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_RIGHT, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 || wcscmp(key, L"UArrow")==0){
-		return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_UP, MAPVK_VK_TO_VSC);
+	}
 
-	else if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 || wcscmp(key, L"PrintScrn")==0){
-		return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 || wcscmp(key, L"PauseBreak")==0){
-		return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC); }
+	else if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 ||
+			wcscmp(key, L"PrintScrn")==0){
+
+		return MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 ||
+			wcscmp(key, L"PauseBreak")==0){
+
+		return MapVirtualKey(VK_PAUSE, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){
-		return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_INSERT, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){
-		return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_HOME, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){
-		return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_PRIOR, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){
-		return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_DELETE, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){
-		return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_END, MAPVK_VK_TO_VSC);
+	}
 	else if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){
-		return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC); }
+		return MapVirtualKey(VK_NEXT, MAPVK_VK_TO_VSC);
+	}
 
-	else if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){ return MapVirtualKey(VK_Q, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){ return MapVirtualKey(VK_W, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"E")==0 || wcscmp(key, L"e")==0){ return MapVirtualKey(VK_E, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"R")==0 || wcscmp(key, L"r")==0){ return MapVirtualKey(VK_R, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"T")==0 || wcscmp(key, L"t")==0){ return MapVirtualKey(VK_T, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"Y")==0 || wcscmp(key, L"y")==0){ return MapVirtualKey(VK_Y, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"U")==0 || wcscmp(key, L"u")==0){ return MapVirtualKey(VK_U, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"I")==0 || wcscmp(key, L"i")==0){ return MapVirtualKey(VK_I, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"O")==0 || wcscmp(key, L"o")==0){ return MapVirtualKey(VK_O, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"P")==0 || wcscmp(key, L"p")==0){ return MapVirtualKey(VK_P, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"A")==0 || wcscmp(key, L"a")==0){ return MapVirtualKey(VK_A, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"S")==0 || wcscmp(key, L"s")==0){ return MapVirtualKey(VK_S, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"D")==0 || wcscmp(key, L"d")==0){ return MapVirtualKey(VK_D, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"F")==0 || wcscmp(key, L"f")==0){ return MapVirtualKey(VK_F, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"G")==0 || wcscmp(key, L"g")==0){ return MapVirtualKey(VK_G, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"H")==0 || wcscmp(key, L"h")==0){ return MapVirtualKey(VK_H, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"J")==0 || wcscmp(key, L"j")==0){ return MapVirtualKey(VK_J, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"K")==0 || wcscmp(key, L"k")==0){ return MapVirtualKey(VK_K, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"L")==0 || wcscmp(key, L"l")==0){ return MapVirtualKey(VK_L, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"Z")==0 || wcscmp(key, L"z")==0){ return MapVirtualKey(VK_Z, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"X")==0 || wcscmp(key, L"x")==0){ return MapVirtualKey(VK_X, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"C")==0 || wcscmp(key, L"c")==0){ return MapVirtualKey(VK_C, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"V")==0 || wcscmp(key, L"v")==0){ return MapVirtualKey(VK_V, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"B")==0 || wcscmp(key, L"b")==0){ return MapVirtualKey(VK_B, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"N")==0 || wcscmp(key, L"n")==0){ return MapVirtualKey(VK_N, MAPVK_VK_TO_VSC); }
-	else if(wcscmp(key, L"M")==0 || wcscmp(key, L"m")==0){ return MapVirtualKey(VK_M, MAPVK_VK_TO_VSC); }
+	else if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){
+		return MapVirtualKey(VK_Q, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){
+		return MapVirtualKey(VK_W, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"E")==0 || wcscmp(key, L"e")==0){
+		return MapVirtualKey(VK_E, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"R")==0 || wcscmp(key, L"r")==0){
+		return MapVirtualKey(VK_R, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"T")==0 || wcscmp(key, L"t")==0){
+		return MapVirtualKey(VK_T, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"Y")==0 || wcscmp(key, L"y")==0){
+		return MapVirtualKey(VK_Y, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"U")==0 || wcscmp(key, L"u")==0){
+		return MapVirtualKey(VK_U, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"I")==0 || wcscmp(key, L"i")==0){
+		return MapVirtualKey(VK_I, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"O")==0 || wcscmp(key, L"o")==0){
+		return MapVirtualKey(VK_O, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"P")==0 || wcscmp(key, L"p")==0){
+		return MapVirtualKey(VK_P, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"A")==0 || wcscmp(key, L"a")==0){
+		return MapVirtualKey(VK_A, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"S")==0 || wcscmp(key, L"s")==0){
+		return MapVirtualKey(VK_S, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"D")==0 || wcscmp(key, L"d")==0){
+		return MapVirtualKey(VK_D, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"F")==0 || wcscmp(key, L"f")==0){
+		return MapVirtualKey(VK_F, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"G")==0 || wcscmp(key, L"g")==0){
+		return MapVirtualKey(VK_G, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"H")==0 || wcscmp(key, L"h")==0){
+		return MapVirtualKey(VK_H, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"J")==0 || wcscmp(key, L"j")==0){
+		return MapVirtualKey(VK_J, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"K")==0 || wcscmp(key, L"k")==0){
+		return MapVirtualKey(VK_K, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"L")==0 || wcscmp(key, L"l")==0){
+		return MapVirtualKey(VK_L, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"Z")==0 || wcscmp(key, L"z")==0){
+		return MapVirtualKey(VK_Z, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"X")==0 || wcscmp(key, L"x")==0){
+		return MapVirtualKey(VK_X, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"C")==0 || wcscmp(key, L"c")==0){
+		return MapVirtualKey(VK_C, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"V")==0 || wcscmp(key, L"v")==0){
+		return MapVirtualKey(VK_V, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"B")==0 || wcscmp(key, L"b")==0){
+		return MapVirtualKey(VK_B, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"N")==0 || wcscmp(key, L"n")==0){
+		return MapVirtualKey(VK_N, MAPVK_VK_TO_VSC);
+	}
+	else if(wcscmp(key, L"M")==0 || wcscmp(key, L"m")==0){
+		return MapVirtualKey(VK_M, MAPVK_VK_TO_VSC);
+	}
 
 	else if(wcscmp(key, L"1")==0){ return MapVirtualKey(VK_1, MAPVK_VK_TO_VSC); }
 	else if(wcscmp(key, L"2")==0){ return MapVirtualKey(VK_2, MAPVK_VK_TO_VSC); }
@@ -1590,7 +1714,10 @@ void pDebugWindowReset(pWindow *window){
 * | o  o | [DEBUG]
 * \ = .= /
 *************************************/
-LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LPARAM lParameter){
+LRESULT CALLBACK pDebugBuildProc(
+	HWND HWND, UINT uMessage, WPARAM wParameter, LPARAM lParameter
+){
+
 	// Create and load local [windowPoint]
 	windowPoint=(pWindowPoint*)GetWindowLongPtr(HWND, GWLP_USERDATA);
 
@@ -1672,8 +1799,12 @@ LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LP
 		build[windowPoint->ID].MOVE.y=HIWORD(lParameter);
 
 		// Correct [build] [MOVE] signal values
-		while(build[windowPoint->ID].MOVE.x>SHRT_MAX+1){ build[windowPoint->ID].MOVE.x-=(USHRT_MAX+1); }
-		while(build[windowPoint->ID].MOVE.y>SHRT_MAX+1){ build[windowPoint->ID].MOVE.y-=(USHRT_MAX+1); }
+		while(build[windowPoint->ID].MOVE.x>SHRT_MAX+1){
+			build[windowPoint->ID].MOVE.x-=(USHRT_MAX+1);
+		}
+		while(build[windowPoint->ID].MOVE.y>SHRT_MAX+1){
+			build[windowPoint->ID].MOVE.y-=(USHRT_MAX+1);
+		}
 	}
 
 	// Manage `WM_SIZE` signal
@@ -1699,7 +1830,9 @@ LRESULT CALLBACK pDebugBuildProc(HWND HWND, UINT uMessage, WPARAM wParameter, LP
 
 	// Manage `WM_KEYDOWN` signal
 	if(uMessage==WM_KEYDOWN){
-		if(windowPoint->ID==windowMainID && keyboard[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]==0){
+		if(windowPoint->ID==windowMainID &&
+				keyboard[MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)]==0){
+
 			for(uint8_t button=0; button<PRZECINEK_KEY_PRESS_MAX; button+=1){
 				if(input[button]==0 || input[button]==MapVirtualKey(wParameter, MAPVK_VK_TO_VSC)){
 					// Set [input] value to the debug key code
@@ -2308,7 +2441,9 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
 		PFD_TYPE_RGBA, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	};
-	SetPixelFormat(build[window->ID].DHDC, ChoosePixelFormat(build[window->ID].DHDC, &pixel), &pixel);
+	SetPixelFormat(
+		build[window->ID].DHDC, ChoosePixelFormat(build[window->ID].DHDC, &pixel), &pixel
+	);
 
 	// Create [build] [buffer]
 	build[window->ID].buffer=wglCreateContext(build[window->ID].DHDC);
@@ -2490,8 +2625,10 @@ int8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage
 		// Use `COLOR_DEFAULT_FOREGROUND` for rendering
 		if(image==NULL){
 			glColor4f(
-				(float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
-				(float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
+				(float)COLOR_DEFAULT_FOREGROUND.red/255,
+				(float)COLOR_DEFAULT_FOREGROUND.green/255,
+				(float)COLOR_DEFAULT_FOREGROUND.blue/255,
+				(float)COLOR_DEFAULT_FOREGROUND.alpha/255
 			);
 		}
 		else{ glColor4f(1.0, 1.0, 1.0, 1.0); }
@@ -4496,7 +4633,10 @@ int8_t pTextCreate(pText *text, uint16_t length, const wchar_t *value){
 		if(przecinek.debug==true){
 			printf("[pTextCreate() Warning]\n");
 			printf("Value of the text.length is too small!\n");
-			printf("Value of the text.length was changed from %i to %i,\n", length, TEXT_LENGTH_MIN);
+			printf(
+				"Value of the text.length was changed from %i to %i,\n",
+				length, TEXT_LENGTH_MIN
+			);
 			fflush(stdout);
 		}
 
@@ -5141,7 +5281,9 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 
 	// Create local [fileRead]
 	DWORD fileRead=0;
-	if(ReadFile(fileHandle, fileBuffer, fileSize, &fileRead, NULL)==false || fileRead!=fileSize){
+	if(ReadFile(fileHandle, fileBuffer, fileSize, &fileRead, NULL)==false ||
+			fileRead!=fileSize){
+
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
@@ -5163,7 +5305,9 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 
 	// Create local [fileEnd] and set its value
 	uint8_t *fileEnd=fileBuffer+fileSize;
-	if(fileEnd-fileBuffer<12 || memcmp(fileBuffer, "RIFF", 4) || memcmp(fileBuffer+8, "WAVE", 4)){
+	if(fileEnd-fileBuffer<12 || memcmp(fileBuffer, "RIFF", 4) ||
+			memcmp(fileBuffer+8, "WAVE", 4)){
+
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
@@ -5304,7 +5448,9 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 	// Create local [device]
 	IMMDevice *device=NULL;
 
-	if(FAILED(enumerator->lpVtbl->GetDefaultAudioEndpoint(enumerator, eRender, eConsole, &device))){
+	if(FAILED(enumerator->lpVtbl->GetDefaultAudioEndpoint(
+			enumerator, eRender, eConsole, &device))){
+
 		if(przecinek.debug==true){
 			printf("[pDebugAudioProc() Error]\n");
 			printf("CoreAudio library could not load audio!\n");
@@ -5589,7 +5735,9 @@ unsigned int __stdcall pDebugAudioProc(void *argument){
 
 		// Create and check local [checkData]
 		uint8_t *checkData=NULL;
-		if(FAILED(renderClient->lpVtbl->GetBuffer(renderClient, frameAvail, &checkData))){ break; }
+		if(FAILED(renderClient->lpVtbl->GetBuffer(renderClient, frameAvail, &checkData))){
+			break;
+		}
 
 		// Create and calculate local [data]
 		uint8_t *data=dataPoint+(frameWrite*frameByte);

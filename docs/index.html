@@ -1,21 +1,27 @@
+<!--
+github.com/CiupagaPL/Przecinek
+original {,} wiki
+copyright 2026
+-->
 <!DOCTYPE html>
 <html>
 <head>
 	<title>Wiki</title>
 
-	<meta name="description" content="Documentation">
-	<meta name="author" content="Ciupaga">
+	<meta name="description" content="przecinek docs">
+	<meta name="author" content="ciupagacz">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 	<link href="style.css" rel="stylesheet">
-	<link rel="icon" id="icon" href="local/icon_red.png">
+	<link href="local/icon_red.png" rel="icon" id="icon">
 	<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@500" rel="stylesheet">
 </head>
 
 <body id="body">
 	<nav id="navA">
-		<a id="logo" href="https://github.com/CiupagaPL/Przecinek/tree/unstable"></a>
+		<a id="logo" href="https://github.com/ciupagacz/przecinek"></a>
 	</nav>
+	<p id="sub"></p>
 
 	<nav id="navB">
 		<b data-key="settings"></b>
@@ -34,7 +40,6 @@
 		<button
 			data-key="languageButton" onclick="languagePress()" id="languageSetting">
 		</button>
-
 		<span></span>
 		<span></span>
 
@@ -44,38 +49,233 @@
 		<details>
 			<summary data-key="about"></summary>
 
-			<a data-key="pageAbout0" href="#pageAbout"></a>
+			<a data-key="aboutBase0" href="#aboutBase"></a>
 			<span></span>
 
-			<a data-key="pageWiki0" href="#pageWiki"></a>
+			<a data-key="aboutWiki0" href="#aboutWiki"></a>
 			<span></span>
 
-			<a data-key="pageLicense0" href="#pageLicense"></a>
+			<a data-key="aboutLicense0" href="#aboutLicense"></a>
+		</details>
+		<span></span>
+
+		<details>
+			<summary data-key="build"></summary>
+
+			<a data-key="buildWinWin0" href="#buildWinWin"></a>
+			<span></span>
+
+			<a data-key="buildWinX110" href="#buildWinX11"></a>
+			<span></span>
+
+			<a data-key="buildX11X110" href="#buildX11X11"></a>
+			<span></span>
+
+			<a data-key="buildX11Win0" href="#buildX11Win"></a>
 		</details>
 	</nav>
 
 	<main id="main">
 		<h1 data-key="about"></h1>
 
-		<h2 data-key="pageAbout0" id="pageAbout"></h2>
-		<p data-key="pageAbout1"></p>
-		<p data-key="pageAbout2"></p>
-		<p data-key="pageAbout3"></p>
+		<h2 data-key="aboutBase0" id="aboutBase"></h2>
+		<p data-key="aboutBase1"></p>
+		<p data-key="aboutBase2"></p>
+		<p data-key="aboutBase3"></p>
 
-		<h2 data-key="pageWiki0" id="pageWiki"></h2>
-		<p data-key="pageWiki1"></p>
-		<p data-key="pageWiki2"></p>
-		<p data-key="pageWiki3"></p>
-		<p data-key="pageWiki4"></p>
+		<h2 data-key="aboutWiki0" id="aboutWiki"></h2>
+		<p data-key="aboutWiki1"></p>
+		<p data-key="aboutWiki2"></p>
+		<p data-key="aboutWiki3"></p>
+		<p data-key="aboutWiki4"></p>
 
-		<h2 data-key="pageLicense0" id="pageLicense"></h2>
-		<p data-key="pageLicense1"></p>
+		<h2 data-key="aboutLicense0" id="aboutLicense"></h2>
+<pre>
+Copyright(C) 2026 ciupaga
+{,} PRZECINEK WIKI
+Custom License
+
+By obtaining this website, you are allowed to use and modify it
+however you want.
+
+1. Contributors are encouraged to submit improvements or modifications
+	to the original website.
+2. You may fork and publish the source code as your own, but you must
+    retain the original author, license, and website information
+    located in the comments.
+3. Consequences of Non-Compliance:
+a) If you fail to comply with any of the terms outlined in this license,
+	you may lose the rights to use, modify, and distribute this website.
+b) The author reserves the right to take legal action against any party
+	that does not adhere to the conditions of this license.
+4.:
+a) "Fork" refers to creating a derivative work based on the
+	original website.
+b) "Comments" refer to messages located in the source code.
+
+This website is provided "as-is" without any warranties. The author
+is not liable for any damages arising from its use.
+</pre>
+
+		<h1 data-key="build"></h1>
+
+		<h2 data-key="buildWinWin0" id="buildWinWin"></h2>
+		<p data-key="buildWinWin1"></p>
+		<p data-key="buildWinWin2"></p>
+		<p data-key="buildWinWin3"></p>
+
+<pre>
+$ pacman -Syu
+</pre>
+
+		<p data-key="buildWinWin4"></p>
+		<p data-key="buildWinWin5"></p>
+
+<pre>
+$ pacman -S \
+	mingw-w64-ucrt-x86_64-gcc \
+	mingw-w64-ucrt-x86_64-cmake \
+	mingw-w64-ucrt-x86_64-ninja
+</pre>
+
+		<p data-key="buildWinWin6"></p>
+
+<pre>
+$ pacman -S \
+	mingw-w64-x86_64-gcc \
+	mingw-w64-x86_64-cmake \
+	mingw-w64-x86_64-ninja
+</pre>
+
+		<p data-key="buildWinWin7"></p>
+		<p data-key="buildWinWin8"></p>
+
+<pre>
+'C:\Users\user\Downloads\project'
+</pre>
+
+		<p data-key="buildWinWin9"></p>
+
+<pre>
+'/c/Users/user/Downloads/project'
+</pre>
+
+		<p data-key="buildWinWin10"></p>
+
+<pre>
+$ cd /c/Users/user/Downloads/project
+</pre>
+
+		<p data-key="buildWinWin11"></p>
+
+<pre>
+$ ls
+</pre>
+
+		<p data-key="buildWinWin12"></p>
+
+<pre>
+$ cd ..
+</pre>
+
+		<p data-key="buildWinWin13"></p>
+
+<pre>
+$ cd project
+</pre>
+
+		<p data-key="buildWinWin14"></p>
+
+<pre>
+$ clear
+</pre>
+
+		<p data-key="buildWinWin15"></p>
+
+<pre>
+$ cmake -B build/win -G Ninja -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
+$ ninja -C build/win
+</pre>
+
+		<p data-key="buildWinWin16"></p>
+
+		<h2 data-key="buildWinX110" id="buildWinX11"></h2>
+		<p data-key="buildWinX111"></p>
+
+		<h2 data-key="buildX11X110" id="buildX11X11"></h2>
+		<p data-key="buildX11X111"></p>
+		<p data-key="buildX11X112"></p>
+
+<pre>
+$ sudo apt-get install \
+	build-essential \
+	cmake \
+	ninja-build \
+	libx11-dev \
+	libxft-dev \
+	libfreetype6-dev \
+	libgl-dev \
+	libpng-dev \
+	libjpeg-dev
+</pre>
+
+		<p data-key="buildX11X113"></p>
+
+<pre>
+$ cmake -B build/x11 -G Ninja
+$ ninja -C build/x11
+</pre>
+
+		<p data-key="buildX11X114"></p>
+
+		<h2 data-key="buildX11Win0" id="buildX11Win"></h2>
+		<p data-key="buildX11Win1"></p>
+
+<pre>
+$ sudo apt-get install \
+	mingw-w64 \
+	cmake \
+	ninja-build
+</pre>
+
+		<p data-key="buildX11Win2"></p>
+
+<pre>
+$ cmake -B build/win -G Ninja -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
+$ ninja -C build/win
+</pre>
+
+		<p data-key="buildX11Win3"></p>
 	</main>
 </body>
 
 <script type="application/json" id="data">
 {
 	"en":{
+		"random0": "tbd",
+		"random1": "tbd",
+		"random2": "tbd",
+		"random3": "tbd",
+		"random4": "tbd",
+		"random5": "tbd",
+		"random6": "tbd",
+		"random7": "tbd",
+		"random8": "tbd",
+		"random9": "tbd",
+		"random10": "tbd",
+		"random11": "tbd",
+		"random12": "tbd",
+		"random13": "tbd",
+		"random14": "tbd",
+		"random15": "tbd",
+		"random16": "tbd",
+		"random17": "tbd",
+		"random18": "tbd",
+		"random19": "tbd",
+		"random20": "tbd",
+		"random21": "tbd",
+		"random22": "tbd",
+
 		"settings": "Settings",
 		"sections": "Sections",
 
@@ -85,21 +285,79 @@
 
 		"about": "About",
 
-		"pageAbout0": "Welcome to the przecinek wiki!",
-		"pageAbout1": "Przecinek is a small multimedia library for Windows and Linux. Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.",
-		"pageAbout2": "TODO",
-		"pageAbout3": "TODO",
+		"aboutBase0": "Welcome to the przecinek wiki!",
+		"aboutBase1": "Przecinek is a small multimedia library for Windows and Linux. Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.",
+		"aboutBase2": "",
+		"aboutBase3": "",
 
-		"pageWiki0": "About Wiki",
-		"pageWiki1": "TODO",
-		"pageWiki2": "Last updated stable version: [a6,1a];",
-		"pageWiki3": "Last updated unstable version: [u,24];",
-		"pageWiki4": "Last update: 05-07-2026;",
+		"aboutWiki0": "About Wiki",
+		"aboutWiki1": "",
+		"aboutWiki2": "Last updated stable version: [a6,1b];",
+		"aboutWiki3": "Last updated unstable version: [u,25];",
+		"aboutWiki4": "Last update: 13-07-2026;",
 
-		"pageLicense0": "Site license",
-		"pageLicense1": "TODO, same as Przecinek license"
+		"aboutLicense0": "Site license",
+		"aboutLicense1": "TBD",
+
+		"build": "Building project",
+
+		"buildWinWin0": "",
+		"buildWinWin1": "",
+		"buildWinWin2": "",
+		"buildWinWin3": "",
+		"buildWinWin4": "",
+		"buildWinWin5": "",
+		"buildWinWin6": "",
+		"buildWinWin7": "",
+		"buildWinWin8": "",
+		"buildWinWin9": "",
+		"buildWinWin10": "",
+		"buildWinWin11": "",
+		"buildWinWin12": "",
+		"buildWinWin13": "",
+		"buildWinWin14": "",
+		"buildWinWin15": "",
+		"buildWinWin16": "",
+
+		"buildWinX110": "",
+		"buildWinX111": "",
+
+		"buildX11X110": "",
+		"buildX11X111": "",
+		"buildX11X112": "",
+		"buildX11X113": "",
+		"buildX11X114": "",
+
+		"buildX11Win0": "",
+		"buildX11Win1": "",
+		"buildX11Win2": "",
+		"buildX11Win3": ""
 	},
 	"pl":{
+		"random0": "simple text here",
+		"random1": "najukochańszy kociak",
+		"random2": "włożone 100% <3",
+		"random3": "w 95% bezbłędny**",
+		"random4": "miau :3",
+		"random5": "zawsze elegancko",
+		"random6": "jedz warzywa!!",
+		"random7": "produkt wegański",
+		"random8": "nyan cat omggg",
+		"random9": "um... ser",
+		"random10": "wifi rekomendowane",
+		"random11": ".gitignore",
+		"random12": "nowy c++ to lekki syf",
+		"random13": "[r1,0] kiedy??",
+		"random14": "3d?? zapewne...",
+		"random15": "kocham mleko",
+		"random16": "bez laktozy",
+		"random17": "100% c inside",
+		"random18": "spróbuj również csfml",
+		"random19": "baka baka baka",
+		"random20": "ccccc",
+		"random21": "tworzone z pasją",
+		"random22": "produkt polski",
+
 		"settings": "Ustawienia",
 		"sections": "Sekcje",
 
@@ -109,19 +367,52 @@
 
 		"about": "Wstęp",
 
-		"pageAbout0": "Witaj w przecinkowej wiki!",
-		"pageAbout1": "Przecinek jest małą w rozmiarze biblioteką multimedialną dla Windows'a i Linux'a. Prostą definicją - jest to zbiór funkcji i struktur, za pomocą których można utworzyć okno, wczytać czcionki i zdjęcia, narysować obiekty i teskty oraz odtwarzać dźwięki. W orginalnym założeniu Przecinek przeznaczony jest dla użytku w języku C, lecz równie dobrze sprawuje się w C++.",
-		"pageAbout2": "Przecinek stworzony jest z myślą, by używać jak najmniejszą ilość cudzych bibliotek, dlatego skupia się głównie na bibliotekach systemowych (dla Windows'a jest to WinAPI; dla Linux'a jest to X11lib). Celem Przecinka jest ułatwienie tworzenia aplikacji i gier desktopowych zachowując przy tym duch minimalistyczności.",
-		"pageAbout3": "Przecinek posiada rozbudowany system błędów, dzięki czemu użytkownik nie dostanie natychmiastowego wycieku pamięci po drobnym błędzie. Jest zbudowany tak, by być jak najmocniej zoptymalizowanym i przyjaznym dla użytkownika. Nie trzeba dostosowywać kodu pod każdy system operacyjny - Przecinek został stworzony, by ten sam kod działał na Windows'ie i Linux'ie. Dodatkowo kod Przecinka jest udokumentowany od góry do dołu - by użytkownik chociaż w części mógł zrozumieć jak on działa i potencjalnie zmodyfikować go pod swoje potrzeby.",
+		"aboutBase0": "Witaj w przecinkowej wiki!",
+		"aboutBase1": "Przecinek jest małą w rozmiarze biblioteką multimedialną dla systemu Windows i Linux. Prostą definicją - jest to zbiór funkcji i struktur, za pomocą których można utworzyć okno, wczytać czcionki i zdjęcia, narysować obiekty i teskty oraz odtwarzać dźwięki. W orginalnym założeniu Przecinek przeznaczony jest dla użytku w języku C, lecz równie dobrze sprawuje się w C++.",
+		"aboutBase2": "Przecinek stworzony jest z myślą, by używać jak najmniejszą ilość cudzych bibliotek, dlatego skupia się głównie na bibliotekach systemowych (dla systemu Windows jest to WinAPI; dla systemu Linux jest to X11lib). Celem Przecinka jest ułatwienie tworzenia aplikacji i gier desktopowych zachowując przy tym duch minimalistyczności.",
+		"aboutBase3": "Przecinek posiada rozbudowany system błędów, dzięki czemu użytkownik nie dostanie natychmiastowego wycieku pamięci po drobnym błędzie. Jest zbudowany tak, by być jak najmocniej zoptymalizowanym i przyjaznym dla użytkownika. Nie trzeba dostosowywać kodu pod każdy system operacyjny - Przecinek został stworzony, by ten sam kod działał na Windows i Linux. Dodatkowo kod Przecinka jest udokumentowany od góry do dołu - by użytkownik chociaż w części mógł zrozumieć jak on działa i potencjalnie zmodyfikować go pod swoje potrzeby.",
 
-		"pageWiki0": "Na temat wiki",
-		"pageWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem [b1,0a].",
-		"pageWiki2": "Ostatnia zaktualizowana wersja stabilna: [a6,1a];",
-		"pageWiki3": "Ostatnia zaktualizowana wersja niestabilna: [u,24];",
-		"pageWiki4": "Ostatnia aktualizacja: 05-07-2026;",
+		"aboutWiki0": "Na temat wiki",
+		"aboutWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem [b1,0a].",
+		"aboutWiki2": "Ostatnia zaktualizowana wersja stabilna: [a6,1b];",
+		"aboutWiki3": "Ostatnia zaktualizowana wersja niestabilna: [u,25];",
+		"aboutWiki4": "Ostatnia aktualizacja: 13-07-2026;",
 
-		"pageLicense0": "Licencja strony",
-		"pageLicense1": "Strona ta podlega tej samej licencji co Przecinek. Jednak pełne prawa do Niej posiadają również tłumacze (których na razie nie ma lol :-PP). Z licencją możesz się zapoznać na głównym repozytorium."
+		"aboutLicense0": "Licencja strony",
+
+		"build": "Budowa projektu",
+
+		"buildWinWin0": "Kompilacja WIN przez Windows",
+		"buildWinWin1": "O ile sposobów na kompilacje istnieje mnóstwo najbardziej rekomendował bym zrobienie tego przez konsolę (nie panikuj, zaraz wszystko wyjaśnię). Konfiguracja kompilatora przez Visual Studio jest ciężka ze względu na potrzebę zainstalowania bibliotek ręcznie, a inne kompilatory zwykle potrzebują dużo dostosowywania wszystkiego pod siebie. Postaram się ciebie poprowadzić po tym krok po kroku. Oczywiście jeżeli jesteś chętny spróbować inne metody możesz to zrobić wzorując się istniejącym 'CMakeLists.txt'.",
+		"buildWinWin2": "Do budowy projektu silnie polecam użycie MSYS2 (bynajmniej ja tego używam :- PP). Zawiera on wiele często aktualizowanych pakietów (3700) których możecie użyć. Chociaż tutaj przyda nam się ich tylko kilka (pamiętamy o duchu minimalistyczności, tak?).",
+		"buildWinWin3": "Najpierw zainstaluj MSYS2 na swój system. Kieruj się krokami, które twórcy zamieścili na swojej stronie. Po instalacji uruchom 'MSYS2 MSYS'. Następnie zalecałbym zaktualizować pakiety, co możesz zrobić za pomocą:",
+		"buildWinWin4": "A no właśnie, już mogę dodać, że pacman od dzisiaj staje się twoim najlepszym przyjacielem (bynajmniej menedżerem pakietów). Jeżeli dostałeś polecienie, by zrestartować konsolę zrób to i ponownie wykonaj poprzednie polecenie.",
+		"buildWinWin5": "Następnie przydałoby się zainstalować pakiety umożliwiające kompilacje. Masz dwie opcje wyboru. Instalując pakiety ucrt64 używasz najszybszej i najnowocześniejszej implementacji C i C++, lecz twoja aplikacja nie będzie działać na starszych systemach operacyjnych. Instalując pakiet mingw64 instalujesz starszą lecz bardziej kompatybilną implementację C i C++. Aby zainstalować ucrt64 użyj:",
+		"buildWinWin6": "Aby zainstalować mingw64 użyj:",
+		"buildWinWin7": "Następnie zamknij okno konsoli. W zależności od tego które pakiety zainstalowałeś otwórz 'MSYS2 UCRT64' bądź MSYS2 'MINGW64'.",
+		"buildWinWin8": "Nawigowanie po folderach może wydawać się trochę dziwne. Jeśli spróbujesz skopiować poprawną ścieżkę wyskoczy ci błąd. Dzieje się to dlatego, iż MSYS2 zamienia ścieżki Windows na te bardziej podpasowywujące systemom Linux. Dla przykładu:",
+		"buildWinWin9": "Zostaje zamienione na:",
+		"buildWinWin10": "Kiedy już dostosujesz swoją ścieżkę możesz znawigować folder swojego projektu za pomocą:",
+		"buildWinWin11": "Jeśli chcesz sprawdzić co znajduje się w aktualnej ścieżce użyj komendy:",
+		"buildWinWin12": "Znawigować do poprzedniego folderu możesz za pomocą:",
+		"buildWinWin13": "A do następnego wpisując jego nazwę po komendzie, na przykład:",
+		"buildWinWin14": "Wyczyścić konsolę możesz za pomocą:",
+		"buildWinWin15": "Ścieżki po których nawigujesz są w pełni zintegrowane z twoim systemem, dlatego nie musisz aktualizować żadnych plików. Aby zbudować projekt wystarczy w folderze z plikiem 'CMakeLists.txt' wykonać:",
+		"buildWinWin16": "Teraz wystarczy otworzyć eksplorator plików, przejść do ścieżki 'build/win' wewnątrz twojego projektu i ła la! Jeżeli projekt został zbudowany pomyślnie zobaczysz plik '.exe'. W innym przypadku sprawdź błędy ukazane w konsoli.",
+
+		"buildWinX110": "Kompilacja X11 przez Windows",
+		"buildWinX111": "Zaufaj mi, to nie jest wcale łatwa piłka. Wykonanie tego z poziomu Windows jest możliwe, lecz bardzo ciężkie do skonfigurowania. Masz dwie łatwiejsze opcje: instalacja WSL albo VirtualBox. Jeśli jestem zupełnym początkującym polecałbym Ci instalację Ubuntu na VirtualBox. Znajdziesz miliony poradników na YouTube jak to zrobić. Następnie kieruj się krokami kompilacji X11 z poziomu systemu Linux.",
+
+		"buildX11X110": "Kompilacja X11 przez Linux",
+		"buildX11X111": "Na początku musisz zainstalować wszystkie potrzebne biblioteki i funkcje. Komenda jaką użyjesz będzie różniła się mocno w zależności od używanej przez Ciebie dystrybucji. Wszystkie polecenia które podaję są przygotowane dla systemów opartych na Debian/Ubuntu. W zależności od systemu różnić się będą menedżer oraz nazwy pakietów. Najprostszym sposobem na dostosowanie pakietów dla Ciebie będzie użycie SI albo przesurfowanie repozytoriów twojego menedżera pakietów.",
+		"buildX11X112": "Aby zainstalować wszystkie potrzebne składniki użyj polecenia:",
+		"buildX11X113": "Następnie znawiguj do głównej ścieżki swojego projektu (z plikiem `CMakeLists.txt`) i użyj komend:",
+		"buildX11X114": "Jeżeli wszystko poszło poprawnie znajdziesz plik wykonywalny w ścieżce 'build/x11'. Jeśli nie twoja konsola poinformuje cię o tym.",
+
+		"buildX11Win0": "Kompilacja WIN przez Linux",
+		"buildX11Win1": "Najpierw zapoznaj się z kompilacją X11 na Linux. Aby zainstalować wszystkie potrzebne pakiety użyj polecenia:",
+		"buildX11Win2": "Następnie znawiguj do głównego folderu swojego projektu (z plikiem `CMakeLists.txt`) i użyj poleceń:",
+		"buildX11Win3": "Jeżeli wszystko poszło zgodnie z planem znajdziesz plik '.exe' w ścieżce 'build/win'. Jeśli nie twoja konsola poinformuje cię błędami."
 	}
 }
 </script>

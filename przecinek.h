@@ -1,8 +1,8 @@
 /****************************************************
 *       |\____/|
 *       |      | github.com/CiupagaPL/Przecinek
-*  __   | >  < | original {,} copyright 2025-2026
-* /  \__\ =, = /
+*  __   | >  < | original {,} library
+* /  \__\ =, = / copyright 2025-2026
 * \__         /
 *    \ \____\ \
 *    {,{,} {,},}
@@ -44,8 +44,8 @@ extern "C"{
 	#define PRZECINEK_STABLE_BRANCH L"a"
 	#define PRZECINEK_STABLE_MAJOR 6
 	#define PRZECINEK_STABLE_MINOR 1
-	#define PRZECINEK_STABLE_PATCH L"a"
-	#define PRZECINEK_UNSTABLE 24
+	#define PRZECINEK_STABLE_PATCH L"b"
+	#define PRZECINEK_UNSTABLE 25
 
 	// Frame limit for all windows
 	// Value higher than `480` is very unsafe!

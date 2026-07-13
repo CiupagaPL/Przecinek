@@ -1,16 +1,16 @@
-![Przecinek](https://github.com/CiupagaPL/CiupagaPL/blob/main/src/Przecinek.png)
+![Przecinek](https://github.com/ciupagacz/ciupagacz/blob/main/src/Przecinek.png)
 
 <div align="center">
     branch:
-    <a href="https://github.com/CiupagaPL/Przecinek/tree/stable">[stable]</a>
-    <a href="https://github.com/CiupagaPL/Przecinek/tree/unstable">[unstable]</a>
+    <a href="https://github.com/ciupagacz/przecinek/tree/stable">[stable]</a>
+    <a href="https://github.com/ciupagacz/przecinek/tree/unstable">[unstable]</a>
 </div>
 
 ### About the project
 
 **Przecinek is a small multimedia library for Windows and Linux.**
 Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for **C**, but it can also be used with **C++**.<br>
-You can read more about it on the [wiki page](https://ciupagapl.github.io/Przecinek/).
+You can read more about it on the [wiki page](https://ciupagacz.github.io/przecinek/).
 
 ### Current features
 
@@ -51,14 +51,14 @@ Most of the planned features have already been implemented. I still plan to add 
 
 ### Newest branch version
 
-> Newest Version (Alpha): **[a6,1a]**;<br>
-> Newest Version (Unstable): **[u,24]**;<br>
-> Last Updated: **05-07-2026**;
+> Newest Version (Alpha): **[a6,1b]**;<br>
+> Newest Version (Unstable): **[u,25]**;<br>
+> Last Updated: **13-07-2026**;
 
 ### Project license
 
 ```
-Copyright(C) 2025-2026 Ciupaga
+Copyright(C) 2025-2026 ciupaga
 {,} PRZECINEK
 Custom License
 

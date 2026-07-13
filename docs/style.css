@@ -1,3 +1,13 @@
+/****************************************************
+*       |\____/|
+*       |      | github.com/CiupagaPL/Przecinek
+*  __   | >  < | original {,} wiki
+* /  \__\ =, = / copyright 2026
+* \__         /
+*    \ \____\ \
+*    {,{,} {,},}
+*****************************************************/
+
 :root{
 	--body-margin: 2vw;
 	--body-outside: 2vw;
@@ -51,10 +61,12 @@
 #navA.light{
 	border-color: #32323c;
 	background-color: #ffffff;
+	color: #32323c;
 }
 #navA.dark{
 	border-color: #ffffff;
 	background-color: #32323c;
+	color: #ffffff;
 }
 
 #logo{
@@ -62,11 +74,11 @@
 	height: 100%;
 
 	background-image: url(local/icon_red.png);
-	background-size: 80%;
+	background-size: 90%;
 	background-position: center;
 	background-repeat: no-repeat;
 }
-#logo:hover{ background-size: 90%; }
+#logo:hover{ background-size: 100%; }
 
 @keyframes logo{
 	0%{ transform: rotate(0deg); }
@@ -100,6 +112,13 @@
 #logo.red-green-off{ animation: logo-red-green 0s forwards; }
 #logo.green-blue-off{ animation: logo-green-blue 0s forwards; }
 #logo.blue-red-off{ animation: logo-blue-red 0s forwards; }
+
+#sub{
+	position: fixed;
+	transform: translate(-50%, -50%) rotate(-30deg);
+}
+#sub.light{ color: #32323c; }
+#sub.dark{ color: #ffffff; }
 
 #navB{
 	margin-left: var(--body-outside);
@@ -187,14 +206,13 @@
 #main>p{ font-size: 2.5vmin; }
 
 pre{
-	width: max-content;
+	width: content;
 	max-width: calc(100% - 2vw);
 	padding: var(--body-padding);
 
 	overflow-x: auto;
-    overflow-y: auto;
 
-	font-size: 18pt;
+	font-size: 2.75vmin;
 
 	background-color: #7d7d91;
 	color: #ffffff;
