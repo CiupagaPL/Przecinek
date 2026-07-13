@@ -1,8 +1,8 @@
 /****************************************************
 *       |\____/|
 *       |      | github.com/CiupagaPL/Przecinek
-*  __   | >  < | original {,} copyright 2025-2026
-* /  \__\ =, = /
+*  __   | >  < | original {,} library
+* /  \__\ =, = / copyright 2025-2026
 * \__         /
 *    \ \____\ \
 *    {,{,} {,},}
@@ -1046,7 +1046,10 @@ int8_t pUpdate(){
 			if(wcscmp(*build[ID].titlePoint, build[ID].titleW)!=0){
 				if(wcslen(*build[ID].titlePoint)<WINDOW_TITLE_LENGTH_MAX-1){
 					// Safely copy [build] [titlePoint] to the [titleW]
-					wmemcpy(build[ID].titleW, *build[ID].titlePoint, wcslen(*build[ID].titlePoint));
+					wmemcpy(
+						build[ID].titleW, *build[ID].titlePoint,
+						wcslen(*build[ID].titlePoint)
+					);
 					build[ID].titleW[wcslen(*build[ID].titlePoint)]=L'\0';
 
 					// Safely convert [build] [titleW] to the [title]
@@ -1128,7 +1131,9 @@ int8_t pUpdate(){
 
 		// Correct [currentFrameLimit] value
 		currentFrameLimit-=frameOverhead;
-		if(currentFrameLimit>=przecinek.frameLimit*3){ currentFrameLimit=przecinek.frameLimit*3; }
+		if(currentFrameLimit>=przecinek.frameLimit*3){
+			currentFrameLimit=przecinek.frameLimit*3;
+		}
 	}
 
 	// Update [przecinek] [frameCount] value
@@ -1163,20 +1168,46 @@ void pClear(){
 * \ = .= /
 *************************************/
 uint16_t pDebugKeySearch(const wchar_t *key){
-	if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){ return 1; }
-	if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){ return 2; }
-	if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){ return 3; }
-	if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){ return 4; }
-	if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){ return 5; }
+	if(wcscmp(key, L"LMOUSE")==0 || wcscmp(key, L"LMouse")==0 || wcscmp(key, L"lmouse")==0){
+		return 1;
+	}
+	if(wcscmp(key, L"MMOUSE")==0 || wcscmp(key, L"MMouse")==0 || wcscmp(key, L"mmouse")==0){
+		return 2;
+	}
+	if(wcscmp(key, L"RMOUSE")==0 || wcscmp(key, L"RMouse")==0 || wcscmp(key, L"rmouse")==0){
+		return 3;
+	}
+	if(wcscmp(key, L"BACK")==0 || wcscmp(key, L"Back")==0 || wcscmp(key, L"back")==0){
+		return 4;
+	}
+	if(wcscmp(key, L"FORWARD")==0 || wcscmp(key, L"Forward")==0 || wcscmp(key, L"forward")==0){
+		return 5;
+	}
 
-	if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){ return 9; }
-	if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){ return 23; }
-	if(wcscmp(key, L"CAPS")==0 || wcscmp(key, L"caps")==0 || wcscmp(key, L"Caps")==0){ return 66; }
-	if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){ return 50; }
-	if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){ return 37; }
-	if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){ return 133; }
-	if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){ return 64; }
-	if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){ return 65; }
+	if(wcscmp(key, L"ESC")==0 || wcscmp(key, L"esc")==0 || wcscmp(key, L"Esc")==0){
+		return 9;
+	}
+	if(wcscmp(key, L"TAB")==0 || wcscmp(key, L"tab")==0 || wcscmp(key, L"Tab")==0){
+		return 23;
+	}
+	if(wcscmp(key, L"CAPS")==0 || wcscmp(key, L"caps")==0 || wcscmp(key, L"Caps")==0){
+		return 66;
+	}
+	if(wcscmp(key, L"LSHIFT")==0 || wcscmp(key, L"lshift")==0 || wcscmp(key, L"LShift")==0){
+		return 50;
+	}
+	if(wcscmp(key, L"LCTRL")==0 || wcscmp(key, L"lctrl")==0 || wcscmp(key, L"LCtrl")==0){
+		return 37;
+	}
+	if(wcscmp(key, L"LMOD")==0 || wcscmp(key, L"lmod")==0 || wcscmp(key, L"LMod")==0){
+		return 133;
+	}
+	if(wcscmp(key, L"LALT")==0 || wcscmp(key, L"lalt")==0 || wcscmp(key, L"LAlt")==0){
+		return 64;
+	}
+	if(wcscmp(key, L"SPACE")==0 || wcscmp(key, L"space")==0 || wcscmp(key, L"Space")==0){
+		return 65;
+	}
 
 	if(wcscmp(key, L"F1")==0 || wcscmp(key, L"f1")==0){ return 67; }
 	if(wcscmp(key, L"F2")==0 || wcscmp(key, L"f2")==0){ return 68; }
@@ -1191,28 +1222,84 @@ uint16_t pDebugKeySearch(const wchar_t *key){
 	if(wcscmp(key, L"F11")==0 || wcscmp(key, L"f11")==0){ return 95; }
 	if(wcscmp(key, L"F12")==0 || wcscmp(key, L"f12")==0){ return 96; }
 
-	if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){ return 108; }
-	if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){ return 134; }
-	if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){ return 135; }
-	if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){ return 105; }
-	if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){ return 62; }
-	if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){ return 36; }
-	if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 || wcscmp(key, L"Backspace")==0){ return 22; }
+	if(wcscmp(key, L"RALT")==0 || wcscmp(key, L"ralt")==0 || wcscmp(key, L"RAlt")==0){
+		return 108;
+	}
+	if(wcscmp(key, L"RWIN")==0 || wcscmp(key, L"rwin")==0 || wcscmp(key, L"RWin")==0){
+		return 134;
+	}
+	if(wcscmp(key, L"MENU")==0 || wcscmp(key, L"menu")==0 || wcscmp(key, L"Menu")==0){
+		return 135;
+	}
+	if(wcscmp(key, L"RCTRL")==0 || wcscmp(key, L"rctrl")==0 || wcscmp(key, L"RCtrl")==0){
+		return 105;
+	}
+	if(wcscmp(key, L"RSHIFT")==0 || wcscmp(key, L"rshift")==0 || wcscmp(key, L"RShift")==0){
+		return 62;
+	}
+	if(wcscmp(key, L"ENTER")==0 || wcscmp(key, L"enter")==0 || wcscmp(key, L"Enter")==0){
+		return 36;
+	}
+	if(wcscmp(key, L"BACKSPACE")==0 || wcscmp(key, L"backspace")==0 ||
+		wcscmp(key, L"Backspace")==0){
 
-	if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 || wcscmp(key, L"LArrow")==0){ return 113; }
-	if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 || wcscmp(key, L"DArrow")==0){ return 116; }
-	if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 || wcscmp(key, L"RArrow")==0){ return 114; }
-	if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 || wcscmp(key, L"UArrow")==0){ return 111; }
+		return 22;
+	}
 
-	if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 || wcscmp(key, L"PrintScrn")==0){ return 107; }
-	if(wcscmp(key, L"SCROLLLOCK")==0 || wcscmp(key, L"scrolllock")==0 || wcscmp(key, L"ScrollLock")==0){ return 78; }
-	if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 || wcscmp(key, L"PauseBreak")==0){ return 127; }
-	if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){ return 118; }
-	if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){ return 110; }
-	if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){ return 112; }
-	if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){ return 119; }
-	if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){ return 115; }
-	if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){ return 117; }
+	if(wcscmp(key, L"LARROW")==0 || wcscmp(key, L"larrow")==0 ||
+			wcscmp(key, L"LArrow")==0){
+
+		return 113;
+	}
+	if(wcscmp(key, L"DARROW")==0 || wcscmp(key, L"darrow")==0 ||
+			wcscmp(key, L"DArrow")==0){
+
+		return 116;
+	}
+	if(wcscmp(key, L"RARROW")==0 || wcscmp(key, L"rarrow")==0 ||
+			wcscmp(key, L"RArrow")==0){
+
+		return 114;
+	}
+	if(wcscmp(key, L"UARROW")==0 || wcscmp(key, L"uarrow")==0 ||
+			wcscmp(key, L"UArrow")==0){
+
+		return 111;
+	}
+
+	if(wcscmp(key, L"PRINTSCRN")==0 || wcscmp(key, L"printscrn")==0 ||
+			wcscmp(key, L"PrintScrn")==0){
+
+		return 107;
+	}
+	if(wcscmp(key, L"SCROLLLOCK")==0 || wcscmp(key, L"scrolllock")==0 ||
+			wcscmp(key, L"ScrollLock")==0){
+
+		return 78;
+	}
+	if(wcscmp(key, L"PAUSEBREAK")==0 || wcscmp(key, L"pausebreak")==0 ||
+			wcscmp(key, L"PauseBreak")==0){
+
+		return 127;
+	}
+	if(wcscmp(key, L"INS")==0 || wcscmp(key, L"ins")==0 || wcscmp(key, L"Ins")==0){
+		return 118;
+	}
+	if(wcscmp(key, L"HOME")==0 || wcscmp(key, L"home")==0 || wcscmp(key, L"Home")==0){
+		return 110;
+	}
+	if(wcscmp(key, L"PAGEU")==0 || wcscmp(key, L"pageu")==0 || wcscmp(key, L"PageU")==0){
+		return 112;
+	}
+	if(wcscmp(key, L"DEL")==0 || wcscmp(key, L"del")==0 || wcscmp(key, L"Del")==0){
+		return 119;
+	}
+	if(wcscmp(key, L"END")==0 || wcscmp(key, L"end")==0 || wcscmp(key, L"End")==0){
+		return 115;
+	}
+	if(wcscmp(key, L"PAGED")==0 || wcscmp(key, L"paged")==0 || wcscmp(key, L"PageD")==0){
+		return 117;
+	}
 
 	if(wcscmp(key, L"Q")==0 || wcscmp(key, L"q")==0){ return 24; }
 	if(wcscmp(key, L"W")==0 || wcscmp(key, L"w")==0){ return 25; }
@@ -1704,7 +1791,10 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Warning]\n");
 			printf("Value of window.width is too small!\n");
-			printf("Value of window.width was changed from %i to %i,\n", width, WINDOW_WIDTH_MIN);
+			printf(
+				"Value of window.width was changed from %i to %i,\n",
+				width, WINDOW_WIDTH_MIN
+			);
 			fflush(stdout);
 		}
 
@@ -1715,7 +1805,10 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Warning]\n");
 			printf("Value of window.width is too large!\n");
-			printf("Value of window.width was changed from %i to %i,\n", width, WINDOW_WIDTH_MAX);
+			printf(
+				"Value of window.width was changed from %i to %i,\n",
+				width, WINDOW_WIDTH_MAX
+			);
 			fflush(stdout);
 		}
 
@@ -1728,7 +1821,10 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Warning]\n");
 			printf("Value of window.height is too small!\n");
-			printf("Value of window.height was changed from %i to %i,\n", height, WINDOW_HEIGHT_MIN);
+			printf(
+				"Value of window.height was changed from %i to %i,\n",
+				height, WINDOW_HEIGHT_MIN
+			);
 			fflush(stdout);
 		}
 
@@ -1739,7 +1835,10 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 		if(przecinek.debug==true){
 			printf("[pWindowCreate() Warning]\n");
 			printf("Value of window.height is too large!\n");
-			printf("Value of window.height was changed from %i to %i,\n", height, WINDOW_HEIGHT_MAX);
+			printf(
+				"Value of window.height was changed from %i to %i,\n",
+				height, WINDOW_HEIGHT_MAX
+			);
 			fflush(stdout);
 		}
 
@@ -1964,7 +2063,8 @@ int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resi
 	);
 
 	// Create and initialize [build] [buffer]
-	build[window->ID].buffer=glXCreateContext(build[window->ID].display, visual, buffer, GL_TRUE);
+	build[window->ID].buffer=
+		glXCreateContext(build[window->ID].display, visual, buffer, GL_TRUE);
 	glXMakeCurrent(build[window->ID].display, build[window->ID].base, build[window->ID].buffer);
 
 	// Setup [build] [buffer]
@@ -2143,8 +2243,10 @@ int8_t pWindowDrawObject(pWindow *window, pObject *object, pColor *color, pImage
 		// Use `COLOR_DEFAULT_FOREGROUND` for rendering
 		if(image==NULL){
 			glColor4f(
-				(float)COLOR_DEFAULT_FOREGROUND.red/255, (float)COLOR_DEFAULT_FOREGROUND.green/255,
-				(float)COLOR_DEFAULT_FOREGROUND.blue/255, (float)COLOR_DEFAULT_FOREGROUND.alpha/255
+				(float)COLOR_DEFAULT_FOREGROUND.red/255,
+				(float)COLOR_DEFAULT_FOREGROUND.green/255,
+				(float)COLOR_DEFAULT_FOREGROUND.blue/255,
+				(float)COLOR_DEFAULT_FOREGROUND.alpha/255
 			);
 		}
 		else{ glColor4f(1.0, 1.0, 1.0, 1.0); }
@@ -4414,7 +4516,10 @@ int8_t pTextCreate(pText *text, uint16_t length, const wchar_t *value){
 		if(przecinek.debug==true){
 			printf("[pTextCreate() Warning]\n");
 			printf("Value of the text.length is too small!\n");
-			printf("Value of the text.length was changed from %i to %i,\n", length, TEXT_LENGTH_MIN);
+			printf(
+				"Value of the text.length was changed from %i to %i,\n",
+				length, TEXT_LENGTH_MIN
+			);
 			fflush(stdout);
 		}
 

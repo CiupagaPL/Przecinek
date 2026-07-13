@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.5)
 
 if(POLICY CMP0069)
 	cmake_policy(SET CMP0069 NEW)
@@ -9,9 +9,6 @@ endif()
 
 project(debug VERSION 0.0.0 LANGUAGES C CXX)
 
-option(win "win" OFF)
-option(x11 "x11" OFF)
-
 set(CODE "debug.c")
 set(HEADERS "")
 
@@ -19,7 +16,7 @@ set(PRZECINEK "przecinek.h")
 set(PRZECINEK_WIN "src/win.c")
 set(PRZECINEK_X11 "src/x11.c")
 
-if(x11)
+if(UNIX)
 	add_executable(
 		${PROJECT_NAME} ${PRZECINEK} ${PRZECINEK_X11}
 		${CODE} ${HEADERS}
@@ -44,6 +41,8 @@ if(x11)
 
 	target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 	target_link_options(${PROJECT_NAME} PRIVATE -flto -static-libgcc -static-libstdc++)
+
+	add_compile_options(-Wall -Werror)
 else()
 	add_executable(
 		${PROJECT_NAME} ${PRZECINEK} ${PRZECINEK_WIN}
@@ -87,6 +86,10 @@ else()
 			-static -static-libgcc -static-libstdc++
 		)
 	endif()
-endif()
 
-add_compile_options(-Wall -Werror)
+	if(MSVC)
+		add_compile_options(/W4 /WX)
+	else()
+		add_compile_options(-Wall -Werror)
+	endif()
+endif()

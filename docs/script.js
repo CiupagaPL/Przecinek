@@ -1,4 +1,14 @@
-// Setup [localStorage]
+/****************************************************
+*       |\____/|
+*       |      | github.com/CiupagaPL/Przecinek
+*  __   | >  < | original {,} wiki
+* /  \__\ =, = / copyright 2026
+* \__         /
+*    \ \____\ \
+*    {,{,} {,},}
+*****************************************************/
+
+// Setup global [localStorage]
 if(localStorage.getItem("animation")===null){
 	// Create [localStorage] `animation`
 	localStorage.setItem("animation", "true");
@@ -28,6 +38,13 @@ const navA=document.getElementById("navA");
 
 // Create and load [logo] from HTML
 const logo=document.getElementById("logo");
+
+// Create and calculate [random]
+const random=Math.floor(Math.random()*22);
+
+// Create, load and setup [sub] from HTML
+const sub=document.getElementById("sub");
+sub.dataset.key="random"+random;
 
 // Create and load [navB] from HTML
 const navB=document.getElementById("navB");
@@ -66,6 +83,9 @@ if(light==="true"){
 	navA.classList.add("light");
 	navB.classList.add("light");
 
+	// Set [sub] colorscheme
+	sub.classList.add("light");
+
 	// Set [animationsSetting] colorscheme
 	animationsSetting.classList.add("light");
 	// Set [themeSetting] colorscheme
@@ -84,6 +104,9 @@ else{
 	navA.classList.add("dark");
 	navB.classList.add("dark");
 
+	// Set [sub] colorscheme
+	sub.classList.add("dark");
+
 	// Set [animationsSetting] colorscheme
 	animationsSetting.classList.add("dark");
 	// Set [themeSetting] colorscheme
@@ -95,12 +118,12 @@ else{
 	main.classList.add("dark");
 }
 
-/****************************************************************
-* |\_____/| refreshButtons()
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| refreshButtons()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 function refreshButtons(){
 	// Create and calculate local [position] for [animationsSetting]
 	let position=animationsSetting.innerHTML.indexOf(": ")
@@ -125,12 +148,30 @@ function refreshButtons(){
 	else{ themeSetting.innerHTML+="☽"; }
 }
 
-/****************************************************************
-* |\_____/| changeLanguage()
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| refreshSub()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
+function refreshSub(){
+	// Create and calculate local [left], [top] and [size]
+	const left=10;
+	const top=(sub.innerHTML.length*11)/21;
+	const size=(21*1.35)/sub.innerHTML.length;
+
+	// Update [sub] position and size
+	sub.style.marginLeft=left+"vw";
+	sub.style.marginTop=top+(size-1.35)+"vw";
+	sub.style.fontSize=size+"vw";
+}
+
+/************************************
+* |\____/| changeLanguage()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 function changeLanguage(){
     // Scan each `data-key`
     document.querySelectorAll("[data-key]").forEach(current=>{
@@ -148,17 +189,20 @@ function changeLanguage(){
 
 	// Refresh buttons values
 	refreshButtons();
+
+	// Refresh [sub] position and size
+	refreshSub();
 }
 
 // Run on start
 changeLanguage();
 
-/****************************************************************
-* |\_____/| animationsPress()
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| animationsPress()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 function animationsPress(){
 	if(animation==="true"){
 		// Update [animation] and [localStorage]
@@ -215,12 +259,12 @@ function animationsPress(){
 	refreshButtons();
 }
 
-/****************************************************************
-* |\_____/| themePress()
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| themePress()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 function themePress(){
 	if(light==="true"){
 		// Update [light] and [localStorage]
@@ -236,6 +280,10 @@ function themePress(){
 		navA.classList.remove("light");
 		navB.classList.add("dark");
 		navB.classList.remove("light");
+
+		// Change [sub] colorscheme
+		sub.classList.add("dark");
+		sub.classList.remove("light");
 
 		// Change [animationsSetting] colorscheme
 		animationsSetting.classList.add("dark");
@@ -266,6 +314,10 @@ function themePress(){
 		navB.classList.add("light");
 		navB.classList.remove("dark");
 
+		// Change [sub] colorscheme
+		sub.classList.add("light");
+		sub.classList.remove("dark");
+
 		// Change [animationsSetting] colorscheme
 		animationsSetting.classList.add("light");
 		animationsSetting.classList.remove("dark");
@@ -285,12 +337,12 @@ function themePress(){
 	changeLanguage();
 }
 
-/****************************************************************
-* |\_____/| languagePress()
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| languagePress()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 function languagePress(){
 	if(language==="en"){
 		// Update [language] and [localStorage]
@@ -310,12 +362,12 @@ function languagePress(){
 	}
 }
 
-/****************************************************************
-* |\_____/| logo.addEventListener("mouseenter")
-* | .     |
-* |     . |
-* \ = , = /
-****************************************************************/
+/************************************
+* |\____/| logo.addEventListener-
+* |      | -("mouseenter")
+* | o  o | [JS]
+* \ = .= /
+*************************************/
 logo.addEventListener("mouseenter", ()=>{
 	if(logo.classList.contains("red-green-on")===true){
 		// Change [logo] animation
