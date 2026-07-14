@@ -51,8 +51,8 @@ Most of the planned features have already been implemented. I still plan to add 
 
 ### Current branch version
 
-> Newest stable version: **a6,1d**<br>
-> Newest unstable version: **u,27**<br>
+> Newest stable version: **a6,1e**<br>
+> Newest unstable version: **u,28**<br>
 > Last updated: **14-07-2026**
 
 ### Project license
