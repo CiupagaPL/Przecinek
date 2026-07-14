@@ -1,3 +1,13 @@
+#[[*************************************************
+*       |\____/|
+*       |      | example file used for compiling
+*  __   | c  c | not covered by the license!!
+* /  \__\ =, = /
+* \__         /
+*    \ \____\ \
+*    {,{,} {,},}
+**************************************************]]
+
 cmake_minimum_required(VERSION 3.5)
 
 if(POLICY CMP0069)
