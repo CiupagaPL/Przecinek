@@ -44,8 +44,8 @@ extern "C"{
 	#define PRZECINEK_STABLE_BRANCH L"a"
 	#define PRZECINEK_STABLE_MAJOR 6
 	#define PRZECINEK_STABLE_MINOR 1
-	#define PRZECINEK_STABLE_PATCH L"c"
-	#define PRZECINEK_UNSTABLE 26
+	#define PRZECINEK_STABLE_PATCH L"d"
+	#define PRZECINEK_UNSTABLE 27
 
 	// Frame limit for all windows
 	// Value higher than `480` is very unsafe!
