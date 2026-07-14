@@ -164,11 +164,12 @@ body{
 }
 
 #main{
-	bottom: 0;
+	top: 0;
 	right: 0;
 	width: var(--main-width);
-	height: calc(100vh - var(--main-padding) * 2);
-	padding: var(--main-padding);
+	height: 100vh;
+	padding-left: var(--main-padding);
+	padding-right: var(--main-padding);
 	font-size: 2.5vmin;
 
 	position: absolute;
