@@ -1,3 +1,13 @@
+#[[*************************************************
+*       |\____/|
+*       |      | example file used for compiling
+*  __   | c  c | not covered by the license!!
+* /  \__\ =, = /
+* \__         /
+*    \ \____\ \
+*    {,{,} {,},}
+**************************************************]]
+
 set(CMAKE_SYSTEM_NAME Windows)
 
 set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)

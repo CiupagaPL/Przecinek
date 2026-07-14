@@ -1,12 +1,8 @@
-<!--
-github.com/CiupagaPL/Przecinek
-original {,} wiki
-copyright 2026
--->
+<!-- github.com/CiupagaPL/Przecinek original {,} wiki copyright 2026 -->
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Wiki</title>
+	<title>wiki</title>
 
 	<meta name="description" content="przecinek docs">
 	<meta name="author" content="ciupagacz">
@@ -17,79 +13,83 @@ copyright 2026
 	<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@500" rel="stylesheet">
 </head>
 
-<body id="body">
-	<nav id="navA">
+<body>
+	<nav id="navBack"></nav>
+	<nav id="navFront">
 		<a id="logo" href="https://github.com/ciupagacz/przecinek"></a>
-	</nav>
-	<p id="sub"></p>
 
-	<nav id="navB">
-		<b data-key="settings"></b>
-		<span></span>
+		<i data-key="settings"></i>
+		<div></div>
 
 		<button
 			data-key="animationsButton" onclick="animationsPress()" id="animationsSetting">
 		</button>
-		<span></span>
+		<div></div>
 
 		<button
 			data-key="themeButton" onclick="themePress()" id="themeSetting">
 		</button>
-		<span></span>
+		<div></div>
 
 		<button
-			data-key="languageButton" onclick="languagePress()" id="languageSetting">
+			data-key="languageButton" onclick="languagePress()">
 		</button>
-		<span></span>
-		<span></span>
+		<div></div>
 
-		<b data-key="sections"></b>
-		<span></span>
+		<button
+			data-key="scaleButton" onclick="scalePress()" id="scaleSetting">
+		</button>
+		<div> <p></p> </div>
+
+		<i data-key="sections"></i>
+		<div></div>
 
 		<details>
 			<summary data-key="about"></summary>
 
 			<a data-key="aboutBase0" href="#aboutBase"></a>
-			<span></span>
+			<div></div>
 
 			<a data-key="aboutWiki0" href="#aboutWiki"></a>
-			<span></span>
+			<div></div>
 
 			<a data-key="aboutLicense0" href="#aboutLicense"></a>
 		</details>
-		<span></span>
+		<div></div>
 
 		<details>
 			<summary data-key="build"></summary>
 
 			<a data-key="buildWinWin0" href="#buildWinWin"></a>
-			<span></span>
+			<div></div>
 
 			<a data-key="buildWinX110" href="#buildWinX11"></a>
-			<span></span>
+			<div></div>
 
 			<a data-key="buildX11X110" href="#buildX11X11"></a>
-			<span></span>
+			<div></div>
 
 			<a data-key="buildX11Win0" href="#buildX11Win"></a>
 		</details>
 	</nav>
+	<p id="sub"></p>
 
 	<main id="main">
-		<h1 data-key="about"></h1>
+		<b data-key="about"></b>
+		<hr>
 
-		<h2 data-key="aboutBase0" id="aboutBase"></h2>
+		<i data-key="aboutBase0" id="aboutBase"></i>
 		<p data-key="aboutBase1"></p>
 		<p data-key="aboutBase2"></p>
 		<p data-key="aboutBase3"></p>
 
-		<h2 data-key="aboutWiki0" id="aboutWiki"></h2>
+		<i data-key="aboutWiki0" id="aboutWiki"></i>
 		<p data-key="aboutWiki1"></p>
 		<p data-key="aboutWiki2"></p>
 		<p data-key="aboutWiki3"></p>
 		<p data-key="aboutWiki4"></p>
 
-		<h2 data-key="aboutLicense0" id="aboutLicense"></h2>
+		<i data-key="aboutLicense0" id="aboutLicense"></i>
 <pre>
 Copyright(C) 2026 ciupaga
 {,} PRZECINEK WIKI
@@ -117,9 +117,10 @@ This website is provided "as-is" without any warranties. The author
 is not liable for any damages arising from its use.
 </pre>
 
-		<h1 data-key="build"></h1>
+		<b data-key="build"></b>
+		<hr>
 
-		<h2 data-key="buildWinWin0" id="buildWinWin"></h2>
+		<i data-key="buildWinWin0" id="buildWinWin"></i>
 		<p data-key="buildWinWin1"></p>
 		<p data-key="buildWinWin2"></p>
 		<p data-key="buildWinWin3"></p>
@@ -199,10 +200,10 @@ $ ninja -C build/win
 
 		<p data-key="buildWinWin16"></p>
 
-		<h2 data-key="buildWinX110" id="buildWinX11"></h2>
+		<i data-key="buildWinX110" id="buildWinX11"></i>
 		<p data-key="buildWinX111"></p>
 
-		<h2 data-key="buildX11X110" id="buildX11X11"></h2>
+		<i data-key="buildX11X110" id="buildX11X11"></i>
 		<p data-key="buildX11X111"></p>
 		<p data-key="buildX11X112"></p>
 
@@ -228,7 +229,7 @@ $ ninja -C build/x11
 
 		<p data-key="buildX11X114"></p>
 
-		<h2 data-key="buildX11Win0" id="buildX11Win"></h2>
+		<i data-key="buildX11Win0" id="buildX11Win"></i>
 		<p data-key="buildX11Win1"></p>
 
 <pre>
@@ -252,36 +253,40 @@ $ ninja -C build/win
 <script type="application/json" id="data">
 {
 	"en":{
-		"random0": "tbd",
-		"random1": "tbd",
-		"random2": "tbd",
-		"random3": "tbd",
-		"random4": "tbd",
-		"random5": "tbd",
-		"random6": "tbd",
-		"random7": "tbd",
-		"random8": "tbd",
-		"random9": "tbd",
-		"random10": "tbd",
-		"random11": "tbd",
-		"random12": "tbd",
-		"random13": "tbd",
-		"random14": "tbd",
-		"random15": "tbd",
-		"random16": "tbd",
-		"random17": "tbd",
-		"random18": "tbd",
-		"random19": "tbd",
-		"random20": "tbd",
-		"random21": "tbd",
-		"random22": "tbd",
+		"random0": "coming soon",
+		"random1": "coming soon",
+		"random2": "coming soon",
+		"random3": "coming soon",
+		"random4": "coming soon",
+		"random5": "coming soon",
+		"random6": "coming soon",
+		"random7": "coming soon",
+		"random8": "coming soon",
+		"random9": "coming soon",
+		"random10": "coming soon",
+		"random11": "coming soon",
+		"random12": "coming soon",
+		"random13": "coming soon",
+		"random14": "coming soon",
+		"random15": "coming soon",
+		"random16": "coming soon",
+		"random17": "coming soon",
+		"random18": "coming soon",
+		"random19": "coming soon",
+		"random20": "coming soon",
+		"random21": "coming soon",
+		"random22": "coming soon",
+		"random23": "coming soon",
+		"random24": "coming soon",
+		"random25": "coming soon",
 
 		"settings": "Settings",
 		"sections": "Sections",
 
-		"animationsButton": "Animations: ",
-		"themeButton": "Theme: ",
-		"languageButton": "Language: en",
+		"animationsButton": "Animations>",
+		"themeButton": "Theme>",
+		"languageButton": "Language>en",
+		"scaleButton": "Scale>",
 
 		"about": "About",
 
@@ -292,16 +297,16 @@ $ ninja -C build/win
 
 		"aboutWiki0": "About Wiki",
 		"aboutWiki1": "",
-		"aboutWiki2": "Last updated stable version: [a6,1b];",
-		"aboutWiki3": "Last updated unstable version: [u,25];",
-		"aboutWiki4": "Last update: 13-07-2026;",
+		"aboutWiki2": "Last updated stable version: a6,1c",
+		"aboutWiki3": "Last updated unstable version: u,26",
+		"aboutWiki4": "Last update: 14-07-2026",
 
 		"aboutLicense0": "Site license",
 		"aboutLicense1": "TBD",
 
 		"build": "Building project",
 
-		"buildWinWin0": "",
+		"buildWinWin0": "Compiling win using Windows",
 		"buildWinWin1": "",
 		"buildWinWin2": "",
 		"buildWinWin3": "",
@@ -319,16 +324,16 @@ $ ninja -C build/win
 		"buildWinWin15": "",
 		"buildWinWin16": "",
 
-		"buildWinX110": "",
+		"buildWinX110": "Compiling x11 using Windows",
 		"buildWinX111": "",
 
-		"buildX11X110": "",
+		"buildX11X110": "Compiling x11 using Linux",
 		"buildX11X111": "",
 		"buildX11X112": "",
 		"buildX11X113": "",
 		"buildX11X114": "",
 
-		"buildX11Win0": "",
+		"buildX11Win0": "Compiling win using Linux",
 		"buildX11Win1": "",
 		"buildX11Win2": "",
 		"buildX11Win3": ""
@@ -337,33 +342,37 @@ $ ninja -C build/win
 		"random0": "simple text here",
 		"random1": "najukochańszy kociak",
 		"random2": "włożone 100% <3",
-		"random3": "w 95% bezbłędny**",
+		"random3": "w 90% bezbłędny**",
 		"random4": "miau :3",
-		"random5": "zawsze elegancko",
-		"random6": "jedz warzywa!!",
-		"random7": "produkt wegański",
+		"random5": "elegancja-francja",
+		"random6": "produkt wegański",
+		"random7": "bez laktozy",
 		"random8": "nyan cat omggg",
 		"random9": "um... ser",
-		"random10": "wifi rekomendowane",
+		"random10": "zalecane wifi",
 		"random11": ".gitignore",
-		"random12": "nowy c++ to lekki syf",
-		"random13": "[r1,0] kiedy??",
-		"random14": "3d?? zapewne...",
-		"random15": "kocham mleko",
-		"random16": "bez laktozy",
-		"random17": "100% c inside",
-		"random18": "spróbuj również csfml",
-		"random19": "baka baka baka",
-		"random20": "ccccc",
-		"random21": "tworzone z pasją",
-		"random22": "produkt polski",
+		"random12": "100% c inside",
+		"random13": "spróbuj również csfml",
+		"random14": "baka- baka- baka-",
+		"random15": "ccccc",
+		"random16": "tworzone z pasją",
+		"random17": "na 4 łapy!",
+		"random18": "pegi 7",
+		"random19": "heeeeeeej",
+		"random20": "nie taki trudny",
+		"random21": "w czym mogę pomóc?",
+		"random22": "mini biblioteka",
+		"random23": "mp3, wiem >.<",
+		"random24": "3d? zapewne tak",
+		"random25": ".[oo]'",
 
 		"settings": "Ustawienia",
 		"sections": "Sekcje",
 
-		"animationsButton": "Animacje: ",
-		"themeButton": "Motyw: ",
-		"languageButton": "Język: pl",
+		"animationsButton": "Animacje>",
+		"themeButton": "Motyw>",
+		"languageButton": "Język>pl",
+		"scaleButton": "Skala>",
 
 		"about": "Wstęp",
 
@@ -373,16 +382,16 @@ $ ninja -C build/win
 		"aboutBase3": "Przecinek posiada rozbudowany system błędów, dzięki czemu użytkownik nie dostanie natychmiastowego wycieku pamięci po drobnym błędzie. Jest zbudowany tak, by być jak najmocniej zoptymalizowanym i przyjaznym dla użytkownika. Nie trzeba dostosowywać kodu pod każdy system operacyjny - Przecinek został stworzony, by ten sam kod działał na Windows i Linux. Dodatkowo kod Przecinka jest udokumentowany od góry do dołu - by użytkownik chociaż w części mógł zrozumieć jak on działa i potencjalnie zmodyfikować go pod swoje potrzeby.",
 
 		"aboutWiki0": "Na temat wiki",
-		"aboutWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem [b1,0a].",
-		"aboutWiki2": "Ostatnia zaktualizowana wersja stabilna: [a6,1b];",
-		"aboutWiki3": "Ostatnia zaktualizowana wersja niestabilna: [u,25];",
-		"aboutWiki4": "Ostatnia aktualizacja: 13-07-2026;",
+		"aboutWiki1": "Strona dokumentacji jest już w pełni przygotowana, sama dokumentacja natomiast jest jeszcze daleko od ukończenia. Planuję ją w pełni wydać wraz z wyjściem b1,0a.",
+		"aboutWiki2": "Ostatnia zaktualizowana wersja stabilna: a6,1c",
+		"aboutWiki3": "Ostatnia zaktualizowana wersja niestabilna: u,26",
+		"aboutWiki4": "Ostatnia aktualizacja: 14-07-2026",
 
 		"aboutLicense0": "Licencja strony",
 
 		"build": "Budowa projektu",
 
-		"buildWinWin0": "Kompilacja WIN przez Windows",
+		"buildWinWin0": "Kompilacja win przez Windows",
 		"buildWinWin1": "O ile sposobów na kompilacje istnieje mnóstwo najbardziej rekomendował bym zrobienie tego przez konsolę (nie panikuj, zaraz wszystko wyjaśnię). Konfiguracja kompilatora przez Visual Studio jest ciężka ze względu na potrzebę zainstalowania bibliotek ręcznie, a inne kompilatory zwykle potrzebują dużo dostosowywania wszystkiego pod siebie. Postaram się ciebie poprowadzić po tym krok po kroku. Oczywiście jeżeli jesteś chętny spróbować inne metody możesz to zrobić wzorując się istniejącym 'CMakeLists.txt'.",
 		"buildWinWin2": "Do budowy projektu silnie polecam użycie MSYS2 (bynajmniej ja tego używam :- PP). Zawiera on wiele często aktualizowanych pakietów (3700) których możecie użyć. Chociaż tutaj przyda nam się ich tylko kilka (pamiętamy o duchu minimalistyczności, tak?).",
 		"buildWinWin3": "Najpierw zainstaluj MSYS2 na swój system. Kieruj się krokami, które twórcy zamieścili na swojej stronie. Po instalacji uruchom 'MSYS2 MSYS'. Następnie zalecałbym zaktualizować pakiety, co możesz zrobić za pomocą:",
@@ -400,17 +409,17 @@ $ ninja -C build/win
 		"buildWinWin15": "Ścieżki po których nawigujesz są w pełni zintegrowane z twoim systemem, dlatego nie musisz aktualizować żadnych plików. Aby zbudować projekt wystarczy w folderze z plikiem 'CMakeLists.txt' wykonać:",
 		"buildWinWin16": "Teraz wystarczy otworzyć eksplorator plików, przejść do ścieżki 'build/win' wewnątrz twojego projektu i ła la! Jeżeli projekt został zbudowany pomyślnie zobaczysz plik '.exe'. W innym przypadku sprawdź błędy ukazane w konsoli.",
 
-		"buildWinX110": "Kompilacja X11 przez Windows",
-		"buildWinX111": "Zaufaj mi, to nie jest wcale łatwa piłka. Wykonanie tego z poziomu Windows jest możliwe, lecz bardzo ciężkie do skonfigurowania. Masz dwie łatwiejsze opcje: instalacja WSL albo VirtualBox. Jeśli jestem zupełnym początkującym polecałbym Ci instalację Ubuntu na VirtualBox. Znajdziesz miliony poradników na YouTube jak to zrobić. Następnie kieruj się krokami kompilacji X11 z poziomu systemu Linux.",
+		"buildWinX110": "Kompilacja x11 przez Windows",
+		"buildWinX111": "Zaufaj mi, to nie jest wcale łatwa piłka. Wykonanie tego z poziomu Windows jest możliwe, lecz bardzo ciężkie do skonfigurowania. Masz dwie łatwiejsze opcje: instalacja WSL albo VirtualBox. Jeśli jestem zupełnym początkującym polecałbym Ci instalację Ubuntu na VirtualBox. Znajdziesz miliony poradników na YouTube jak to zrobić. Następnie kieruj się krokami kompilacji x11 z poziomu systemu Linux.",
 
-		"buildX11X110": "Kompilacja X11 przez Linux",
+		"buildX11X110": "Kompilacja x11 przez Linux",
 		"buildX11X111": "Na początku musisz zainstalować wszystkie potrzebne biblioteki i funkcje. Komenda jaką użyjesz będzie różniła się mocno w zależności od używanej przez Ciebie dystrybucji. Wszystkie polecenia które podaję są przygotowane dla systemów opartych na Debian/Ubuntu. W zależności od systemu różnić się będą menedżer oraz nazwy pakietów. Najprostszym sposobem na dostosowanie pakietów dla Ciebie będzie użycie SI albo przesurfowanie repozytoriów twojego menedżera pakietów.",
 		"buildX11X112": "Aby zainstalować wszystkie potrzebne składniki użyj polecenia:",
 		"buildX11X113": "Następnie znawiguj do głównej ścieżki swojego projektu (z plikiem `CMakeLists.txt`) i użyj komend:",
 		"buildX11X114": "Jeżeli wszystko poszło poprawnie znajdziesz plik wykonywalny w ścieżce 'build/x11'. Jeśli nie twoja konsola poinformuje cię o tym.",
 
-		"buildX11Win0": "Kompilacja WIN przez Linux",
-		"buildX11Win1": "Najpierw zapoznaj się z kompilacją X11 na Linux. Aby zainstalować wszystkie potrzebne pakiety użyj polecenia:",
+		"buildX11Win0": "Kompilacja x11 przez Linux",
+		"buildX11Win1": "Najpierw zapoznaj się z kompilacją x11 na Linux. Aby zainstalować wszystkie potrzebne pakiety użyj polecenia:",
 		"buildX11Win2": "Następnie znawiguj do głównego folderu swojego projektu (z plikiem `CMakeLists.txt`) i użyj poleceń:",
 		"buildX11Win3": "Jeżeli wszystko poszło zgodnie z planem znajdziesz plik '.exe' w ścieżce 'build/win'. Jeśli nie twoja konsola poinformuje cię błędami."
 	}

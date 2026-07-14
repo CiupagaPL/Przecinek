@@ -9,7 +9,7 @@
 ### About the project
 
 **Przecinek is a small multimedia library for Windows and Linux.**
-Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for **C**, but it can also be used with **C++**.<br>
+Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.<br>
 You can read more about it on the [wiki page](https://ciupagacz.github.io/przecinek/).
 
 ### Current features
@@ -49,11 +49,11 @@ Most of the planned features have already been implemented. I still plan to add 
 | [PNG library](https://www.libpng.org/pub/png/pngdocs.html)                                     | *x11* |
 | [JPEG turbo library](https://libjpeg-turbo.org/)                                               | *x11* |
 
-### Newest branch version
+### Current branch version
 
-> Newest Version (Alpha): **[a6,1b]**;<br>
-> Newest Version (Unstable): **[u,25]**;<br>
-> Last Updated: **13-07-2026**;
+> Newest stable version: **a6,1c**<br>
+> Newest unstable version: **u,26**<br>
+> Last updated: **14-07-2026**
 
 ### Project license
 

@@ -44,8 +44,8 @@ extern "C"{
 	#define PRZECINEK_STABLE_BRANCH L"a"
 	#define PRZECINEK_STABLE_MAJOR 6
 	#define PRZECINEK_STABLE_MINOR 1
-	#define PRZECINEK_STABLE_PATCH L"b"
-	#define PRZECINEK_UNSTABLE 25
+	#define PRZECINEK_STABLE_PATCH L"c"
+	#define PRZECINEK_UNSTABLE 26
 
 	// Frame limit for all windows
 	// Value higher than `480` is very unsafe!
@@ -79,7 +79,7 @@ extern "C"{
 
 	// Window default title
 	// String longer than `254` chars is very unsafe!
-	#define WINDOW_TITLE_DEF L"{,} Window"
+	#define WINDOW_TITLE_DEF L"window"
 	// Window title maximal length
 	// Is decreased by `1` for NULL terminator
 	#define WINDOW_TITLE_LENGTH_MAX (uint8_t)255

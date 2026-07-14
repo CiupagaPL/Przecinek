@@ -21,38 +21,37 @@ if(localStorage.getItem("language")===null){
 	// Create [localStorage] `language`
 	localStorage.setItem("language", "pl");
 }
+if(localStorage.getItem("scale")===null){
+	// Create [localStorage] `scale`
+	localStorage.setItem("scale", "0");
+}
 
-// Create and load [animation], [light] and [language]
+// Create and load [animation], [light], [language] and [scale] values
 let animation=localStorage.getItem("animation"),
 	light=localStorage.getItem("light"),
-	language=localStorage.getItem("language");
+	language=localStorage.getItem("language"),
+	scale=localStorage.getItem("scale");
 
 // Create and load [icon] from HTML
 const icon=document.getElementById("icon");
 
-// Create and load [body] from HTML
-const body=document.getElementById("body");
+// Create and load [navBack] from HTML
+const navBack=document.getElementById("navBack");
 
-// Create and load [navA] from HTML
-const navA=document.getElementById("navA");
+// Create and load [navFront] from HTML
+const navFront=document.getElementById("navFront");
 
 // Create and load [logo] from HTML
 const logo=document.getElementById("logo");
 
-// Create and calculate [random]
-const random=Math.floor(Math.random()*22);
-
 // Create, load and setup [sub] from HTML
 const sub=document.getElementById("sub");
-sub.dataset.key="random"+random;
+sub.dataset.key="random"+Math.floor(Math.random()*26);
 
-// Create and load [navB] from HTML
-const navB=document.getElementById("navB");
-
-// Create and load local [animationsSetting], [themeSetting] and [languageSetting]
+// Create and load [animationsSetting], [themeSetting] and [scaleSetting]
 const animationsSetting=document.getElementById("animationsSetting");
 const themeSetting=document.getElementById("themeSetting");
-const languageSetting=document.getElementById("languageSetting");
+const scaleSetting=document.getElementById("scaleSetting");
 
 // Create and load [main] from HTML
 const main=document.getElementById("main");
@@ -61,62 +60,29 @@ const main=document.getElementById("main");
 const translation=JSON.parse(document.getElementById("data").textContent);
 
 if(animation==="true"){
-	// Setup [body] animation
-	body.classList.add("on");
-
 	// Setup [logo] animation
 	logo.classList.add("blue-red-on");
 }
 else{
-	// Disable [body] animation
-	body.classList.add("off");
+	// Disable [navBack] animation
+	navBack.classList.add("off");
 
 	// Disable [logo] animation
 	logo.classList.add("blue-red-off");
 }
 
-if(light==="true"){
-	// Set [body] colorscheme
-	body.classList.add("light");
-
-	// Set [navA] and [navB] colorscheme
-	navA.classList.add("light");
-	navB.classList.add("light");
-
-	// Set [sub] colorscheme
-	sub.classList.add("light");
-
-	// Set [animationsSetting] colorscheme
-	animationsSetting.classList.add("light");
-	// Set [themeSetting] colorscheme
-	themeSetting.classList.add("light");
-	// Set [languageSetting] colorscheme
-	languageSetting.classList.add("light");
-
-	// Set [main] colorscheme
-	main.classList.add("light");
-}
-else{
-	// Set [body] colorscheme
-	body.classList.add("dark");
-
-	// Set [navA] and [navB] colorscheme
-	navA.classList.add("dark");
-	navB.classList.add("dark");
-
-	// Set [sub] colorscheme
-	sub.classList.add("dark");
-
-	// Set [animationsSetting] colorscheme
-	animationsSetting.classList.add("dark");
-	// Set [themeSetting] colorscheme
-	themeSetting.classList.add("dark");
-	// Set [languageSetting] colorscheme
-	languageSetting.classList.add("dark");
+if(light==="false"){
+	// Set [navBack] and [navFront] colorscheme
+	navBack.classList.add("dark");
+	navFront.classList.add("dark");
 
 	// Set [main] colorscheme
 	main.classList.add("dark");
 }
+
+// Set [main] scale
+if(scale==="1"){ main.classList.add("scale2"); }
+else if(scale==="2"){ main.classList.add("scale3"); }
 
 /************************************
 * |\____/| refreshButtons()
@@ -126,10 +92,10 @@ else{
 *************************************/
 function refreshButtons(){
 	// Create and calculate local [position] for [animationsSetting]
-	let position=animationsSetting.innerHTML.indexOf(": ")
+	let position=animationsSetting.innerHTML.indexOf("&gt")
 	if(position!==(-1)){
 		// Cut [animationsSetting] text
-		animationsSetting.innerHTML=animationsSetting.innerHTML.slice(0, position+2)
+		animationsSetting.innerHTML=animationsSetting.innerHTML.slice(0, position+3)
 	}
 
 	// Update [document] [animations] based on [animation] value
@@ -137,15 +103,27 @@ function refreshButtons(){
 	else{ animationsSetting.innerHTML+="⨯"; }
 
 	// Calculate local [position] for [themeSetting]
-	position=themeSetting.innerHTML.indexOf(": ")
+	position=themeSetting.innerHTML.indexOf("&gt")
 	if(position!==(-1)){
 		// Cut [themeSetting] text
-		themeSetting.innerHTML=themeSetting.innerHTML.slice(0, position+2)
+		themeSetting.innerHTML=themeSetting.innerHTML.slice(0, position+3)
 	}
 
 	// Update [document] [theme] based on [light] value
 	if(light==="true"){ themeSetting.innerHTML+="☼"; }
 	else{ themeSetting.innerHTML+="☽"; }
+
+	// Calculate local [position] for [scaleSetting]
+	position=scaleSetting.innerHTML.indexOf("&gt")
+	if(position!==(-1)){
+		// Cut [scaleSetting] text
+		scaleSetting.innerHTML=scaleSetting.innerHTML.slice(0, position+3)
+	}
+
+	// Update [document] [theme] based on [light] value
+	if(scale==="0"){ scaleSetting.innerHTML+="1x"; }
+	else if(scale==="1"){ scaleSetting.innerHTML+="1.5x"; }
+	else{ scaleSetting.innerHTML+="2x"; }
 }
 
 /************************************
@@ -155,14 +133,15 @@ function refreshButtons(){
 * \ = .= /
 *************************************/
 function refreshSub(){
-	// Create and calculate local [left], [top] and [size]
-	const left=10;
-	const top=(sub.innerHTML.length*11)/21;
-	const size=(21*1.35)/sub.innerHTML.length;
+	// Create and calculate local [left], [top], [size] and [adjust]
+	const left=11;
+	const top=(sub.innerHTML.length*42)/21;
+	const size=(21*1.2)/sub.innerHTML.length;
+	const adjust=sub.innerHTML.length/5;
 
 	// Update [sub] position and size
 	sub.style.marginLeft=left+"vw";
-	sub.style.marginTop=top+(size-1.35)+"vw";
+	sub.style.marginTop=top+size-(8.5*(adjust-1))+"vw";
 	sub.style.fontSize=size+"vw";
 }
 
@@ -187,14 +166,14 @@ function changeLanguage(){
         }
     });
 
-	// Refresh buttons values
+	// Refresh buttons content
 	refreshButtons();
 
 	// Refresh [sub] position and size
 	refreshSub();
 }
 
-// Run on start
+// Update site content on start
 changeLanguage();
 
 /************************************
@@ -205,57 +184,52 @@ changeLanguage();
 *************************************/
 function animationsPress(){
 	if(animation==="true"){
-		// Update [animation] and [localStorage]
+		// Update [animation] value
 		animation="false";
-		localStorage.setItem("animation", animation);
 
-		// Disable [body] animation
-		body.classList.remove("on");
-		body.classList.add("off");
+		// Disable [navBack] animation
+		navBack.classList.add("off");
 
+		// Disable [logo] animation
 		if(logo.classList.contains("red-green-on")===true){
-			// Disable [logo] animation
 			logo.classList.remove("red-green-on");
 			logo.classList.add("red-green-off");
 		}
 		else if(logo.classList.contains("green-blue-on")===true){
-			// Disable [logo] animation
 			logo.classList.remove("green-blue-on");
 			logo.classList.add("green-blue-off");
 		}
 		else{
-			// Disable [logo] animation
 			logo.classList.remove("blue-red-on");
 			logo.classList.add("blue-red-off");
 		}
 	}
 	else{
-		// Update [animation] and [localStorage]
+		// Update [animation] value
 		animation="true";
-		localStorage.setItem("animation", animation);
 
-		// Enable [body] animation
-		body.classList.remove("off");
-		body.classList.add("on");
+		// Enable [navBack] animation
+		navBack.classList.remove("off");
 
+		// Enable [logo] animation
 		if(logo.classList.contains("red-green-off")===true){
-			// Enable [logo] animation
 			logo.classList.remove("red-green-off");
 			logo.classList.add("red-green-on");
 		}
 		else if(logo.classList.contains("green-blue-off")===true){
-			// Enable [logo] animation
 			logo.classList.remove("green-blue-off");
 			logo.classList.add("green-blue-on");
 		}
 		else{
-			// Enable [logo] animation
 			logo.classList.remove("blue-red-off");
 			logo.classList.add("blue-red-on");
 		}
 	}
 
-	// Refresh buttons values
+	// Update [localStorage]
+	localStorage.setItem("animation", animation);
+
+	// Refresh buttons content
 	refreshButtons();
 }
 
@@ -267,74 +241,33 @@ function animationsPress(){
 *************************************/
 function themePress(){
 	if(light==="true"){
-		// Update [light] and [localStorage]
+		// Update [light] value
 		light="false";
-		localStorage.setItem("light", light);
 
-		// Change [body] colorscheme
-		body.classList.add("dark");
-		body.classList.remove("light");
-
-		// Change [navA] and [navB] colorscheme
-		navA.classList.add("dark");
-		navA.classList.remove("light");
-		navB.classList.add("dark");
-		navB.classList.remove("light");
-
-		// Change [sub] colorscheme
-		sub.classList.add("dark");
-		sub.classList.remove("light");
-
-		// Change [animationsSetting] colorscheme
-		animationsSetting.classList.add("dark");
-		animationsSetting.classList.remove("light");
-		// Change [themeSetting] colorscheme
-		themeSetting.classList.add("dark");
-		themeSetting.classList.remove("light");
-		// Change [languageSetting] colorscheme
-		languageSetting.classList.add("dark");
-		languageSetting.classList.remove("light");
+		// Change [navBack] and [navFront] colorscheme
+		navBack.classList.add("dark");
+		navFront.classList.add("dark");
 
 		// Change [main] colorscheme
 		main.classList.add("dark");
-		main.classList.remove("light");
 	}
 	else{
-		// Update [light] and [localStorage]
+		// Update [light] value
 		light="true";
-		localStorage.setItem("light", light);
 
-		// Change [body] colorscheme
-		body.classList.add("light");
-		body.classList.remove("dark");
-
-		// Change [navA] and [navB] colorscheme
-		navA.classList.add("light");
-		navA.classList.remove("dark");
-		navB.classList.add("light");
-		navB.classList.remove("dark");
-
-		// Change [sub] colorscheme
-		sub.classList.add("light");
-		sub.classList.remove("dark");
-
-		// Change [animationsSetting] colorscheme
-		animationsSetting.classList.add("light");
-		animationsSetting.classList.remove("dark");
-		// Change [themeSetting] colorscheme
-		themeSetting.classList.add("light");
-		themeSetting.classList.remove("dark");
-		// Change [languageSetting] colorscheme
-		languageSetting.classList.add("light");
-		languageSetting.classList.remove("dark");
+		// Change [navBack] and [navFront] colorscheme
+		navBack.classList.remove("dark");
+		navFront.classList.remove("dark");
 
 		// Change [main] colorscheme
-		main.classList.add("light");
 		main.classList.remove("dark");
 	}
 
-	// Refresh texts
-	changeLanguage();
+	// Update [localStorage]
+	localStorage.setItem("light", light);
+
+	// Refresh buttons content
+	refreshButtons();
 }
 
 /************************************
@@ -344,22 +277,52 @@ function themePress(){
 * \ = .= /
 *************************************/
 function languagePress(){
-	if(language==="en"){
-		// Update [language] and [localStorage]
-		language="pl";
-		localStorage.setItem("language", language);
+	// Update [language] value
+	if(language==="en"){ language="pl"; }
+	else{ language="en"; }
 
-		// Refresh texts
-		changeLanguage();
+	// Update [localStorage]
+	localStorage.setItem("language", language);
+
+	// Refresh site content
+	changeLanguage();
+}
+
+/************************************
+* |\____/| scalePress()
+* |      |
+* | o  o | [JS]
+* \ = .= /
+*************************************/
+function scalePress(){
+	if(scale==="0"){
+		// Update [scale] value
+		scale="1";
+
+		// Update [main] scale
+		main.classList.add("scale2");
+	}
+	else if(scale==="1"){
+		// Update [scale] value
+		scale="2";
+
+		// Update [main] scale
+		main.classList.remove("scale2");
+		main.classList.add("scale3");
 	}
 	else{
-		// Update [language] and [localStorage]
-		language="en";
-		localStorage.setItem("language", language);
+		// Update [scale] value
+		scale="0";
 
-		// Refresh texts
-		changeLanguage();
+		// Update [main] scale
+		main.classList.remove("scale3");
 	}
+
+	// Update [localStorage]
+	localStorage.setItem("scale", scale);
+
+	// Refresh buttons content
+	refreshButtons();
 }
 
 /************************************
