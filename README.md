@@ -1,4 +1,4 @@
-![Przecinek](https://github.com/ciupagacz/ciupagacz/blob/main/src/Przecinek.png)
+![przecinek](https://github.com/ciupagacz/ciupagacz/blob/main/src/przecinek.png)
 
 <div align="center">
     branch:
@@ -51,9 +51,9 @@ Most of the planned features have already been implemented. I still plan to add 
 
 ### Current branch version
 
-> Newest stable version: **a6,1e**<br>
-> Newest unstable version: **u,28**<br>
-> Last updated: **14-07-2026**
+> Newest stable version: **a6,1f**<br>
+> Newest unstable version: **u,29**<br>
+> Last updated: **15-07-2026**
 
 ### Project license
 
