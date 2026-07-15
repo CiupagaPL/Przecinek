@@ -32,7 +32,7 @@ body{
 
 @keyframes navBack{
 	0%{ background-position: 0 0; }
-	100%{ background-position: 211px -206px; }
+	100%{ background-position: 25vmin -25vmin; }
 }
 #navBack{
 	left: 0;
@@ -44,7 +44,7 @@ body{
 
 	position: fixed;
 
-	background-size: 211px;
+	background-size: 25vmin;
 	background-repeat: repeat;
 	background-position: 0 0;
 	background-image: url(local/background_light.png);
@@ -136,11 +136,11 @@ body{
 	float: left;
 
 	background-image: url(local/icon_red.png);
-	background-size: 90%;
+	background-size: 80%;
 	background-position: center;
 	background-repeat: no-repeat;
 }
-#logo:hover{ background-size: 100%; }
+#logo:hover{ background-size: 90%; }
 #logo.red-green-on{
 	animation: logo 7s infinite linear, logo-red-green 0s forwards;
 }

@@ -85,34 +85,6 @@ if(scale==="1"){ main.classList.add("scale2"); }
 else if(scale==="2"){ main.classList.add("scale3"); }
 
 /************************************
-* |\____/| preload()
-* |      |
-* | o  o | [JS]
-* \ = .= /
-*************************************/
-async function preload(){
-	// Create and fill local [sources]
-	const sources=[
-		"local/icon_red.png",
-		"local/icon_green.png",
-		"local/icon_blue.png",
-	];
-
-	// Preload images located in local [sources]
-	await Promise.all(
-		sources.map(url=>new Promise((resolve, reject)=>{
-			const image=new Image();
-			image.onload=()=>resolve(url);
-			image.onerror=()=>reject(new Error(""));
-			image.src=url;
-		}))
-	);
-}
-
-// Preload several textures
-preload();
-
-/************************************
 * |\____/| refreshButtons()
 * |      |
 * | o  o | [JS]
