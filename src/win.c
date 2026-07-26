@@ -1,12 +1,12 @@
-/****************************************************
-*       |\____/|
-*       |      | github.com/CiupagaPL/Przecinek
-*  __   | >  < | original {,} library
-* /  \__\ =, = / copyright 2025-2026
+/*
+*       |\____/| github.com/ciupagacz/przecinek
+*       |      | original {,} library
+*  __   | >  < |
+* /  \__\ =, = / copyright (c) 2025-2026
 * \__         /
 *    \ \____\ \
 *    {,{,} {,},}
-*****************************************************/
+*/
 
 // Przecinek header
 #include "../przecinek.h"
@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <math.h>
+#include <float.h>
 #include <locale.h>
 
 // WIN threads library

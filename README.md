@@ -12,6 +12,10 @@
 Simply put - it's a collection of functions and structures that allows you to create windows, load fonts and images, draw objects and text and play audio. Originally, it was created for C, but it can also be used with C++.<br>
 You can read more about it on the [wiki page](https://ciupagacz.github.io/przecinek/).
 
+> [!IMPORTANT]
+> The library and website licenses were slightly updated with the release of *u,30*.
+Make sure to check them first!!
+
 ### Current features
 
 Most of the planned features have already been implemented. I still plan to add and modify some of the existing ones. I aim to finalize most of the stuff with the release of the first Beta. Until then, some function names and features might change between Przecinek versions.
@@ -22,14 +26,13 @@ Most of the planned features have already been implemented. I still plan to add 
 |-----------------|-----|-----|
 | loading / managing / playing audio            | ✅ | ❌ |
 | auto-repeating audio                          | ❌ | ❌ |
-| filtering textures                            | ? | ? |
+| filtering textures                            | ?  | ?  |
 | blending colors when rendering stuff          | ❌ | ❌ |
 | generating texts with diffrent options        | ❌ | ❌ |
 | setting window icon                           | ❌ | ❌ |
 | checking vsync value                          | ❌ | ❌ |
 | limiting window frames more efficiently       | ❌ | ❌ |
 | rendering default texture when failed to load | ❌ | ❌ |
-| managing window resize                        | ❌ | ❌ |
 | generating lines                              | ❌ | ❌ |
 | compiling projects on all operating systems   | ✅ | ✅ |
 
@@ -52,26 +55,27 @@ Most of the planned features have already been implemented. I still plan to add 
 ### Current branch version
 
 > Newest stable version: **a6,1f**<br>
-> Newest unstable version: **u,29**<br>
-> Last updated: **15-07-2026**
+> Newest unstable version: **u,30**<br>
+> Last updated: **26-07-2026**
 
 ### Project license
 
 ```
-Copyright(C) 2025-2026 ciupaga
+copyright (c) 2025-2026 ciupaga
 {,} PRZECINEK
-Custom License
+custom license
 
-By obtaining this software, you are allowed to use it for any
-project you create and to fork it.
+By obtaining this software, you are permitted to use it for any project
+you create and to fork it.
 
-1. Contributors are encouraged to submit improvements or modifications
+1. Contributors are encouraged to submit improvements and modifications
     to the original project.
-2. For programs that are made in this software you don't need to
-    mention that you have used it.
+2. For programs that are made using this software you don't need to
+    mention anywhere that you have used it.
 3. You may fork and publish the source code as your own, but you must
-    retain the original author, license, and website information
-    located in the comments.
+    retain the original license and website information located in
+    the comments. If the comment indicates that there is no copyright,
+    then the file is not covered by the license.
 4. Consequences of Non-Compliance:
 a) If you fail to comply with any of the terms outlined in this license,
     you may lose the rights to use, modify, and distribute this software.
@@ -80,7 +84,8 @@ b) The author reserves the right to take legal action against any party
 5.:
 a) "Fork" refers to creating a derivative work based on the
     original software.
-b) "Comments" refer to messages located in the source code.
+b) "Comments" refer to messages located in the source code. They
+    can usually be found at the top of the file.
 
 This software is provided "as-is" without any warranties. The author
 is not liable for any damages arising from its use.

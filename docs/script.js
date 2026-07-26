@@ -1,12 +1,12 @@
-/****************************************************
-*       |\____/|
-*       |      | github.com/CiupagaPL/Przecinek
-*  __   | >  < | original {,} wiki
+/*
+*       |\____/| github.com/CiupagaPL/Przecinek
+*       |      | original {,} wiki
+*  __   | >  < |
 * /  \__\ =, = / copyright 2026
 * \__         /
 *    \ \____\ \
 *    {,{,} {,},}
-*****************************************************/
+*/
 
 // Setup global [localStorage]
 if(localStorage.getItem("animation")===null){
@@ -46,7 +46,7 @@ const logo=document.getElementById("logo");
 
 // Create, load and setup [sub] from HTML
 const sub=document.getElementById("sub");
-sub.dataset.key="random"+Math.floor(Math.random()*26);
+sub.dataset.key="random"+Math.floor(Math.random()*30);
 
 // Create and load [animationsSetting], [themeSetting] and [scaleSetting]
 const animationsSetting=document.getElementById("animationsSetting");
@@ -84,12 +84,12 @@ if(light==="false"){
 if(scale==="1"){ main.classList.add("scale2"); }
 else if(scale==="2"){ main.classList.add("scale3"); }
 
-/************************************
+/*
 * |\____/| refreshButtons()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function refreshButtons(){
 	// Create and calculate local [position] for [animationsSetting]
 	let position=animationsSetting.innerHTML.indexOf("&gt")
@@ -126,12 +126,12 @@ function refreshButtons(){
 	else{ scaleSetting.innerHTML+="2x"; }
 }
 
-/************************************
+/*
 * |\____/| refreshSub()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function refreshSub(){
 	// Create and calculate local [left], [top], [size] and [adjust]
 	const left=11;
@@ -145,12 +145,12 @@ function refreshSub(){
 	sub.style.fontSize=size+"vw";
 }
 
-/************************************
+/*
 * |\____/| changeLanguage()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function changeLanguage(){
     // Scan each `data-key`
     document.querySelectorAll("[data-key]").forEach(current=>{
@@ -176,12 +176,12 @@ function changeLanguage(){
 // Update site content on start
 changeLanguage();
 
-/************************************
+/*
 * |\____/| animationsPress()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function animationsPress(){
 	if(animation==="true"){
 		// Update [animation] value
@@ -233,12 +233,12 @@ function animationsPress(){
 	refreshButtons();
 }
 
-/************************************
+/*
 * |\____/| themePress()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function themePress(){
 	if(light==="true"){
 		// Update [light] value
@@ -270,12 +270,12 @@ function themePress(){
 	refreshButtons();
 }
 
-/************************************
+/*
 * |\____/| languagePress()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function languagePress(){
 	// Update [language] value
 	if(language==="en"){ language="pl"; }
@@ -288,12 +288,12 @@ function languagePress(){
 	changeLanguage();
 }
 
-/************************************
+/*
 * |\____/| scalePress()
 * |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 function scalePress(){
 	if(scale==="0"){
 		// Update [scale] value
@@ -325,12 +325,12 @@ function scalePress(){
 	refreshButtons();
 }
 
-/************************************
-* |\____/| logo.addEventListener-
-* |      | -("mouseenter")
+/*
+* |\____/| logo.addEventListener("mouseenter")
+* |      |
 * | o  o | [JS]
 * \ = .= /
-*************************************/
+*/
 logo.addEventListener("mouseenter", ()=>{
 	if(logo.classList.contains("red-green-on")===true){
 		// Change [logo] animation

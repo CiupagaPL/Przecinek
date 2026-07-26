@@ -1,12 +1,12 @@
-#[[*************************************************
-*       |\____/|
-*       |      | example file used for compiling
-*  __   | c  c | not covered by the license!!
-* /  \__\ =, = /
-* \__         /
+#[[*
+*       |\____/| example cmake file
+*       |      | used for win compiling
+*  __   | .  . |
+* /  \__\ =, = / not covered by the license!!
+* \__         /  modify it how you want!!
 *    \ \____\ \
 *    {,{,} {,},}
-**************************************************]]
+*]]
 
 set(CMAKE_SYSTEM_NAME Windows)
 

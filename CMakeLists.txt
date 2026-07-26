@@ -1,12 +1,12 @@
-#[[*************************************************
-*       |\____/|
-*       |      | example file used for compiling
-*  __   | c  c | not covered by the license!!
-* /  \__\ =, = /
-* \__         /
+#[[*
+*       |\____/| example cmake file
+*       |      | used for compiling
+*  __   | .  . |
+* /  \__\ =, = / not covered by the license!!
+* \__         /  modify it how you want!!
 *    \ \____\ \
 *    {,{,} {,},}
-**************************************************]]
+*]]
 
 cmake_minimum_required(VERSION 3.5)
 

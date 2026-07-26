@@ -2,3 +2,4 @@ build/
 debug.c
 debug.cpp
 script.sh
+Makefile
