@@ -77,14 +77,17 @@ body{
 	color: #32323c;
 }
 
-#navFront>details>a, #navFront>i, #navFront>details>summary{
+#navFront>details>a,
+#navFront>i,
+#navFront>details>summary{
 	max-width: 100%;
 
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-#navFront>details>a, #navFront>i{ display: inline-block; }
+#navFront>details>a,
+#navFront>i{ display: inline-block; }
 
 #navFront>button{
 	padding: 0;
@@ -100,8 +103,11 @@ body{
 }
 #navFront>i{ font-size: 3vmin; }
 
-#navFront>button, #navFront>details>summary{ font-size: 2.25vmin; }
-#navFront>details>a:hover, #navFront>button:hover, #navFront>details>summary:hover{
+#navFront>button,
+#navFront>details>summary{ font-size: 2.25vmin; }
+#navFront>details>a:hover,
+#navFront>button:hover,
+#navFront>details>summary:hover{
 	text-decoration: underline;
 }
 
@@ -203,6 +209,14 @@ hr{
 	border: 0;
 	border-top: var(--body-border) dashed;
 }
+
+ul{
+	text-align: left;
+	list-style-type: square;
+	margin: 0;
+	padding-left: var(--main-padding);
+}
+
 
 pre{
 	width: content;

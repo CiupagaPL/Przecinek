@@ -17,7 +17,8 @@
 #define PRZECINEK_H
 
 #ifdef __cplusplus
-extern "C"{
+extern "C"
+{
 	#endif
 
 	// Basic size structure
@@ -32,7 +33,7 @@ extern "C"{
 	#define PRZECINEK_STABLE_MAJOR 6
 	#define PRZECINEK_STABLE_MINOR 1
 	#define PRZECINEK_STABLE_PATCH L"f"
-	#define PRZECINEK_UNSTABLE 30
+	#define PRZECINEK_UNSTABLE 31
 
 	// Frame limits for all windows
 	// Value higher than `480` is very unsafe!
@@ -77,19 +78,21 @@ extern "C"{
 	#define OBJECT_ROTATION_MIN (int16_t)-360
 	#define OBJECT_ROTATION_MAX (int16_t)360
 
-	// Object minimal and maximal vertice amount
-	#define OBJECT_VERTICE_MIN (uint16_t)3
-	#define OBJECT_VERTICE_MAX (uint16_t)512
+	// Object maximal vertex amount
+	#define OBJECT_VERTEX_MAX (uint16_t)512
 
-	// Text minimal length
-	#define TEXT_LENGTH_MIN (uint16_t)1
+	// Image default pixelated status
+	#define IMAGE_PIXELATED_DEFAULT false
 
-	// Text size limits in pixels
+	// Text size limits
 	#define TEXT_SIZE_DEFAULT (int32_t)64
 	#define TEXT_SIZE_MIN (int32_t)4
 	#define TEXT_SIZE_MAX (int32_t)4096
-	// Text default space width
-	#define TEXT_SPACE_DEFAULT (int32_t)32
+	// Text default letter and line spacing size
+	#define TEXT_LETTER_SPACING_DEFAULT (int32_t)0
+	#define TEXT_LINE_SPACING_DEFAULT (int32_t)0
+	// Text default space size
+	#define TEXT_SPACE_SIZE_DEFAULT (int32_t)32
 
 	// Maximal audio volume in percent
 	#define AUDIO_VOLUME_MAX (uint16_t)200
@@ -103,8 +106,9 @@ extern "C"{
 	#define AUDIO_PROCESS_RATE (uint8_t)10
 
 	// Debug structure
-	typedef struct{
-		// Frame limit and count for all windows
+	typedef struct
+	{
+		// Global frame limit and frame count
 		uint16_t frameLimit, frameCount;
 
 		// Main screen size
@@ -122,22 +126,27 @@ extern "C"{
 	*  |____|
 	* (------)
 	*/
-	typedef struct{
+	typedef struct
+	{
 		uint8_t ID;
 		bool active;
 
-		// Pixel position on the screen
+		// Position on the screen
 		int16_t x, y;
-		// Pixel size of the window
+		// Size of the window
 		uint16_t width, height;
 		// Size limits of the window
+		// Used only if window is resizable
 		uint16_t widthMin, heightMin, widthMax, heightMax;
 
 		// Window title
 		wchar_t *title;
 
-		// Window focus and fullScreen status
-		bool focus, fullScreen;
+		// Window full screen check
+		bool fullScreen;
+		// Window focus status
+		// Modified by the library automatically
+		bool focus;
 	} pWindow;
 
 	/*
@@ -146,14 +155,14 @@ extern "C"{
 	*  |____|
 	* (------)
 	*/
-	typedef struct{
+	typedef struct
+	{
 		uint16_t ID;
 
-		// Vertice count of the object
-		uint16_t verticeCount;
-		// Vertice positions array
-		// Equal to the vertice count
-		pPoint *vertice;
+		// Vertex count
+		uint16_t vertexCount;
+		// Vertex positions array
+		pPoint *vertex;
 	} pObject;
 
 	/*
@@ -162,19 +171,14 @@ extern "C"{
 	*  |____|
 	* (------)
 	*/
-	typedef struct{
+	typedef struct
+	{
 		uint16_t ID;
-	} pImage;
 
-	/*
-	*  ,____, [pFont] structure
-	*  |    |
-	*  |____|
-	* (------)
-	*/
-	typedef struct{
-		uint16_t ID;
-	} pFont;
+		// Texture filtering mode
+		// Set `true` if you want to upscale pixel art
+		bool pixelated;
+	} pImage;
 
 	/*
 	*  ,____, [pText] structure
@@ -182,23 +186,37 @@ extern "C"{
 	*  |____|
 	* (------)
 	*/
-	typedef struct{
+	typedef struct
+	{
 		uint16_t ID;
 
-		// Pixel position on the window
+		// Position on the window
 		int32_t x, y;
 
 		// Text allocated maximal length
-		// Should be increased by `1` for safety
+		// Is decreased by `1` automatically for `NULL` pointer
 		uint16_t length;
 		// Text value
 		wchar_t *value;
-		// Text size in pixels
+		// Text/Font size
 		uint16_t size;
 
-		// Text spacing and space size
-		int32_t letterSpacing, lineSpacing, spaceSize;
+		// Text letter and line spacing
+		int32_t letterSpacing, lineSpacing;
+		// Width of the ' ' character
+		int32_t spaceSize;
 	} pText;
+
+	/*
+	*  ,____, [pFont] structure
+	*  |    |
+	*  |____|
+	* (------)
+	*/
+	typedef struct
+	{
+		uint16_t ID;
+	} pFont;
 
 	/*
 	*  ,____, [pAudio] structure
@@ -206,7 +224,8 @@ extern "C"{
 	*  |____|
 	* (------)
 	*/
-	typedef struct{
+	typedef struct
+	{
 		uint16_t ID;
 
 		// Volume percentage
@@ -215,7 +234,7 @@ extern "C"{
 		// Audio pause state
 		bool pause;
 
-		// Audio current and max frame
+		// Current and maximal frame of the audio
 		uint32_t frame, frameMax;
 	} pAudio;
 
@@ -226,12 +245,13 @@ extern "C"{
 	* \ = .= / Out: int8_t (`0`: success)
 	*
 	* > Parameters:
-	* [debug] - console debug messages status.
+	* [debug] - error/warning messages status.
 	*
 	* > Description:
-	* This function initializes Przecinek library. It setups locale and libraries used later.
-	* It creates several global debug objects, setups all needed values and variables,
-	* creates debug console and downloads initial values of [global] variable.
+	* This function initializes Przecinek library. It setups locale and
+	* libraries used later. It creates several global debug objects, setups
+	* all needed values and variables, opens debug console and downloads
+	* initial values of [przecinek] variable.
 	*/
 	int8_t pSetup(bool debug);
 
@@ -243,11 +263,11 @@ extern "C"{
 	*
 	* > Description:
 	* This function updates all windows and global variable values.
-	* Firstly it updates main debug [window] [ID], then it refreshes input and downloads
-	* several [global] values.
-	* After that it loads signals from debug window threads and modifies several debug values.
-	* In the end it stops main loop for a short amount of time and updates all
-	* frame limit related stuff.
+	* Firstly it updates main debug [window] [ID], then it refreshes
+	* input and downloads several [przecinek] values. After that it
+	* loads signals from debug threads, handles all [window] actions
+	* and modifies several debug values. In the end it stops main loop
+	* for a short amount of time and updates all frame related stuff.
 	*/
 	int8_t pUpdate();
 
@@ -261,10 +281,10 @@ extern "C"{
 	* [key] - which [key] status should be checked.
 	*
 	* > Description:
-	* This function checks if [key] is being pressed.
-	* Returned value will be `true` only for one frame.
-	* Before [key] is being checked this function searches for a debug [key] code.
-	* The code depends on the operating system.
+	* This function checks if [key] is being pressed. Returned value will
+	* be equal to `true` for one frame only. Before the [key] is being
+	* checked function searches for a debug [key] code. The code depends
+	* on the operating system and used libraries.
 	*/
 	int8_t pKeyPress(const wchar_t *key);
 
@@ -278,10 +298,10 @@ extern "C"{
 	* [key] - which [key] status should be checked.
 	*
 	* > Description:
-	* This function checks if [key] is being hold.
-	* Returned value will be `true` after the first frame.
-	* Before [key] is being checked this function searches for a debug [key] code.
-	* The code depends on the operating system.
+	* This function checks if [key] is being hold. Returned value will
+	* be equal to `true` only after the first frame. Before the [key] is
+	* being checked function searches for a debug [key] code. The code
+	* depends on the operating system and used libraries.
 	*/
 	int8_t pKeyHold(const wchar_t *key);
 
@@ -325,17 +345,17 @@ extern "C"{
 	* \ = .= / Out:
 	*
 	* > Description:
-	* This function safely destroys structures and cleans memory before the end of the program.
-	* It firstly uninitializes all debug libraries.
+	* This function safely destroys structures and cleans memory before
+	* the end of the program. It firstly uninitializes all debug libraries.
 	* Then it searches for all undestroyed structures and removes them.
-	* In the end it resets [global] and several debug variables.
+	* In the end it resets [przecinek] and several debug variables.
 	*/
 	void pEndup();
 
 	/*
 	* |\____/| pWindowCreate()
-	* |      |
-	* | o  o | In: pWindow *window, uint16_t [width], [height], bool [resizable]
+	* |      | In: pWindow *window, uint16_t [width], [height],
+	* | o  o | bool [resizable]
 	* \ = .= / Out: int8_t (`0`: success)
 	*
 	* > Parameters:
@@ -345,13 +365,19 @@ extern "C"{
 	* [resizable] - should the [window] be resizable or constant.
 	*
 	* > Description:
-	* This function choses [ID] for given [window], then it creates debug process,
-	* setups all needed values and variables, setups debug pointers to the [window] structure,
-	* then it creates physical [window] and creates second GL buffer.
-	* It also creates debug [window] thread which loads and responses to all signals.
-	* In the end it fills background using `COLOR_BACKGROUND_DEFAULT` fill.
+	* This function choses [ID] for given [window], then it creates debug
+	* process, setups all needed values and variables, setups debug pointers
+	* to the [window] structure, then it creates physical [window] and
+	* creates second GL buffer. It also creates debug [window] thread which
+	* loads and responses to all signals. In the end it fills background
+	* using `COLOR_BACKGROUND_DEFAULT` fill.
 	*/
-	int8_t pWindowCreate(pWindow *window, uint16_t width, uint16_t height, bool resizable);
+	int8_t pWindowCreate(
+		pWindow *window,
+		uint16_t width,
+		uint16_t height,
+		bool resizable
+	);
 
 	/*
 	* |\____/| pWindowDrawObject()
@@ -362,26 +388,31 @@ extern "C"{
 	* > Parameters:
 	* [window] - which [window] should be used for rendering.
 	* [object] - which [object] should be rendered on [window].
-	* [image] - in which [image] fill should [object] be rendered in. Can be `NULL`.
+	* [image] - in which [image] fill should [object] be rendered in.
+	* Can be `NULL`. Can be mixed with [color].
 	* [color] - in which [color] fill should [object] be rendered in.
-	* Can be `NULL`. Can be multiple.
-	* [colorCount] - how many [color] values should be used. If [verticeCount] is bigger
-	* than the [colorCount], then [color] will be used interchangeably. If value is
-	* equal to `0`, then `COLOR_FOREGROUND_DEFAULT` will be used.
+	* Can be `NULL`. Can be multiple. Can be mixed with [image].
+	* [colorCount] - how many [color] values should be used.
+	* If [vertexCount] is bigger than the [colorCount], then [color]
+	* will be used interchangeably. If value is equal to `0`,
+	* then `COLOR_FOREGROUND_DEFAULT` will be used for rendering instead.
 	*
 	* > Description:
 	* This function uses GL to render [object] on the given [window].
-	* Before any action is taken, it checks and refreshes [object] values if needed.
-	* If any [vertice] was modified, then debug values are being recalculated.
-	* Then when everything is prepared [color] and [image] are being applied to the GL
-	* and [object] is being rendered.
-	* If [color] is `NULL` and [colorCount] is equal to `0`,
-	* then `COLOR_FOREGROUND_DEFAULT` is being used.
-	* If [texture] source is `NULL` then default texture is being used instead.
-	* If [object] is fully outside the rendering area then it is skipped.
+	* Before any action is taken, it checks and refreshes [object] values
+	* if needed. If any [vertex] was modified, then debug values are
+	* being recalculated. Then when everything is prepared [color]
+	* and [image] are being applied to the GL and [object] is being
+	* rendered. If [image] source is `NULL` then default texture is
+	* being used instead. If [object] is fully outside the rendering
+	* area then it is being skipped.
 	*/
 	int8_t pWindowDrawObject(
-		pWindow *window, pObject *object, pImage *image, pColor *color, uint16_t colorCount
+		pWindow *window,
+		pObject *object,
+		pImage *image,
+		pColor *color,
+		uint16_t colorCount
 	);
 
 	/*
@@ -396,23 +427,28 @@ extern "C"{
 	* [font] - which [font] should be used to render [text].
 	* [color] - in which [color] fill should [text] be rendered in.
 	* Can be `NULL`. Can be multiple.
-	* [colorCount] - how many [color] values should be used. If value is smaller than `4`,
-	* then [color] values will be used interchangeably. If value is equal to `0`,
-	* then `COLOR_FOREGROUND_DEFAULT` will be used.
+	* [colorCount] - how many [color] values should be used. If value
+	* is smaller than `4`, then [color] values will be used interchangeably.
+	* If value is equal to `0`, then `COLOR_FOREGROUND_DEFAULT` will be
+	* used for rendering instead.
 	*
 	* > Description:
-	* This function uses GL to render [text] using [font] on the given [window].
-	* Before any action is taken, it checks and refreshes [text] and [font] values if needed.
-	* Depending on what changes were made either position values of all [text] buffers are
-	* being recalculated or [text] debug values are being reseted and regenerated.
-	* Then when everything is prepared [color] is being applied to the GL and [text]
-	* buffers are being rendered.
-	* If [color] is `NULL` and [colorCount] is equal to `0`,
-	* then `COLOR_FOREGROUND_DEFAULT` is being used.
-	* If any [text] buffer is fully outside the rendering area then it is skipped.
+	* This function uses GL to render [text] using [font] on the
+	* given [window]. Before any action is taken, it checks and
+	* refreshes [text] and [font] values if needed. Depending on what
+	* changes were made either position values of all [text] buffers are
+	* being recalculated or [text] debug values are being reseted and
+	* regenerated. Then when everything is prepared [color] is being
+	* applied to the GL and [text] buffers are being rendered. If
+	* any [text] buffer is fully outside the rendering area then it is
+	* being skipped.
 	*/
 	int8_t pWindowDrawText(
-		pWindow *window, pText *text, pFont *font, pColor *color, uint16_t colorCount
+		pWindow *window,
+		pText *text,
+		pFont *font,
+		pColor *color,
+		uint16_t colorCount
 	);
 
 	/*
@@ -430,24 +466,27 @@ extern "C"{
 	/*
 	* |\____/| pObjectCreate()
 	* |      |
-	* | o  o | In: pObject* [object], uint16_t [verticeCount]
+	* | o  o | In: pObject* [object], uint16_t [vertexCount]
 	* \ = .= / Out: int8_t (`0`: success)
 	*
 	* > Parameters:
 	* [object] - which [object] structure should be initialized.
 	* If [object] was already created, then it will be overwritten.
-	* [verticeCount] - how many [vertice] should be allocated.
+	* [vertexCount] - how many [vertex] variables should be allocated.
 	*
 	* > Description:
-	* This function choses [ID] for given [object], then it setups all needed values and
-	* variables and allocates [verticeCount] in the memory.
+	* This function choses [ID] for given [object], then it setups all
+	* needed values and variables and allocates [vertexCount] in the memory.
 	*/
-	int8_t pObjectCreate(pObject *object, uint16_t verticeCount);
+	int8_t pObjectCreate(
+		pObject *object,
+		uint16_t vertexCount
+	);
 
 	/*
-	* |\____/| pObjectGenerate()
-	* |      |
-	* | o  o | In: pObject* [object], uint16_t [width], [height], int16_t [rotation]
+	* |\____/| pObjectGenerateShape()
+	* |      | In: pObject* [object], uint16_t [width], [height]
+	* | o  o | int16_t [rotation]
 	* \ = .= / Out: int8_t (`0`: success)
 	*
 	* > Parameters:
@@ -456,11 +495,16 @@ extern "C"{
 	* [rotation] - how rotated should the [object] be.
 	*
 	* > Description:
-	* This function generates [object] structure based on given parameters.
-	* It automatically calculates [vertice] positions and creates geometric figure.
-	* It also prepares debug values like [texture] positions and [object] [width] and [height].
+	* This function generates [object] shape based on given parameters.
+	* It automatically calculates [vertex] positions and creates geometric
+	* figure. It also prepares debug variables used later for rendering.
 	*/
-	int8_t pObjectGenerate(pObject *object, uint16_t width, uint16_t height, int16_t rotation);
+	int8_t pObjectGenerateShape(
+		pObject *object,
+		uint16_t width,
+		uint16_t height,
+		int16_t rotation
+	);
 
 	/*
 	* |\____/| pObjectMove()
@@ -474,10 +518,14 @@ extern "C"{
 	*
 	* > Description:
 	* This function moves [object] structure based on given parameters.
-	* Start position of the [object] is allways equal to the [object] minimal [vertice] position.
-	* If minimal position was changed, then [object] position will also change.
+	* Initial position of the [object] is allways equal to the [object]
+	* minimal [vertex] position.
 	*/
-	int8_t pObjectMove(pObject *object, int32_t x, int32_t y);
+	int8_t pObjectMove(
+		pObject *object,
+		int32_t x,
+		int32_t y
+	);
 
 	/*
 	* |\____/| pObjectCollisionSimple()
@@ -489,11 +537,14 @@ extern "C"{
 	* [objectA], [objectB] - which structures should be checked.
 	*
 	* > Description:
-	* This function checks for collision between two objects using their debug
-	* [width] and [height].
-	* This method is much faster but less accurate and works only well with rectangles.
+	* This function checks for collision between two objects using their
+	* debug size values. This method is much faster but less accurate
+	* and works only well with rectangles.
 	*/
-	int8_t pObjectCollisionSimple(pObject *objectA, pObject *objectB);
+	int8_t pObjectCollisionSimple(
+		pObject *objectA,
+		pObject *objectB
+	);
 
 	/*
 	* |\____/| pObjectCollisionComplex()
@@ -505,13 +556,17 @@ extern "C"{
 	* [objectA], [objectB] - which structures should be checked.
 	*
 	* > Description:
-	* This function checks for collision between two objects using triangular mini-collisions.
-	* Firstly it checks if simple collision is being found.
-	* Then it divides both objects into triangles using ear clipping method.
-	* At the end it checks if any triangles collides with each other.
-	* This method is much slow but very accurate and works only well with everything.
+	* This function checks for collision between two objects using
+	* their triangular mini-collisions. Firstly it checks if simple
+	* collision is being found. Then it divides both objects into
+	* triangles using ear clipping method. In the end it checks if
+	* any triangles collides with each other. This method is much slower
+	* but very accurate and works well with pretty much everything.
 	*/
-	int8_t pObjectCollisionComplex(pObject *objectA, pObject *objectB);
+	int8_t pObjectCollisionComplex(
+		pObject *objectA,
+		pObject *objectB
+	);
 
 	/*
 	* |\____/| pObjectDestroy()
@@ -537,11 +592,14 @@ extern "C"{
 	* [directory] - from where the [image] should be loaded.
 	*
 	* > Description:
-	* This function choses [ID] for given [image], then it setups all needed values and
-	* variables, loads [image] from given [directory] and creates proper [image] debug
-	* GL bitmap for future rendering.
+	* This function choses [ID] for given [image], then it setups all
+	* needed values and variables, loads [image] from given [directory]
+	* and creates proper [image] debug GL bitmap for future rendering.
 	*/
-	int8_t pImageCreate(pImage *image, const wchar_t *directory);
+	int8_t pImageCreate(
+		pImage *image,
+		const wchar_t *directory
+	);
 
 	/*
 	* |\____/| pImageDestroy()
@@ -571,7 +629,10 @@ extern "C"{
 	* This function choses [ID] for given [text], then it allocates memory,
 	* setups all needed values and variables and you are ready to go.
 	*/
-	int8_t pTextCreate(pText *text, uint16_t length);
+	int8_t pTextCreate(
+		pText *text,
+		uint16_t length
+	);
 
 	/*
 	* |\____/| pTextDestroy()
@@ -597,10 +658,13 @@ extern "C"{
 	* [directory] - from where the [font] should be loaded.
 	*
 	* > Description:
-	* This function choses [ID] for given [font], then it loads [font] from given
-	* [directory] and setups all needed values and variables.
+	* This function choses [ID] for given [font], then it loads [font]
+	* from given [directory] and setups all needed values and variables.
 	*/
-	int8_t pFontCreate(pFont *font, const wchar_t *directory);
+	int8_t pFontCreate(
+		pFont *font,
+		const wchar_t *directory
+	);
 
 	/*
 	* |\____/| pFontDestroy()
@@ -626,13 +690,16 @@ extern "C"{
 	* [directory] - from where the [audio] should be loaded.
 	*
 	* > Description:
-	* This function choses [ID] for given [audio], then it setups all needed values and
-	* variables, loads sound file from given [directory] and creates [audio] debug thread.
-	* Debug thread works non stop even if [audio] is paused.
-	* It properly decodes [audio] file on creation.
+	* This function choses [ID] for given [audio], then it setups all
+	* needed values and variables, loads sound file from given [directory]
+	* and creates [audio] debug thread. Debug thread works non stop even
+	* if [audio] is paused. It properly decodes [audio] file on creation.
 	* Then it is used to properly play, pause and manage [audio].
 	*/
-	int8_t pAudioCreate(pAudio *audio, const wchar_t *directory);
+	int8_t pAudioCreate(
+		pAudio *audio,
+		const wchar_t *directory
+	);
 
 	/*
 	* |\____/| pAudioDestroy()

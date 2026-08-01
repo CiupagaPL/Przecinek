@@ -26,13 +26,12 @@ Most of the planned features have already been implemented. I still plan to add 
 |-----------------|-----|-----|
 | loading / managing / playing audio            | ✅ | ❌ |
 | auto-repeating audio                          | ❌ | ❌ |
-| filtering textures                            | ?  | ?  |
-| blending colors when rendering stuff          | ❌ | ❌ |
+| filtering textures                            | ?  | ✅ |
+| blending colors when rendering stuff          | ❌ | ✅ |
 | generating texts with diffrent options        | ❌ | ❌ |
 | setting window icon                           | ❌ | ❌ |
 | checking vsync value                          | ❌ | ❌ |
 | limiting window frames more efficiently       | ❌ | ❌ |
-| rendering default texture when failed to load | ❌ | ❌ |
 | generating lines                              | ❌ | ❌ |
 | compiling projects on all operating systems   | ✅ | ✅ |
 
@@ -55,8 +54,8 @@ Most of the planned features have already been implemented. I still plan to add 
 ### Current branch version
 
 > Newest stable version: **a6,1f**<br>
-> Newest unstable version: **u,30**<br>
-> Last updated: **26-07-2026**
+> Newest unstable version: **u,31**<br>
+> Last updated: **01-08-2026**
 
 ### Project license
 

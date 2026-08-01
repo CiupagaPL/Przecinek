@@ -92,10 +92,11 @@ else if(scale==="2"){ main.classList.add("scale3"); }
 */
 function refreshButtons(){
 	// Create and calculate local [position] for [animationsSetting]
-	let position=animationsSetting.innerHTML.indexOf("&gt")
+	let position=animationsSetting.innerHTML.indexOf(" ");
 	if(position!==(-1)){
 		// Cut [animationsSetting] text
-		animationsSetting.innerHTML=animationsSetting.innerHTML.slice(0, position+3)
+		animationsSetting.innerHTML=
+			animationsSetting.innerHTML.slice(0, position+1);
 	}
 
 	// Update [document] [animations] based on [animation] value
@@ -103,10 +104,11 @@ function refreshButtons(){
 	else{ animationsSetting.innerHTML+="⨯"; }
 
 	// Calculate local [position] for [themeSetting]
-	position=themeSetting.innerHTML.indexOf("&gt")
+	position=themeSetting.innerHTML.indexOf(" ");
 	if(position!==(-1)){
 		// Cut [themeSetting] text
-		themeSetting.innerHTML=themeSetting.innerHTML.slice(0, position+3)
+		themeSetting.innerHTML=
+			themeSetting.innerHTML.slice(0, position+1);
 	}
 
 	// Update [document] [theme] based on [light] value
@@ -114,10 +116,11 @@ function refreshButtons(){
 	else{ themeSetting.innerHTML+="☽"; }
 
 	// Calculate local [position] for [scaleSetting]
-	position=scaleSetting.innerHTML.indexOf("&gt")
+	position=scaleSetting.innerHTML.indexOf(" ");
 	if(position!==(-1)){
 		// Cut [scaleSetting] text
-		scaleSetting.innerHTML=scaleSetting.innerHTML.slice(0, position+3)
+		scaleSetting.innerHTML=
+			scaleSetting.innerHTML.slice(0, position+1);
 	}
 
 	// Update [document] [theme] based on [light] value
@@ -134,7 +137,7 @@ function refreshButtons(){
 */
 function refreshSub(){
 	// Create and calculate local [left], [top], [size] and [adjust]
-	const left=11;
+	const left=11.5;
 	const top=(sub.innerHTML.length*42)/21;
 	const size=(21*1.2)/sub.innerHTML.length;
 	const adjust=sub.innerHTML.length/5;
